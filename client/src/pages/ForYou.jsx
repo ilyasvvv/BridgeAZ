@@ -1,0 +1,348 @@
+import { useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
+import { apiClient } from "../api/client";
+import { useAuth } from "../utils/auth";
+import CommunityPostCard from "../components/CommunityPostCard";
+import { regionLabel } from "../utils/format";
+
+const progressKeywords = [
+  "applied",
+  "application",
+  "interview",
+  "semester",
+  "thesis",
+  "capstone",
+  "proposal",
+  "research",
+  "grant",
+  "internship"
+];
+
+export default function ForYou() {
+  const { user, token } = useAuth();
+  const [posts, setPosts] = useState([]);
+  const [opportunities, setOpportunities] = useState([]);
+  const [mentors, setMentors] = useState([]);
+  const [requests, setRequests] = useState([]);
+  const [regionFilter, setRegionFilter] = useState("LOCAL");
+  const [savedPosts, setSavedPosts] = useState(new Set());
+  const [activePostId, setActivePostId] = useState(null);
+  const [commentDrafts, setCommentDrafts] = useState({});
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  const loadData = async () => {
+    setLoading(true);
+    setError("");
+    try {
+      const [postsData, opportunitiesData] = await Promise.all([
+        apiClient.get("/posts", token),
+        apiClient.get("/opportunities?status=open", token)
+      ]);
+      setPosts(postsData);
+      setOpportunities(opportunitiesData);
+
+      if (user?.userType === "student") {
+        const mentorsData = await apiClient.get(
+          `/users?region=${user.currentRegion}&userType=professional&isMentor=true`,
+          token
+        );
+        setMentors(mentorsData.filter((mentor) => mentor.mentorVerified));
+      } else if (user?.isMentor) {
+        const mentorshipRequests = await apiClient.get("/mentorship-requests", token);
+        setRequests(mentorshipRequests);
+      }
+    } catch (err) {
+      setError(err.message || "Failed to load your feed");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (token) {
+      loadData();
+    }
+  }, [token, user]);
+
+  // TODO: Replace keyword heuristic with smarter ranking once engagement signals exist.
+  const progressPosts = useMemo(() => {
+    return posts.filter((post) =>
+      progressKeywords.some((keyword) =>
+        post.content?.toLowerCase().includes(keyword)
+      )
+    );
+  }, [posts]);
+
+  const filteredRegionalPosts = useMemo(() => {
+    if (regionFilter === "ALL") {
+      return posts;
+    }
+    return posts.filter((post) => post.visibilityRegion === user?.currentRegion);
+  }, [posts, regionFilter, user]);
+
+  const handleToggleSave = (postId) => {
+    setSavedPosts((prev) => {
+      const next = new Set(prev);
+      if (next.has(postId)) {
+        next.delete(postId);
+      } else {
+        next.add(postId);
+      }
+      return next;
+    });
+  };
+
+  const handleFollow = (postId) => {
+    // TODO: Wire follow system once profiles support follow relationships.
+    void postId;
+  };
+
+  const handleReplySubmit = async (postId, event) => {
+    event.preventDefault();
+    const content = commentDrafts[postId];
+    if (!content) return;
+
+    try {
+      const updated = await apiClient.post(
+        `/posts/${postId}/comment`,
+        { content },
+        token
+      );
+      setPosts((prev) => prev.map((post) => (post._id === postId ? updated : post)));
+      setCommentDrafts((prev) => ({ ...prev, [postId]: "" }));
+      setActivePostId(null);
+    } catch (err) {
+      setError(err.message || "Failed to send response");
+    }
+  };
+
+  const headerRegion = regionLabel(user?.currentRegion || "AZ");
+  const opportunityPreview = opportunities.slice(0, 5);
+
+  return (
+    <div className="mx-auto max-w-6xl space-y-8">
+      <section className="glass rounded-2xl p-5">
+        <p className="text-xs uppercase tracking-wide text-mist">Your context</p>
+        <p className="mt-2 text-sm text-sand">
+          You are currently based in {headerRegion}. Connected across Azerbaijan, Turkey,
+          and the US.
+        </p>
+      </section>
+
+      {error && <p className="text-sm text-coral">{error}</p>}
+
+      <div className="grid gap-8 lg:grid-cols-[2fr_1fr]">
+        <div className="space-y-8">
+          <section className="space-y-4">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <h2 className="font-display text-2xl">Community pulse</h2>
+              <span className="text-xs uppercase tracking-wide text-mist">
+                Calm updates, thoughtful replies
+              </span>
+            </div>
+            {loading ? (
+              <p className="text-sm text-mist">Loading community pulse...</p>
+            ) : posts.length === 0 ? (
+              <p className="text-sm text-mist">No posts yet. Start a steady conversation.</p>
+            ) : (
+              <div className="space-y-4">
+                {posts.map((post) => (
+                  <CommunityPostCard
+                    key={post._id}
+                    post={post}
+                    onRespond={() =>
+                      setActivePostId((prev) => (prev === post._id ? null : post._id))
+                    }
+                    onSave={() => handleToggleSave(post._id)}
+                    onFollow={() => handleFollow(post._id)}
+                    isSaved={savedPosts.has(post._id)}
+                    showReply={activePostId === post._id}
+                    replyValue={commentDrafts[post._id] || ""}
+                    onReplyChange={(event) =>
+                      setCommentDrafts((prev) => ({
+                        ...prev,
+                        [post._id]: event.target.value
+                      }))
+                    }
+                    onReplySubmit={(event) => handleReplySubmit(post._id, event)}
+                  />
+                ))}
+              </div>
+            )}
+          </section>
+
+          <section className="glass rounded-2xl p-5 space-y-4">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <h3 className="font-display text-xl">From where you are</h3>
+              <div className="flex items-center gap-2 text-xs uppercase tracking-wide">
+                {[
+                  { value: "LOCAL", label: "Your region" },
+                  { value: "ALL", label: "All" }
+                ].map((option) => (
+                  <button
+                    key={option.value}
+                    onClick={() => setRegionFilter(option.value)}
+                    className={`rounded-full border px-3 py-1 ${
+                      regionFilter === option.value
+                        ? "border-teal bg-teal/10 text-teal"
+                        : "border-white/10 text-mist hover:border-teal"
+                    }`}
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+            {filteredRegionalPosts.length === 0 ? (
+              <p className="text-sm text-mist">
+                No regional posts yet. Quiet spaces are normal too.
+              </p>
+            ) : (
+              <div className="space-y-4">
+                {filteredRegionalPosts.map((post) => (
+                  <CommunityPostCard
+                    key={post._id}
+                    post={post}
+                    onRespond={() =>
+                      setActivePostId((prev) => (prev === post._id ? null : post._id))
+                    }
+                    onSave={() => handleToggleSave(post._id)}
+                    onFollow={() => handleFollow(post._id)}
+                    isSaved={savedPosts.has(post._id)}
+                    showReply={activePostId === post._id}
+                    replyValue={commentDrafts[post._id] || ""}
+                    onReplyChange={(event) =>
+                      setCommentDrafts((prev) => ({
+                        ...prev,
+                        [post._id]: event.target.value
+                      }))
+                    }
+                    onReplySubmit={(event) => handleReplySubmit(post._id, event)}
+                  />
+                ))}
+              </div>
+            )}
+          </section>
+
+          <section className="glass rounded-2xl p-5 space-y-4">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <h3 className="font-display text-xl">Progress, not performance</h3>
+              <span className="rounded-full border border-white/10 px-3 py-1 text-xs uppercase tracking-wide text-mist">
+                Progress updates
+              </span>
+            </div>
+            {progressPosts.length === 0 ? (
+              <p className="text-sm text-mist">
+                No progress updates yet. The next small win is enough.
+              </p>
+            ) : (
+              <div className="space-y-4">
+                {progressPosts.slice(0, 5).map((post) => (
+                  <CommunityPostCard
+                    key={post._id}
+                    post={post}
+                    onRespond={() =>
+                      setActivePostId((prev) => (prev === post._id ? null : post._id))
+                    }
+                    onSave={() => handleToggleSave(post._id)}
+                    onFollow={() => handleFollow(post._id)}
+                    isSaved={savedPosts.has(post._id)}
+                    showReply={activePostId === post._id}
+                    replyValue={commentDrafts[post._id] || ""}
+                    onReplyChange={(event) =>
+                      setCommentDrafts((prev) => ({
+                        ...prev,
+                        [post._id]: event.target.value
+                      }))
+                    }
+                    onReplySubmit={(event) => handleReplySubmit(post._id, event)}
+                  />
+                ))}
+              </div>
+            )}
+          </section>
+        </div>
+
+        <aside className="space-y-6">
+          <section className="glass rounded-2xl p-5 space-y-3">
+            <h3 className="font-display text-xl">Mentorship & guidance</h3>
+            {user?.userType === "student" ? (
+              mentors.length ? (
+                <div className="space-y-3">
+                  <p className="text-sm text-mist">Mentors available in your region</p>
+                  {mentors.slice(0, 4).map((mentor) => (
+                    <div
+                      key={mentor._id}
+                      className="rounded-xl border border-white/10 bg-slate/40 p-3"
+                    >
+                      <p className="text-sm text-sand">{mentor.name}</p>
+                      <p className="text-xs text-mist">{mentor.headline || "Mentor"}</p>
+                    </div>
+                  ))}
+                  <p className="text-xs text-mist">
+                    TODO: Add mentor request flow with intent notes and scheduling.
+                  </p>
+                </div>
+              ) : (
+                <p className="text-sm text-mist">
+                  No verified mentors nearby yet. Check Explore for wider reach.
+                </p>
+              )
+            ) : user?.isMentor ? (
+              requests.length ? (
+                <div className="space-y-3">
+                  <p className="text-sm text-mist">Pending requests</p>
+                  {requests.slice(0, 4).map((request) => (
+                    <div
+                      key={request._id}
+                      className="rounded-xl border border-white/10 bg-slate/40 p-3"
+                    >
+                      <p className="text-sm text-sand">
+                        {request.fromStudent?.name || "Student"}
+                      </p>
+                      <p className="text-xs text-mist">{request.message}</p>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-mist">No mentorship requests yet.</p>
+              )
+            ) : (
+              <p className="text-sm text-mist">
+                Opt in to mentorship on your dashboard to receive requests.
+              </p>
+            )}
+          </section>
+
+          <section className="glass rounded-2xl p-5 space-y-3">
+            <div className="flex items-center justify-between">
+              <h3 className="font-display text-xl">Quiet opportunities</h3>
+              <Link to="/opportunities" className="text-xs uppercase tracking-wide text-teal">
+                View all
+              </Link>
+            </div>
+            {opportunityPreview.length ? (
+              <div className="space-y-3">
+                {opportunityPreview.map((opportunity) => (
+                  <Link
+                    key={opportunity._id}
+                    to={`/opportunities/${opportunity._id}`}
+                    className="block rounded-xl border border-white/10 bg-slate/40 p-3 hover:border-teal"
+                  >
+                    <p className="text-sm text-sand">{opportunity.title}</p>
+                    <p className="text-xs text-mist">
+                      {opportunity.orgName} · {opportunity.locationMode}
+                    </p>
+                  </Link>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-mist">No open opportunities yet.</p>
+            )}
+          </section>
+        </aside>
+      </div>
+    </div>
+  );
+}
