@@ -1,5 +1,9 @@
-export const API_BASE =
-  import.meta.env.VITE_API_URL;
+export const API_BASE = import.meta.env.VITE_API_URL;
+if (!API_BASE) {
+  throw new Error(
+    "Missing VITE_API_URL. Set it in Vercel env vars to https://bridgeaz.onrender.com/api"
+  );
+}
 export const API_ORIGIN = API_BASE.replace(/\/api\/?$/, "");
 
 const request = async (path, options = {}, token) => {
