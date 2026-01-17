@@ -2,7 +2,7 @@ require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
 const path = require("path");
-const connectDB = require("./config/db");
+const mongoose = require("mongoose");
 
 const authRoutes = require("./routes/auth");
 const userRoutes = require("./routes/users");
@@ -32,9 +32,10 @@ app.use("/api/upload", uploadRoutes);
 app.use("/api/mentorship-requests", mentorshipRoutes);
 app.use("/api/opportunities", opportunityRoutes);
 
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 5001;
 
-connectDB()
+mongoose
+  .connect(process.env.MONGO_URI)
   .then(() => {
     app.listen(PORT, () => {
       console.log(`Server running on port ${PORT}`);
