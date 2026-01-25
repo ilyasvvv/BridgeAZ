@@ -14,6 +14,8 @@ const educationSchema = new mongoose.Schema({
 });
 
 const experienceSchema = new mongoose.Schema({
+  title: String,
+  org: String,
   company: String,
   role: String,
   startDate: Date,
@@ -37,6 +39,11 @@ const projectSchema = new mongoose.Schema({
   link: String
 });
 
+const locationSchema = new mongoose.Schema({
+  country: String,
+  city: String
+});
+
 const userSchema = new mongoose.Schema(
   {
     name: { type: String, required: true },
@@ -44,11 +51,29 @@ const userSchema = new mongoose.Schema(
     passwordHash: { type: String, required: true },
     userType: { type: String, enum: ["student", "professional"], required: true },
     currentRegion: { type: String, enum: ["AZ", "TR", "US"], required: true },
+    roles: {
+      type: [String],
+      enum: ["student", "professional", "mentor", "staffC", "staffB", "adminA"],
+      default: []
+    },
+    profileVisibility: { type: String, enum: ["public", "private"], default: "public" },
+    profilePictureUrl: String,
     profilePhotoUrl: String,
+    resumeUrl: String,
     headline: String,
     bio: String,
     studentVerified: { type: Boolean, default: false },
     mentorVerified: { type: Boolean, default: false },
+    studentVerificationStatus: {
+      type: String,
+      enum: ["none", "pending", "approved", "rejected"],
+      default: "none"
+    },
+    mentorVerificationStatus: {
+      type: String,
+      enum: ["none", "pending", "approved", "rejected"],
+      default: "none"
+    },
     verificationStatus: {
       type: String,
       enum: ["unverified", "pending", "verified", "rejected"],
@@ -64,7 +89,13 @@ const userSchema = new mongoose.Schema(
     experience: [experienceSchema],
     projects: [projectSchema],
     skills: [String],
-    links: [linkSchema]
+    links: [linkSchema],
+    locationNow: locationSchema,
+    mentorshipAvailability: {
+      type: String,
+      enum: ["available", "busy", "off"],
+      default: "available"
+    }
   },
   { timestamps: true }
 );

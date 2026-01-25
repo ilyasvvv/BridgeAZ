@@ -15,13 +15,18 @@ router.put("/me", authMiddleware, blockBanned, async (req, res) => {
       "headline",
       "bio",
       "currentRegion",
+      "profileVisibility",
+      "profilePictureUrl",
       "profilePhotoUrl",
+      "resumeUrl",
       "skills",
       "links",
       "education",
       "experience",
       "projects",
-      "isMentor"
+      "isMentor",
+      "locationNow",
+      "mentorshipAvailability"
     ];
 
     const updates = {};

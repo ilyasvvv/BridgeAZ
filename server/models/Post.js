@@ -1,14 +1,13 @@
 const mongoose = require("mongoose");
 
-const commentSchema = new mongoose.Schema({
-  author: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
-  content: { type: String, required: true },
-  createdAt: { type: Date, default: Date.now }
-});
-
 const postSchema = new mongoose.Schema(
   {
-    author: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
+    author: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+      alias: "authorId"
+    },
     content: { type: String, required: true },
     attachmentUrl: String,
     visibilityRegion: {
@@ -16,10 +15,19 @@ const postSchema = new mongoose.Schema(
       enum: ["ALL", "AZ", "TR", "US"],
       default: "ALL"
     },
-    likes: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
-    comments: [commentSchema]
+    likes: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }]
   },
   { timestamps: true }
 );
+
+postSchema.virtual("comments", {
+  ref: "Comment",
+  localField: "_id",
+  foreignField: "post",
+  justOne: false
+});
+
+postSchema.set("toJSON", { virtuals: true });
+postSchema.set("toObject", { virtuals: true });
 
 module.exports = mongoose.model("Post", postSchema);

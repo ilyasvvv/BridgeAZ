@@ -28,11 +28,52 @@ const blockBanned = (req, res, next) => {
   next();
 };
 
+const staffRank = {
+  staffC: 1,
+  staffB: 2,
+  adminA: 3
+};
+
+const hasRole = (user, role) => {
+  if (!user) return false;
+  if (user.isAdmin) return true;
+
+  const roles = Array.isArray(user.roles) ? user.roles : [];
+  if (roles.includes("adminA")) return true;
+
+  if (staffRank[role]) {
+    const highestRank = roles.reduce((maxRank, candidate) => {
+      const rank = staffRank[candidate] || 0;
+      return Math.max(maxRank, rank);
+    }, 0);
+    return highestRank >= staffRank[role];
+  }
+
+  return roles.includes(role);
+};
+
+const requireRoleAny = (roles = []) => (req, res, next) => {
+  if (!req.user) {
+    return res.status(401).json({ message: "Missing user context" });
+  }
+  if (!roles.length) {
+    return res.status(403).json({ message: "Access denied" });
+  }
+
+  const allowed = roles.some((role) => hasRole(req.user, role));
+  if (!allowed) {
+    return res.status(403).json({ message: "Access denied" });
+  }
+  next();
+};
+
 const requireAdmin = (req, res, next) => {
-  if (!req.user || !req.user.isAdmin) {
+  if (!hasRole(req.user, "adminA")) {
     return res.status(403).json({ message: "Admin access required" });
   }
   next();
 };
 
-module.exports = { authMiddleware, blockBanned, requireAdmin };
+const requireAuth = authMiddleware;
+
+module.exports = { authMiddleware, requireAuth, blockBanned, requireAdmin, requireRoleAny };

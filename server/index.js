@@ -20,7 +20,7 @@ app.use(express.json({ limit: "2mb" }));
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
 app.get("/api/health", (req, res) => {
-  res.json({ status: "ok" });
+  res.json({ ok: true });
 });
 
 app.use("/api/auth", authRoutes);

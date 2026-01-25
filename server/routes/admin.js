@@ -1,7 +1,8 @@
 const express = require("express");
 const VerificationRequest = require("../models/VerificationRequest");
 const User = require("../models/User");
-const { authMiddleware, requireAdmin } = require("../middleware/auth");
+const { authMiddleware, requireAdmin, requireRoleAny } = require("../middleware/auth");
+const { syncVerificationStatus } = require("../utils/verification");
 
 const router = express.Router();
 
@@ -40,7 +41,7 @@ router.post("/users/:id/ban", authMiddleware, requireAdmin, async (req, res) => 
     if (!target) {
       return res.status(404).json({ message: "User not found" });
     }
-    if (target.isAdmin) {
+    if (target.isAdmin || (target.roles || []).includes("adminA")) {
       return res.status(400).json({ message: "Admin accounts cannot be banned." });
     }
 
@@ -93,70 +94,91 @@ router.post("/users/:id/unban", authMiddleware, requireAdmin, async (req, res) =
   }
 });
 
-router.get("/verification-requests", authMiddleware, requireAdmin, async (req, res) => {
-  try {
-    const status = req.query.status || "pending";
-    const requests = await VerificationRequest.find({ status })
-      .populate("user", "name userType currentRegion email")
-      .sort({ createdAt: -1 });
-    res.json(requests);
-  } catch (error) {
-    res.status(500).json({ message: "Failed to load verification requests" });
-  }
-});
-
-router.post("/verification-requests/:id/approve", authMiddleware, requireAdmin, async (req, res) => {
-  try {
-    const request = await VerificationRequest.findById(req.params.id);
-    if (!request) {
-      return res.status(404).json({ message: "Request not found" });
+router.get(
+  "/verification-requests",
+  authMiddleware,
+  requireRoleAny(["staffB", "adminA"]),
+  async (req, res) => {
+    try {
+      const status = req.query.status || "pending";
+      const requests = await VerificationRequest.find({ status })
+        .populate("user", "name userType currentRegion email")
+        .sort({ createdAt: -1 });
+      res.json(requests);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to load verification requests" });
     }
-
-    request.status = "approved";
-    request.adminReviewer = req.user._id;
-    request.adminComment = req.body.adminComment || "";
-    await request.save();
-
-    const updates = { verificationStatus: "verified" };
-    if (request.requestType === "student") {
-      updates.studentVerified = true;
-    } else if (request.requestType === "mentor") {
-      updates.isMentor = true;
-      updates.mentorVerified = true;
-    }
-
-    await User.findByIdAndUpdate(request.user, updates);
-
-    res.json({ message: "Approved" });
-  } catch (error) {
-    res.status(500).json({ message: "Failed to approve" });
   }
-});
+);
 
-router.post("/verification-requests/:id/reject", authMiddleware, requireAdmin, async (req, res) => {
-  try {
-    const request = await VerificationRequest.findById(req.params.id);
-    if (!request) {
-      return res.status(404).json({ message: "Request not found" });
+router.post(
+  "/verification-requests/:id/approve",
+  authMiddleware,
+  requireRoleAny(["staffB", "adminA"]),
+  async (req, res) => {
+    try {
+      const request = await VerificationRequest.findById(req.params.id);
+      if (!request) {
+        return res.status(404).json({ message: "Request not found" });
+      }
+
+      request.status = "approved";
+      request.adminReviewer = req.user._id;
+      request.adminComment = req.body.adminComment || "";
+      request.reviewedAt = new Date();
+      if (request.adminComment) {
+        request.adminNotes = request.adminNotes || [];
+        request.adminNotes.push({
+          byUserId: req.user._id,
+          note: request.adminComment
+        });
+      }
+      await request.save();
+
+      if (request.requestType === "mentor") {
+        await User.findByIdAndUpdate(request.user, { isMentor: true });
+      }
+
+      await syncVerificationStatus(request.user);
+
+      res.json({ message: "Approved" });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to approve" });
     }
-
-    request.status = "rejected";
-    request.adminReviewer = req.user._id;
-    request.adminComment = req.body.adminComment || "";
-    await request.save();
-
-    const updates = {
-      verificationStatus: "rejected",
-      studentVerified: false,
-      mentorVerified: false
-    };
-
-    await User.findByIdAndUpdate(request.user, updates);
-
-    res.json({ message: "Rejected" });
-  } catch (error) {
-    res.status(500).json({ message: "Failed to reject" });
   }
-});
+);
+
+router.post(
+  "/verification-requests/:id/reject",
+  authMiddleware,
+  requireRoleAny(["staffB", "adminA"]),
+  async (req, res) => {
+    try {
+      const request = await VerificationRequest.findById(req.params.id);
+      if (!request) {
+        return res.status(404).json({ message: "Request not found" });
+      }
+
+      request.status = "rejected";
+      request.adminReviewer = req.user._id;
+      request.adminComment = req.body.adminComment || "";
+      request.reviewedAt = new Date();
+      if (request.adminComment) {
+        request.adminNotes = request.adminNotes || [];
+        request.adminNotes.push({
+          byUserId: req.user._id,
+          note: request.adminComment
+        });
+      }
+      await request.save();
+
+      await syncVerificationStatus(request.user);
+
+      res.json({ message: "Rejected" });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to reject" });
+    }
+  }
+);
 
 module.exports = router;

@@ -1,21 +1,39 @@
 const mongoose = require("mongoose");
 
+const adminNoteSchema = new mongoose.Schema({
+  byUserId: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+  note: String,
+  createdAt: { type: Date, default: Date.now }
+});
+
 const verificationRequestSchema = new mongoose.Schema(
   {
-    user: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
-    requestType: { type: String, enum: ["student", "mentor"], required: true },
-    documentUrl: String,
+    user: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+      index: true,
+      alias: "userId"
+    },
+    requestType: {
+      type: String,
+      enum: ["student", "mentor"],
+      required: true,
+      index: true,
+      alias: "type"
+    },
+    documentUrl: { type: String, alias: "attachmentUrl" },
     status: {
       type: String,
       enum: ["pending", "approved", "rejected"],
-      default: "pending"
+      default: "pending",
+      index: true
     },
-    adminReviewer: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+    metadata: { type: mongoose.Schema.Types.Mixed, default: {}, alias: "fields" },
+    adminReviewer: { type: mongoose.Schema.Types.ObjectId, ref: "User", alias: "reviewedBy" },
     adminComment: String,
-    metadata: {
-      type: Object,
-      default: {}
-    }
+    adminNotes: [adminNoteSchema],
+    reviewedAt: Date
   },
   { timestamps: true }
 );

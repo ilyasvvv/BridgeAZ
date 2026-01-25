@@ -3,10 +3,23 @@ const mongoose = require("mongoose");
 const opportunitySchema = new mongoose.Schema(
   {
     title: { type: String, required: true, trim: true },
-    orgName: { type: String, required: true, trim: true },
+    company: { type: String, trim: true },
+    location: { type: String, trim: true },
+    link: { type: String, trim: true },
+    orgName: { type: String, trim: true },
     type: {
       type: String,
-      enum: ["Internship", "Full-time", "Part-time", "Research", "Contract", "Volunteer"],
+      enum: [
+        "Internship",
+        "Full-time",
+        "Part-time",
+        "Research",
+        "Contract",
+        "Volunteer",
+        "internship",
+        "job",
+        "other"
+      ],
       default: "Internship"
     },
     locationMode: {

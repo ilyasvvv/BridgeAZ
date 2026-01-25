@@ -42,6 +42,7 @@ router.post("/register", async (req, res) => {
       passwordHash,
       userType,
       currentRegion,
+      roles: [userType],
       studentVerified: false,
       mentorVerified: false,
       verificationStatus: "unverified"

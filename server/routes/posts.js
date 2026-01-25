@@ -1,5 +1,6 @@
 const express = require("express");
 const Post = require("../models/Post");
+const Comment = require("../models/Comment");
 const { authMiddleware, blockBanned } = require("../middleware/auth");
 
 const router = express.Router();
@@ -11,6 +12,11 @@ router.get("/", authMiddleware, blockBanned, async (req, res) => {
 
     const posts = await Post.find({ visibilityRegion: { $in: visibility } })
       .populate("author", "name profilePhotoUrl currentRegion userType")
+      .populate({
+        path: "comments",
+        options: { sort: { createdAt: -1 } },
+        populate: { path: "author", select: "name profilePhotoUrl" }
+      })
       .sort({ createdAt: -1 })
       .limit(50);
 
@@ -74,12 +80,19 @@ router.post("/:id/comment", authMiddleware, blockBanned, async (req, res) => {
       return res.status(404).json({ message: "Post not found" });
     }
 
-    post.comments.push({ author: req.user._id, content });
-    await post.save();
+    await Comment.create({
+      post: post._id,
+      author: req.user._id,
+      content
+    });
 
     const populated = await Post.findById(req.params.id)
       .populate("author", "name profilePhotoUrl currentRegion userType")
-      .populate("comments.author", "name profilePhotoUrl");
+      .populate({
+        path: "comments",
+        options: { sort: { createdAt: -1 } },
+        populate: { path: "author", select: "name profilePhotoUrl" }
+      });
 
     res.status(201).json(populated);
   } catch (error) {

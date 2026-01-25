@@ -32,6 +32,7 @@ router.get("/", authMiddleware, blockBanned, async (req, res) => {
       const searchRegex = new RegExp(search, "i");
       query.$or = [
         { title: searchRegex },
+        { company: searchRegex },
         { orgName: searchRegex },
         { description: searchRegex }
       ];
@@ -55,7 +56,8 @@ router.get("/:id", authMiddleware, blockBanned, async (req, res) => {
     }
 
     const allowedRegions = ["ALL", req.user.currentRegion];
-    if (!req.user.isAdmin && !allowedRegions.includes(opportunity.visibilityRegion)) {
+    const isAdmin = req.user.isAdmin || (req.user.roles || []).includes("adminA");
+    if (!isAdmin && !allowedRegions.includes(opportunity.visibilityRegion)) {
       return res.status(403).json({ message: "Not authorized to view opportunity" });
     }
 
@@ -67,13 +69,17 @@ router.get("/:id", authMiddleware, blockBanned, async (req, res) => {
 
 router.post("/", authMiddleware, blockBanned, async (req, res) => {
   try {
-    if (!req.user.isAdmin && req.user.userType !== "professional") {
+    const isAdmin = req.user.isAdmin || (req.user.roles || []).includes("adminA");
+    if (!isAdmin && req.user.userType !== "professional") {
       return res.status(403).json({ message: "Only professionals can post opportunities" });
     }
 
     const {
       title,
       orgName,
+      company,
+      location,
+      link,
       type,
       locationMode,
       country,
@@ -87,7 +93,8 @@ router.post("/", authMiddleware, blockBanned, async (req, res) => {
       status
     } = req.body;
 
-    if (!title || !orgName || !description) {
+    const resolvedOrgName = orgName || company;
+    if (!title || !resolvedOrgName || !description) {
       return res
         .status(400)
         .json({ message: "Title, organization, and description are required" });
@@ -95,7 +102,10 @@ router.post("/", authMiddleware, blockBanned, async (req, res) => {
 
     const opportunity = await Opportunity.create({
       title,
-      orgName,
+      orgName: resolvedOrgName,
+      company: company || resolvedOrgName,
+      location: location || [city, country].filter(Boolean).join(", "),
+      link: link || applyUrl,
       type,
       locationMode,
       country,
