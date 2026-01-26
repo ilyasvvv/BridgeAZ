@@ -10,15 +10,16 @@ router.get("/", authMiddleware, blockBanned, async (req, res) => {
     const region = req.query.region || req.user.currentRegion;
     const visibility = region ? ["ALL", region] : ["ALL"];
 
-    const posts = await Post.find({ visibilityRegion: { $in: visibility } })
-      .populate("author", "name profilePhotoUrl currentRegion userType")
-      .populate({
-        path: "comments",
-        options: { sort: { createdAt: -1 } },
-        populate: { path: "author", select: "name profilePhotoUrl" }
-      })
-      .sort({ createdAt: -1 })
-      .limit(50);
+  const posts = await Post.find({ visibilityRegion: { $in: visibility } })
+    .populate("author", "name profilePhotoUrl currentRegion userType")
+    .populate({
+      path: "comments",
+      select: "author content createdAt",
+      options: { sort: { createdAt: -1 }, limit: 5 },
+      populate: { path: "author", select: "name profilePhotoUrl" }
+    })
+    .sort({ createdAt: -1 })
+    .limit(50);
 
     res.json(posts);
   } catch (error) {
@@ -80,23 +81,47 @@ router.post("/:id/comment", authMiddleware, blockBanned, async (req, res) => {
       return res.status(404).json({ message: "Post not found" });
     }
 
-    await Comment.create({
+    const comment = await Comment.create({
       post: post._id,
       author: req.user._id,
       content
     });
 
+    if (typeof post.commentCount === "number") {
+      post.commentCount += 1;
+      await post.save();
+    }
+
     const populated = await Post.findById(req.params.id)
       .populate("author", "name profilePhotoUrl currentRegion userType")
       .populate({
         path: "comments",
-        options: { sort: { createdAt: -1 } },
+        select: "author content createdAt",
+        options: { sort: { createdAt: -1 }, limit: 5 },
         populate: { path: "author", select: "name profilePhotoUrl" }
       });
 
-    res.status(201).json(populated);
+    const populatedComment = await comment.populate("author", "name profilePhotoUrl");
+    res.status(201).json({ ...populated.toObject(), createdComment: populatedComment });
   } catch (error) {
     res.status(500).json({ message: "Failed to add comment" });
+  }
+});
+
+router.get("/:id/comments", authMiddleware, blockBanned, async (req, res) => {
+  try {
+    const post = await Post.findById(req.params.id).select("_id");
+    if (!post) {
+      return res.status(404).json({ message: "Post not found" });
+    }
+
+    const comments = await Comment.find({ post: req.params.id })
+      .populate("author", "name profilePhotoUrl")
+      .sort({ createdAt: -1 });
+
+    res.json(comments);
+  } catch (error) {
+    res.status(500).json({ message: "Failed to load comments" });
   }
 });
 

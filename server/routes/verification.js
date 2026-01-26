@@ -1,18 +1,42 @@
 const express = require("express");
+const multer = require("multer");
+const { Readable } = require("stream");
 const VerificationRequest = require("../models/VerificationRequest");
 const User = require("../models/User");
 const { authMiddleware, blockBanned } = require("../middleware/auth");
 const { syncVerificationStatus } = require("../utils/verification");
+const { getBucket } = require("../utils/gridfs");
 
 const router = express.Router();
+const upload = multer({ storage: multer.memoryStorage() });
+const uploadFields = upload.fields([
+  { name: "file", maxCount: 1 },
+  { name: "document", maxCount: 1 }
+]);
 
-router.post("/student", authMiddleware, blockBanned, async (req, res) => {
+const uploadToGridFS = (file) => {
+  const bucket = getBucket();
+  const filename = file.originalname || "verification";
+  const contentType = file.mimetype || "application/octet-stream";
+  const uploadStream = bucket.openUploadStream(filename, { contentType });
+
+  return new Promise((resolve, reject) => {
+    Readable.from(file.buffer)
+      .pipe(uploadStream)
+      .on("error", reject)
+      .on("finish", (result) => resolve(result._id));
+  });
+};
+
+router.post("/student", authMiddleware, blockBanned, uploadFields, async (req, res) => {
   try {
-    const { documentUrl } = req.body;
-    // TODO: Add OCR-based document checks to speed up verification review.
-    if (!documentUrl) {
-      return res.status(400).json({ message: "Document URL is required" });
+    const file = req.files?.file?.[0] || req.files?.document?.[0];
+    if (!file) {
+      return res.status(400).json({ message: "File is required" });
     }
+
+    const fileId = await uploadToGridFS(file);
+    const documentUrl = `/api/files/${fileId}`;
 
     const request = await VerificationRequest.create({
       user: req.user._id,
@@ -29,9 +53,16 @@ router.post("/student", authMiddleware, blockBanned, async (req, res) => {
   }
 });
 
-router.post("/mentor", authMiddleware, blockBanned, async (req, res) => {
+router.post("/mentor", authMiddleware, blockBanned, uploadFields, async (req, res) => {
   try {
-    const { documentUrl, universityEmail, linkedinUrl, note } = req.body;
+    const { universityEmail, linkedinUrl, note } = req.body;
+    const file = req.files?.file?.[0] || req.files?.document?.[0];
+    if (!file) {
+      return res.status(400).json({ message: "File is required" });
+    }
+
+    const fileId = await uploadToGridFS(file);
+    const documentUrl = `/api/files/${fileId}`;
 
     const request = await VerificationRequest.create({
       user: req.user._id,
