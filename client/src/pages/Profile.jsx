@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
-import { apiClient, uploadFile } from "../api/client";
+import { API_BASE, apiClient } from "../api/client";
 import { useAuth } from "../utils/auth";
 import StatusBadge from "../components/StatusBadge";
 import RegionPill from "../components/RegionPill";
@@ -55,12 +55,26 @@ export default function Profile() {
   const handleStudentVerification = async () => {
     setMessage("");
     try {
-      let documentUrl = "";
-      if (docFile) {
-        const upload = await uploadFile(docFile, token);
-        documentUrl = upload.fileUrl;
+      if (!(docFile instanceof File)) {
+        setMessage("File is required");
+        return;
       }
-      await apiClient.post("/verification/student", { documentUrl }, token);
+
+      const formData = new FormData();
+      formData.append("document", docFile);
+      formData.append("type", "student");
+
+      const response = await fetch(`${API_BASE}/verification/student`, {
+        method: "POST",
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        body: formData
+      });
+
+      if (!response.ok) {
+        const payload = await response.json().catch(() => ({}));
+        throw new Error(payload.message || "Failed to submit verification");
+      }
+
       setMessage("Verification request submitted.");
     } catch (error) {
       setMessage(error.message || "Failed to submit verification");
@@ -70,16 +84,29 @@ export default function Profile() {
   const handleMentorVerification = async () => {
     setMessage("");
     try {
-      let documentUrl = "";
-      if (docFile) {
-        const upload = await uploadFile(docFile, token);
-        documentUrl = upload.fileUrl;
+      if (!(docFile instanceof File)) {
+        setMessage("File is required");
+        return;
       }
-      await apiClient.post(
-        "/verification/mentor",
-        { documentUrl, ...mentorInfo },
-        token
-      );
+
+      const formData = new FormData();
+      formData.append("document", docFile);
+      formData.append("type", "mentor");
+      formData.append("universityEmail", mentorInfo.universityEmail || "");
+      formData.append("linkedinUrl", mentorInfo.linkedinUrl || "");
+      formData.append("note", mentorInfo.note || "");
+
+      const response = await fetch(`${API_BASE}/verification/mentor`, {
+        method: "POST",
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        body: formData
+      });
+
+      if (!response.ok) {
+        const payload = await response.json().catch(() => ({}));
+        throw new Error(payload.message || "Failed to submit mentor verification");
+      }
+
       setMessage("Mentor verification request submitted.");
     } catch (error) {
       setMessage(error.message || "Failed to submit mentor verification");
@@ -229,9 +256,16 @@ export default function Profile() {
           </p>
           <input
             type="file"
-            onChange={(event) => setDocFile(event.target.files?.[0] || null)}
+            onChange={(e) => {
+              const f = e.target.files?.[0] || null;
+              setDocFile(f);
+              setMessage("");
+            }}
             className="text-xs text-mist"
           />
+          <p className="text-xs text-mist">
+            {docFile ? docFile.name : "No file chosen"}
+          </p>
           {profile.userType === "student" ? (
             <button
               onClick={handleStudentVerification}
