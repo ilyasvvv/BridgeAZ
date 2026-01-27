@@ -1,43 +1,56 @@
 const express = require("express");
 const multer = require("multer");
-const { Readable } = require("stream");
+const path = require("path");
 const VerificationRequest = require("../models/VerificationRequest");
 const User = require("../models/User");
 const { authMiddleware, blockBanned } = require("../middleware/auth");
 const { syncVerificationStatus } = require("../utils/verification");
-const { getBucket } = require("../utils/gridfs");
+const { uploadDir } = require("../utils/uploads");
 
 const router = express.Router();
-const upload = multer({ storage: multer.memoryStorage() });
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, uploadDir);
+  },
+  filename: (req, file, cb) => {
+    const safeName = file.originalname.replace(/\s+/g, "-");
+    const ext = path.extname(safeName);
+    const baseName = ext ? safeName.slice(0, -ext.length) : safeName;
+    cb(null, `${Date.now()}-${baseName}${ext}`);
+  }
+});
+
+const upload = multer({ storage });
 const uploadFields = upload.fields([
   { name: "file", maxCount: 1 },
   { name: "document", maxCount: 1 }
 ]);
 
-const uploadToGridFS = (file) => {
-  const bucket = getBucket();
-  const filename = file.originalname || "verification";
-  const contentType = file.mimetype || "application/octet-stream";
-  const uploadStream = bucket.openUploadStream(filename, { contentType });
+const handleVerificationUpload = (handler) => (req, res) => {
+  uploadFields(req, res, async (err) => {
+    if (err) {
+      return res.status(400).json({ message: "Upload failed" });
+    }
 
-  return new Promise((resolve, reject) => {
-    Readable.from(file.buffer)
-      .pipe(uploadStream)
-      .on("error", reject)
-      .on("finish", (result) => resolve(result._id));
+    try {
+      await handler(req, res);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to submit verification" });
+    }
   });
 };
 
-router.post("/student", authMiddleware, blockBanned, uploadFields, async (req, res) => {
-  try {
+router.post(
+  "/student",
+  authMiddleware,
+  blockBanned,
+  handleVerificationUpload(async (req, res) => {
     const file = req.files?.file?.[0] || req.files?.document?.[0];
     if (!file) {
       return res.status(400).json({ message: "File is required" });
     }
 
-    const fileId = await uploadToGridFS(file);
-    const documentUrl = `/api/files/${fileId}`;
-
+    const documentUrl = `/uploads/${file.filename}`;
     const request = await VerificationRequest.create({
       user: req.user._id,
       requestType: "student",
@@ -46,24 +59,22 @@ router.post("/student", authMiddleware, blockBanned, uploadFields, async (req, r
     });
 
     await syncVerificationStatus(req.user._id);
-
     res.status(201).json(request);
-  } catch (error) {
-    res.status(500).json({ message: "Failed to submit verification" });
-  }
-});
+  })
+);
 
-router.post("/mentor", authMiddleware, blockBanned, uploadFields, async (req, res) => {
-  try {
+router.post(
+  "/mentor",
+  authMiddleware,
+  blockBanned,
+  handleVerificationUpload(async (req, res) => {
     const { universityEmail, linkedinUrl, note } = req.body;
     const file = req.files?.file?.[0] || req.files?.document?.[0];
     if (!file) {
       return res.status(400).json({ message: "File is required" });
     }
 
-    const fileId = await uploadToGridFS(file);
-    const documentUrl = `/api/files/${fileId}`;
-
+    const documentUrl = `/uploads/${file.filename}`;
     const request = await VerificationRequest.create({
       user: req.user._id,
       requestType: "mentor",
@@ -78,12 +89,9 @@ router.post("/mentor", authMiddleware, blockBanned, uploadFields, async (req, re
 
     await User.findByIdAndUpdate(req.user._id, { isMentor: true });
     await syncVerificationStatus(req.user._id);
-
     res.status(201).json(request);
-  } catch (error) {
-    res.status(500).json({ message: "Failed to submit mentor verification" });
-  }
-});
+  })
+);
 
 router.get("/my-requests", authMiddleware, blockBanned, async (req, res) => {
   try {
