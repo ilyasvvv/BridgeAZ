@@ -43,7 +43,33 @@ npm run dev
 MONGO_URI=mongodb://localhost:27017/bridgeaz
 JWT_SECRET=replace-with-a-secure-secret
 PORT=5001
+R2_ACCESS_KEY_ID=your-r2-access-key
+R2_SECRET_ACCESS_KEY=your-r2-secret
+R2_BUCKET=your-r2-bucket
+R2_ENDPOINT=https://<account-id>.r2.cloudflarestorage.com
+R2_PUBLIC_BASE_URL=https://<public-bucket-or-domain>
+R2_REGION=auto
 ```
+
+## File Uploads (Verification) — Cloudflare R2 Presigned URLs
+
+Verification uploads are handled via direct-to-R2 presigned URLs. The backend never receives file bytes and never writes to disk. The client uploads directly to Cloudflare R2 using a presigned PUT URL.
+
+Allowed file types: PDF/PNG/JPEG. Max size: 5MB (validated by the backend).
+
+Flow and endpoints:
+- POST `/api/uploads/presign` (auth required) with `{ originalName, mimeType, sizeBytes, purpose }`
+  returns `{ uploadUrl, objectKey, documentUrl, headers: { "Content-Type": "..." } }`
+- Client performs `PUT` to `uploadUrl` with the raw file body (no multipart). Use the returned `Content-Type` header.
+- POST `/api/verification/student` with JSON `{ documentUrl, objectKey }`
+- POST `/api/verification/mentor` with JSON `{ documentUrl, objectKey }`
+
+Legacy disk upload endpoint:
+- `POST /api/upload` returns `501 Not implemented` until migrated.
+
+### CORS (R2)
+
+Your R2 bucket CORS must allow browser origins (e.g., Vercel + localhost) for `PUT/GET/HEAD`. Ensure `AllowedHeaders` includes `Content-Type` (or `*`) so presigned uploads don't fail preflight.
 
 ## Features
 
@@ -65,8 +91,8 @@ Planned later:
 
 ## Notes
 
-- File uploads are stored locally under `server/uploads`.
-- TODO in code: migrate uploads to a cloud storage provider (S3 or similar).
+- Verification uploads use Cloudflare R2 presigned URLs (no server-side disk storage).
+- Security reminder: keep R2 keys private and rotate if leaked.
 - Admin seed login (local demo): `admin@bridgeaz.com` / `Admin123!`.
 - Security note: change the admin password and JWT secret for production.
 - TODOs for production hardening: add rate limiting, audit logs, and pagination on admin endpoints.
