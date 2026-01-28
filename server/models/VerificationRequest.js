@@ -38,4 +38,9 @@ const verificationRequestSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+verificationRequestSchema.index(
+  { user: 1, status: 1 },
+  { unique: true, partialFilterExpression: { status: "pending" } }
+);
+
 module.exports = mongoose.model("VerificationRequest", verificationRequestSchema);

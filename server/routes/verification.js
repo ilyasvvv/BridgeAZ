@@ -32,12 +32,32 @@ router.post("/student", authMiddleware, blockBanned, async (req, res) => {
       return res.status(validation.status).json({ message: validation.message });
     }
 
-    const request = await VerificationRequest.create({
+    const existing = await VerificationRequest.findOne({
       user: req.user._id,
-      requestType: "student",
-      documentUrl,
       status: "pending"
-    });
+    }).select("_id");
+    if (existing) {
+      return res
+        .status(409)
+        .json({ message: "You already have a pending verification request." });
+    }
+
+    let request;
+    try {
+      request = await VerificationRequest.create({
+        user: req.user._id,
+        requestType: "student",
+        documentUrl,
+        status: "pending"
+      });
+    } catch (error) {
+      if (error && error.code === 11000) {
+        return res
+          .status(409)
+          .json({ message: "You already have a pending verification request." });
+      }
+      throw error;
+    }
 
     await syncVerificationStatus(req.user._id);
     res.status(201).json(request);
@@ -54,17 +74,37 @@ router.post("/mentor", authMiddleware, blockBanned, async (req, res) => {
       return res.status(validation.status).json({ message: validation.message });
     }
 
-    const request = await VerificationRequest.create({
+    const existing = await VerificationRequest.findOne({
       user: req.user._id,
-      requestType: "mentor",
-      documentUrl,
-      status: "pending",
-      metadata: {
-        universityEmail,
-        linkedinUrl,
-        note
+      status: "pending"
+    }).select("_id");
+    if (existing) {
+      return res
+        .status(409)
+        .json({ message: "You already have a pending verification request." });
+    }
+
+    let request;
+    try {
+      request = await VerificationRequest.create({
+        user: req.user._id,
+        requestType: "mentor",
+        documentUrl,
+        status: "pending",
+        metadata: {
+          universityEmail,
+          linkedinUrl,
+          note
+        }
+      });
+    } catch (error) {
+      if (error && error.code === 11000) {
+        return res
+          .status(409)
+          .json({ message: "You already have a pending verification request." });
       }
-    });
+      throw error;
+    }
 
     await User.findByIdAndUpdate(req.user._id, { isMentor: true });
     await syncVerificationStatus(req.user._id);
