@@ -1,9 +1,7 @@
 require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
-const fs = require("fs");
 const mongoose = require("mongoose");
-const { uploadDir } = require("./utils/uploads");
 
 const authRoutes = require("./routes/auth");
 const userRoutes = require("./routes/users");
@@ -11,6 +9,7 @@ const postRoutes = require("./routes/posts");
 const verificationRoutes = require("./routes/verification");
 const adminRoutes = require("./routes/admin");
 const uploadRoutes = require("./routes/upload");
+const uploadsRoutes = require("./routes/uploads");
 const mentorshipRoutes = require("./routes/mentorship");
 const opportunityRoutes = require("./routes/opportunities");
 
@@ -36,8 +35,6 @@ const corsOptions = {
   credentials: true
 };
 
-fs.mkdirSync(uploadDir, { recursive: true });
-
 app.use(cors(corsOptions));
 app.options("*", cors(corsOptions));
 app.use(express.json({ limit: "2mb" }));
@@ -52,9 +49,9 @@ app.use("/api/posts", postRoutes);
 app.use("/api/verification", verificationRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/upload", uploadRoutes);
+app.use("/api/uploads", uploadsRoutes);
 app.use("/api/mentorship-requests", mentorshipRoutes);
 app.use("/api/opportunities", opportunityRoutes);
-app.use("/uploads", express.static(uploadDir));
 
 const PORT = process.env.PORT || 5001;
 

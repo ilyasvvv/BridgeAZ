@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
-import { API_BASE, apiClient } from "../api/client";
+import { apiClient } from "../api/client";
 import { useAuth } from "../utils/auth";
 import StatusBadge from "../components/StatusBadge";
 import RegionPill from "../components/RegionPill";
@@ -18,6 +18,8 @@ export default function Profile() {
   const [docFile, setDocFile] = useState(null);
   const [mentorInfo, setMentorInfo] = useState({ universityEmail: "", linkedinUrl: "", note: "" });
   const [message, setMessage] = useState("");
+  const allowedTypes = ["application/pdf", "image/png", "image/jpeg"];
+  const maxSizeBytes = 5 * 1024 * 1024;
 
   const loadProfile = async () => {
     const data = await apiClient.get(`/users/${userId}`, token);
@@ -60,20 +62,42 @@ export default function Profile() {
         return;
       }
 
-      const formData = new FormData();
-      formData.append("document", docFile);
-      formData.append("type", "student");
+      if (!allowedTypes.includes(docFile.type)) {
+        setMessage("Unsupported file type");
+        return;
+      }
 
-      const response = await fetch(`${API_BASE}/verification/student`, {
-        method: "POST",
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
-        body: formData
+      if (docFile.size > maxSizeBytes) {
+        setMessage("File must be 5MB or less");
+        return;
+      }
+
+      const presign = await apiClient.post(
+        "/uploads/presign",
+        {
+          originalName: docFile.name,
+          mimeType: docFile.type,
+          sizeBytes: docFile.size,
+          purpose: "verification"
+        },
+        token
+      );
+
+      const uploadResponse = await fetch(presign.uploadUrl, {
+        method: "PUT",
+        headers: presign.headers || { "Content-Type": docFile.type },
+        body: docFile
       });
 
-      if (!response.ok) {
-        const payload = await response.json().catch(() => ({}));
-        throw new Error(payload.message || "Failed to submit verification");
+      if (!uploadResponse.ok) {
+        throw new Error("Upload failed");
       }
+
+      await apiClient.post(
+        "/verification/student",
+        { documentUrl: presign.documentUrl, objectKey: presign.objectKey },
+        token
+      );
 
       setMessage("Verification request submitted.");
     } catch (error) {
@@ -89,23 +113,46 @@ export default function Profile() {
         return;
       }
 
-      const formData = new FormData();
-      formData.append("document", docFile);
-      formData.append("type", "mentor");
-      formData.append("universityEmail", mentorInfo.universityEmail || "");
-      formData.append("linkedinUrl", mentorInfo.linkedinUrl || "");
-      formData.append("note", mentorInfo.note || "");
+      if (!allowedTypes.includes(docFile.type)) {
+        setMessage("Unsupported file type");
+        return;
+      }
 
-      const response = await fetch(`${API_BASE}/verification/mentor`, {
-        method: "POST",
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
-        body: formData
+      if (docFile.size > maxSizeBytes) {
+        setMessage("File must be 5MB or less");
+        return;
+      }
+
+      const presign = await apiClient.post(
+        "/uploads/presign",
+        {
+          originalName: docFile.name,
+          mimeType: docFile.type,
+          sizeBytes: docFile.size,
+          purpose: "verification"
+        },
+        token
+      );
+
+      const uploadResponse = await fetch(presign.uploadUrl, {
+        method: "PUT",
+        headers: presign.headers || { "Content-Type": docFile.type },
+        body: docFile
       });
 
-      if (!response.ok) {
-        const payload = await response.json().catch(() => ({}));
-        throw new Error(payload.message || "Failed to submit mentor verification");
+      if (!uploadResponse.ok) {
+        throw new Error("Upload failed");
       }
+
+      await apiClient.post(
+        "/verification/mentor",
+        {
+          documentUrl: presign.documentUrl,
+          objectKey: presign.objectKey,
+          ...mentorInfo
+        },
+        token
+      );
 
       setMessage("Mentor verification request submitted.");
     } catch (error) {

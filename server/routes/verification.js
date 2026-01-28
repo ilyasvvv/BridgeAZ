@@ -1,56 +1,37 @@
 const express = require("express");
-const multer = require("multer");
-const path = require("path");
 const VerificationRequest = require("../models/VerificationRequest");
 const User = require("../models/User");
 const { authMiddleware, blockBanned } = require("../middleware/auth");
 const { syncVerificationStatus } = require("../utils/verification");
-const { uploadDir } = require("../utils/uploads");
 
 const router = express.Router();
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, uploadDir);
-  },
-  filename: (req, file, cb) => {
-    const safeName = file.originalname.replace(/\s+/g, "-");
-    const ext = path.extname(safeName);
-    const baseName = ext ? safeName.slice(0, -ext.length) : safeName;
-    cb(null, `${Date.now()}-${baseName}${ext}`);
-  }
-});
 
-const upload = multer({ storage });
-const uploadFields = upload.fields([
-  { name: "file", maxCount: 1 },
-  { name: "document", maxCount: 1 }
-]);
-
-const handleVerificationUpload = (handler) => (req, res) => {
-  uploadFields(req, res, async (err) => {
-    if (err) {
-      return res.status(400).json({ message: "Upload failed" });
-    }
-
-    try {
-      await handler(req, res);
-    } catch (error) {
-      res.status(500).json({ message: "Failed to submit verification" });
-    }
-  });
+const getPublicBaseUrl = () => {
+  return (process.env.R2_PUBLIC_BASE_URL || "").replace(/\/+$/, "");
 };
 
-router.post(
-  "/student",
-  authMiddleware,
-  blockBanned,
-  handleVerificationUpload(async (req, res) => {
-    const file = req.files?.file?.[0] || req.files?.document?.[0];
-    if (!file) {
-      return res.status(400).json({ message: "File is required" });
+const validateDocumentUrl = (documentUrl) => {
+  const baseUrl = getPublicBaseUrl();
+  if (!baseUrl) {
+    return { ok: false, status: 500, message: "Upload storage not configured" };
+  }
+  if (!documentUrl || typeof documentUrl !== "string") {
+    return { ok: false, status: 400, message: "documentUrl is required" };
+  }
+  if (!documentUrl.startsWith(`${baseUrl}/`)) {
+    return { ok: false, status: 400, message: "Invalid documentUrl" };
+  }
+  return { ok: true };
+};
+
+router.post("/student", authMiddleware, blockBanned, async (req, res) => {
+  try {
+    const { documentUrl } = req.body || {};
+    const validation = validateDocumentUrl(documentUrl);
+    if (!validation.ok) {
+      return res.status(validation.status).json({ message: validation.message });
     }
 
-    const documentUrl = `/uploads/${file.filename}`;
     const request = await VerificationRequest.create({
       user: req.user._id,
       requestType: "student",
@@ -60,21 +41,19 @@ router.post(
 
     await syncVerificationStatus(req.user._id);
     res.status(201).json(request);
-  })
-);
+  } catch (error) {
+    res.status(500).json({ message: "Failed to submit verification" });
+  }
+});
 
-router.post(
-  "/mentor",
-  authMiddleware,
-  blockBanned,
-  handleVerificationUpload(async (req, res) => {
-    const { universityEmail, linkedinUrl, note } = req.body;
-    const file = req.files?.file?.[0] || req.files?.document?.[0];
-    if (!file) {
-      return res.status(400).json({ message: "File is required" });
+router.post("/mentor", authMiddleware, blockBanned, async (req, res) => {
+  try {
+    const { documentUrl, universityEmail, linkedinUrl, note } = req.body || {};
+    const validation = validateDocumentUrl(documentUrl);
+    if (!validation.ok) {
+      return res.status(validation.status).json({ message: validation.message });
     }
 
-    const documentUrl = `/uploads/${file.filename}`;
     const request = await VerificationRequest.create({
       user: req.user._id,
       requestType: "mentor",
@@ -90,8 +69,10 @@ router.post(
     await User.findByIdAndUpdate(req.user._id, { isMentor: true });
     await syncVerificationStatus(req.user._id);
     res.status(201).json(request);
-  })
-);
+  } catch (error) {
+    res.status(500).json({ message: "Failed to submit mentor verification" });
+  }
+});
 
 router.get("/my-requests", authMiddleware, blockBanned, async (req, res) => {
   try {
