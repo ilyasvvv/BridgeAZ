@@ -4,6 +4,8 @@ import RootLayout from "./layout/RootLayout";
 import Landing from "./pages/Landing";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
+import Join from "./pages/Join";
+import Contact from "./pages/Contact";
 import Dashboard from "./pages/Dashboard";
 import Profile from "./pages/Profile";
 import Explore from "./pages/Explore";
@@ -12,6 +14,9 @@ import AccessDenied from "./pages/AccessDenied";
 import ForYou from "./pages/ForYou";
 import Opportunities from "./pages/Opportunities";
 import OpportunityDetail from "./pages/OpportunityDetail";
+import Notifications from "./pages/Notifications";
+import Chats from "./pages/Chats";
+import Network from "./pages/Network";
 
 const ProtectedRoute = ({ children }) => {
   const { user, loading } = useAuth();
@@ -24,7 +29,9 @@ const AdminRoute = ({ children }) => {
   const { user, loading } = useAuth();
   if (loading) return null;
   if (!user) return <Navigate to="/login" replace />;
-  if (!user.isAdmin) return <AccessDenied />;
+  const roles = Array.isArray(user.roles) ? user.roles : [];
+  const isAdmin = user.isAdmin || roles.includes("staffC") || roles.includes("staffB") || roles.includes("adminA");
+  if (!isAdmin) return <AccessDenied />;
   return children;
 };
 
@@ -33,8 +40,10 @@ export default function App() {
     <Routes>
       <Route element={<RootLayout />}>
         <Route path="/" element={<Landing />} />
+        <Route path="/join" element={<Join />} />
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
+        <Route path="/contact" element={<Contact />} />
         <Route
           path="/fyp"
           element={
@@ -72,6 +81,30 @@ export default function App() {
           element={
             <ProtectedRoute>
               <Profile />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/notifications"
+          element={
+            <ProtectedRoute>
+              <Notifications />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/chats"
+          element={
+            <ProtectedRoute>
+              <Chats />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/network"
+          element={
+            <ProtectedRoute>
+              <Network />
             </ProtectedRoute>
           }
         />

@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
-import { apiClient, API_ORIGIN } from "../api/client";
+import { apiClient } from "../api/client";
 import { useAuth } from "../utils/auth";
 import { regionLabel } from "../utils/format";
 
 export default function Admin() {
-  const { token } = useAuth();
-  const [activeTab, setActiveTab] = useState("users");
+  const { token, user } = useAuth();
+  const [activeTab, setActiveTab] = useState("verifications");
   const [users, setUsers] = useState([]);
   const [userFilters, setUserFilters] = useState({
     search: "",
@@ -21,14 +21,29 @@ export default function Admin() {
   const [message, setMessage] = useState("");
   const [banTarget, setBanTarget] = useState(null);
   const [banReason, setBanReason] = useState("");
+  const [opportunities, setOpportunities] = useState([]);
+  const [opportunityMessage, setOpportunityMessage] = useState("");
+
+  const roles = Array.isArray(user?.roles) ? user.roles : [];
+  const canC = user?.isAdmin || roles.includes("staffC") || roles.includes("staffB") || roles.includes("adminA");
+  const canB = user?.isAdmin || roles.includes("staffB") || roles.includes("adminA");
+  const canA = user?.isAdmin || roles.includes("adminA");
 
   const tabs = useMemo(
-    () => [
-      { id: "users", label: "Users" },
-      { id: "verification", label: "Verification" }
-    ],
-    []
+    () =>
+      [
+        canB && { id: "verifications", label: "Verifications" },
+        canC && { id: "jobs", label: "Job Moderation" },
+        canA && { id: "users", label: "Users" }
+      ].filter(Boolean),
+    [canA, canB, canC]
   );
+
+  useEffect(() => {
+    if (!tabs.find((tab) => tab.id === activeTab) && tabs.length) {
+      setActiveTab(tabs[0].id);
+    }
+  }, [tabs, activeTab]);
 
   const loadUsers = async (filters = userFilters) => {
     setUserLoading(true);
@@ -51,25 +66,33 @@ export default function Admin() {
 
   const loadRequests = async () => {
     try {
-      const data = await apiClient.get("/admin/verification-requests?status=pending", token);
+      const data = await apiClient.get("/admin/verifications?status=pending", token);
       setRequests(data);
     } catch (error) {
       setMessage(error.message || "Failed to load verification requests");
     }
   };
 
+  const loadOpportunities = async () => {
+    setOpportunityMessage("");
+    try {
+      const data = await apiClient.get("/opportunities?status=open", token);
+      setOpportunities(data);
+    } catch (error) {
+      setOpportunityMessage(error.message || "Failed to load opportunities");
+    }
+  };
+
   useEffect(() => {
     if (!token) return;
-    if (activeTab === "users") {
-      loadUsers();
-    } else {
-      loadRequests();
-    }
+    if (activeTab === "users") loadUsers();
+    if (activeTab === "verifications") loadRequests();
+    if (activeTab === "jobs") loadOpportunities();
   }, [activeTab, token]);
 
   const handleAction = async (id, action) => {
     try {
-      await apiClient.post(`/admin/verification-requests/${id}/${action}`, {
+      await apiClient.patch(`/admin/verifications/${id}/${action}`, {
         adminComment: comment[id] || ""
       }, token);
       setMessage(`Request ${action}d.`);
@@ -93,7 +116,7 @@ export default function Admin() {
   const confirmBan = async () => {
     if (!banTarget) return;
     try {
-      await apiClient.post(`/admin/users/${banTarget._id}/ban`, { reason: banReason }, token);
+      await apiClient.patch(`/admin/users/${banTarget._id}/ban`, { reason: banReason }, token);
       setUserMessage(`${banTarget.name} has been banned.`);
       closeBanModal();
       loadUsers();
@@ -104,11 +127,31 @@ export default function Admin() {
 
   const unbanUser = async (user) => {
     try {
-      await apiClient.post(`/admin/users/${user._id}/unban`, {}, token);
+      await apiClient.patch(`/admin/users/${user._id}/unban`, {}, token);
       setUserMessage(`${user.name} has been unbanned.`);
       loadUsers();
     } catch (error) {
       setUserMessage(error.message || "Failed to unban user");
+    }
+  };
+
+  const updateRoles = async (targetId, roles) => {
+    try {
+      await apiClient.patch(`/admin/users/${targetId}/roles`, { roles }, token);
+      setUserMessage("Roles updated.");
+      loadUsers();
+    } catch (error) {
+      setUserMessage(error.message || "Failed to update roles");
+    }
+  };
+
+  const deleteOpportunity = async (id) => {
+    try {
+      await apiClient.delete(`/admin/opportunities/${id}`, token);
+      setOpportunityMessage("Opportunity removed.");
+      setOpportunities((prev) => prev.filter((item) => item._id !== id));
+    } catch (error) {
+      setOpportunityMessage(error.message || "Failed to delete opportunity");
     }
   };
 
@@ -140,7 +183,79 @@ export default function Admin() {
         </div>
       </div>
 
-      {activeTab === "users" ? (
+      {activeTab === "verifications" && (
+        <div className="space-y-4">
+          {message && <p className="text-sm text-teal">{message}</p>}
+          <div className="grid gap-4 md:grid-cols-2">
+            {requests.map((request) => (
+              <div key={request._id} className="glass rounded-2xl p-5">
+                <p className="text-sm text-mist">{request.user?.name}</p>
+                <p className="text-xs uppercase tracking-wide text-teal">
+                  {request.requestType}
+                </p>
+                <p className="mt-2 text-xs text-mist">
+                  Region: {regionLabel(request.user?.currentRegion)}
+                </p>
+                {request.documentUrl && (
+                  <a
+                    href={request.documentUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="mt-3 block text-xs text-coral"
+                  >
+                    View document
+                  </a>
+                )}
+                <textarea
+                  placeholder="Admin comment"
+                  rows={2}
+                  value={comment[request._id] || ""}
+                  onChange={(event) =>
+                    setComment((prev) => ({ ...prev, [request._id]: event.target.value }))
+                  }
+                  className="mt-3 w-full rounded-xl border border-white/10 bg-slate/40 px-3 py-2 text-xs text-sand"
+                />
+                <div className="mt-4 flex gap-3">
+                  <button
+                    onClick={() => handleAction(request._id, "approve")}
+                    className="rounded-full bg-teal px-4 py-2 text-xs font-semibold uppercase tracking-wide text-charcoal"
+                  >
+                    Approve
+                  </button>
+                  <button
+                    onClick={() => handleAction(request._id, "reject")}
+                    className="rounded-full border border-white/10 px-4 py-2 text-xs uppercase tracking-wide text-sand hover:border-coral"
+                  >
+                    Reject
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {activeTab === "jobs" && (
+        <div className="space-y-4">
+          {opportunityMessage && <p className="text-sm text-teal">{opportunityMessage}</p>}
+          <div className="grid gap-4 md:grid-cols-2">
+            {opportunities.map((item) => (
+              <div key={item._id} className="glass rounded-2xl p-5">
+                <p className="text-sm text-sand">{item.title}</p>
+                <p className="text-xs text-mist">{item.orgName || item.company}</p>
+                <button
+                  onClick={() => deleteOpportunity(item._id)}
+                  className="mt-3 rounded-full border border-white/10 px-3 py-1 text-xs uppercase tracking-wide text-sand hover:border-teal"
+                >
+                  Delete
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {activeTab === "users" && (
         <div className="space-y-4">
           <form
             onSubmit={(event) => {
@@ -239,106 +354,78 @@ export default function Admin() {
             <p className="text-sm text-mist">Loading users...</p>
           ) : (
             <div className="grid gap-4 md:grid-cols-2">
-              {users.map((user) => (
-                <div key={user._id} className="glass rounded-2xl p-5 space-y-3">
+              {users.map((item) => (
+                <div key={item._id} className="glass rounded-2xl p-5 space-y-3">
                   <div>
-                    <p className="text-lg text-sand">{user.name}</p>
-                    <p className="text-xs uppercase tracking-wide text-mist">{user.email}</p>
+                    <p className="text-lg text-sand">{item.name}</p>
+                    <p className="text-xs uppercase tracking-wide text-mist">{item.email}</p>
                   </div>
                   <div className="text-xs text-mist space-y-1">
                     <p>
-                      Type: <span className="text-sand">{user.userType}</span>
+                      Type: <span className="text-sand">{item.userType}</span>
                     </p>
                     <p>
-                      Region: <span className="text-sand">{regionLabel(user.currentRegion)}</span>
+                      Region: <span className="text-sand">{regionLabel(item.currentRegion)}</span>
                     </p>
                     <p>
-                      Verification:{" "}
-                      <span className="text-sand">{user.verificationStatus}</span>
+                      Verification: <span className="text-sand">{item.verificationStatus}</span>
                     </p>
                     <p>
                       Status:{" "}
-                      <span className={user.banned ? "text-coral" : "text-teal"}>
-                        {user.banned ? "Banned" : "Active"}
+                      <span className={item.banned ? "text-coral" : "text-teal"}>
+                        {item.banned ? "Banned" : "Active"}
                       </span>
                     </p>
-                    {user.isAdmin && <p className="text-teal">Admin account</p>}
-                    {user.bannedReason && (
-                      <p className="text-xs text-mist">Reason: {user.bannedReason}</p>
+                    {item.bannedReason && (
+                      <p className="text-xs text-mist">Reason: {item.bannedReason}</p>
                     )}
                   </div>
                   <div className="flex flex-wrap gap-3">
-                    {user.banned ? (
+                    {item.banned ? (
                       <button
-                        onClick={() => unbanUser(user)}
+                        onClick={() => unbanUser(item)}
                         className="rounded-full bg-teal px-4 py-2 text-xs font-semibold uppercase tracking-wide text-charcoal"
                       >
                         Unban
                       </button>
                     ) : (
                       <button
-                        onClick={() => openBanModal(user)}
+                        onClick={() => openBanModal(item)}
                         className="rounded-full border border-white/10 px-4 py-2 text-xs uppercase tracking-wide text-sand hover:border-coral"
-                        disabled={user.isAdmin}
+                        disabled={item.isAdmin}
                       >
                         Ban
                       </button>
                     )}
+                    <button
+                      onClick={() => updateRoles(item._id, ["staffC"])}
+                      className="rounded-full border border-white/10 px-4 py-2 text-xs uppercase tracking-wide text-sand hover:border-teal"
+                    >
+                      Set C
+                    </button>
+                    <button
+                      onClick={() => updateRoles(item._id, ["staffB"])}
+                      className="rounded-full border border-white/10 px-4 py-2 text-xs uppercase tracking-wide text-sand hover:border-teal"
+                    >
+                      Set B
+                    </button>
+                    <button
+                      onClick={() => updateRoles(item._id, ["adminA"])}
+                      className="rounded-full border border-white/10 px-4 py-2 text-xs uppercase tracking-wide text-sand hover:border-teal"
+                    >
+                      Set A
+                    </button>
+                    <button
+                      onClick={() => updateRoles(item._id, [])}
+                      className="rounded-full border border-white/10 px-4 py-2 text-xs uppercase tracking-wide text-sand hover:border-teal"
+                    >
+                      Clear roles
+                    </button>
                   </div>
                 </div>
               ))}
             </div>
           )}
-        </div>
-      ) : (
-        <div className="space-y-4">
-          {message && <p className="text-sm text-teal">{message}</p>}
-          <div className="grid gap-4 md:grid-cols-2">
-            {requests.map((request) => (
-              <div key={request._id} className="glass rounded-2xl p-5">
-                <p className="text-sm text-mist">{request.user?.name}</p>
-                <p className="text-xs uppercase tracking-wide text-teal">
-                  {request.requestType}
-                </p>
-                <p className="mt-2 text-xs text-mist">
-                  Region: {regionLabel(request.user?.currentRegion)}
-                </p>
-                {request.documentUrl && (
-                  <a
-                    href={`${API_ORIGIN}${request.documentUrl}`}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="mt-3 block text-xs text-coral"
-                  >
-                    View document
-                  </a>
-                )}
-                <textarea
-                  placeholder="Admin comment"
-                  rows={2}
-                  value={comment[request._id] || ""}
-                  onChange={(event) =>
-                    setComment((prev) => ({ ...prev, [request._id]: event.target.value }))
-                  }
-                  className="mt-3 w-full rounded-xl border border-white/10 bg-slate/40 px-3 py-2 text-xs text-sand"
-                />
-                <div className="mt-4 flex gap-3">
-                  <button
-                    onClick={() => handleAction(request._id, "approve")}
-                    className="rounded-full bg-teal px-4 py-2 text-xs font-semibold uppercase tracking-wide text-charcoal"
-                  >
-                    Approve
-                  </button>
-                  <button
-                    onClick={() => handleAction(request._id, "reject")}
-                    className="rounded-full border border-white/10 px-4 py-2 text-xs uppercase tracking-wide text-sand hover:border-coral"
-                  >
-                    Reject
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
         </div>
       )}
 

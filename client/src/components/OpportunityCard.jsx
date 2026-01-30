@@ -3,7 +3,7 @@ import RegionPill from "./RegionPill";
 import StatusBadge from "./StatusBadge";
 import { countryLabel, formatRelativeTime } from "../utils/format";
 
-export default function OpportunityCard({ opportunity }) {
+export default function OpportunityCard({ opportunity, isOwner, onEdit, onClose, onDelete }) {
   return (
     <div className="glass gradient-border relative rounded-2xl p-5">
       <div className="flex flex-wrap items-start justify-between gap-4">
@@ -36,12 +36,36 @@ export default function OpportunityCard({ opportunity }) {
       ) : null}
       <div className="mt-4 flex items-center justify-between text-xs text-mist">
         <span className="uppercase tracking-wide">{opportunity.status}</span>
-        <Link
-          to={`/opportunities/${opportunity._id}`}
-          className="rounded-full border border-white/10 px-3 py-1 uppercase tracking-wide hover:border-teal"
-        >
-          View details
-        </Link>
+        <div className="flex items-center gap-2">
+          {isOwner && (
+            <>
+              <button
+                onClick={onEdit}
+                className="rounded-full border border-white/10 px-3 py-1 uppercase tracking-wide hover:border-teal"
+              >
+                Edit
+              </button>
+              <button
+                onClick={onClose}
+                className="rounded-full border border-white/10 px-3 py-1 uppercase tracking-wide hover:border-teal"
+              >
+                Close
+              </button>
+              <button
+                onClick={onDelete}
+                className="rounded-full border border-white/10 px-3 py-1 uppercase tracking-wide hover:border-teal"
+              >
+                Delete
+              </button>
+            </>
+          )}
+          <Link
+            to={`/opportunities/${opportunity._id}`}
+            className="rounded-full border border-white/10 px-3 py-1 uppercase tracking-wide hover:border-teal"
+          >
+            View details
+          </Link>
+        </div>
       </div>
     </div>
   );

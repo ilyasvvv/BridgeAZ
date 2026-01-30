@@ -7,12 +7,17 @@ export default function CommunityPostCard({
   onRespond,
   onSave,
   onFollow,
+  onEdit,
+  onDelete,
+  onViewReplies,
+  isOwner,
   isSaved,
   showReply,
   replyValue,
   onReplyChange,
   onReplySubmit
 }) {
+  const comments = post.comments || [];
   return (
     <div className="glass gradient-border relative rounded-2xl p-5">
       <div className="flex flex-wrap items-start justify-between gap-4">
@@ -56,7 +61,41 @@ export default function CommunityPostCard({
         >
           Follow
         </button>
+        {isOwner && (
+          <>
+            <button
+              onClick={onEdit}
+              className="rounded-full border border-white/10 px-3 py-1 uppercase tracking-wide hover:border-teal"
+            >
+              Edit
+            </button>
+            <button
+              onClick={onDelete}
+              className="rounded-full border border-white/10 px-3 py-1 uppercase tracking-wide hover:border-teal"
+            >
+              Delete
+            </button>
+          </>
+        )}
       </div>
+      {comments.length > 0 && (
+        <div className="mt-4 space-y-2 rounded-xl border border-white/10 bg-white/5 p-3 text-xs text-mist">
+          {comments.map((comment) => (
+            <div key={comment._id} className="space-y-1">
+              <p className="text-sand">{comment.author?.name || "Member"}</p>
+              <p>{comment.content}</p>
+            </div>
+          ))}
+          {onViewReplies && (
+            <button
+              onClick={onViewReplies}
+              className="text-xs uppercase tracking-wide text-teal"
+            >
+              View all replies
+            </button>
+          )}
+        </div>
+      )}
       {showReply && (
         <form onSubmit={onReplySubmit} className="mt-4 space-y-2">
           <textarea

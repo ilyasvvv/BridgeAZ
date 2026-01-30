@@ -16,11 +16,14 @@ router.put("/me", authMiddleware, blockBanned, async (req, res) => {
       "bio",
       "currentRegion",
       "profileVisibility",
+      "isPrivate",
       "profilePictureUrl",
       "profilePhotoUrl",
+      "avatarUrl",
       "resumeUrl",
       "skills",
       "links",
+      "socialLinks",
       "education",
       "experience",
       "projects",
@@ -35,6 +38,10 @@ router.put("/me", authMiddleware, blockBanned, async (req, res) => {
         updates[field] = req.body[field];
       }
     });
+
+    if (updates.isPrivate !== undefined) {
+      updates.profileVisibility = updates.isPrivate ? "private" : "public";
+    }
 
     const user = await User.findByIdAndUpdate(req.user._id, updates, {
       new: true
@@ -51,6 +58,18 @@ router.get("/:id", authMiddleware, blockBanned, async (req, res) => {
     const user = await User.findById(req.params.id).select("-passwordHash");
     if (!user) {
       return res.status(404).json({ message: "User not found" });
+    }
+    const isOwner = user._id.equals(req.user._id);
+    const isAdmin = req.user.isAdmin || (req.user.roles || []).includes("adminA");
+    const isPrivate = user.isPrivate || user.profileVisibility === "private";
+    if (isPrivate && !isOwner && !isAdmin) {
+      return res.json({
+        _id: user._id,
+        name: user.name,
+        headline: user.headline,
+        profilePhotoUrl: user.profilePhotoUrl || user.avatarUrl,
+        currentRegion: user.currentRegion
+      });
     }
     res.json(user);
   } catch (error) {

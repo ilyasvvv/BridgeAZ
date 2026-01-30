@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { apiClient, uploadFile } from "../api/client";
+import { apiClient, uploadViaPresign } from "../api/client";
 import { useAuth } from "../utils/auth";
 import PostCard from "../components/PostCard";
 import StatusBadge from "../components/StatusBadge";
@@ -19,6 +19,8 @@ export default function Dashboard() {
   const [attachment, setAttachment] = useState(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
+  const allowedTypes = ["application/pdf", "image/png", "image/jpeg"];
+  const maxSizeBytes = 5 * 1024 * 1024;
 
   const loadPosts = async (regionFilter) => {
     setLoading(true);
@@ -43,8 +45,17 @@ export default function Dashboard() {
     try {
       let attachmentUrl;
       if (attachment) {
-        const upload = await uploadFile(attachment, token);
-        attachmentUrl = upload.fileUrl;
+        if (!allowedTypes.includes(attachment.type)) {
+          setError("Unsupported file type");
+          return;
+        }
+        if (attachment.size > maxSizeBytes) {
+          setError("File must be 5MB or less");
+          return;
+        }
+
+        const upload = await uploadViaPresign({ file: attachment, purpose: "attachment" }, token);
+        attachmentUrl = upload.documentUrl;
       }
       const created = await apiClient.post(
         "/posts",
@@ -188,7 +199,7 @@ export default function Dashboard() {
             <a href={`/profile/${user._id}`} className="block hover:text-sand">
               View your profile
             </a>
-            {user.isAdmin && (
+            {(user.isAdmin || (user.roles || []).some((role) => ["staffC", "staffB", "adminA"].includes(role))) && (
               <a href="/admin" className="block hover:text-sand">
                 Admin panel
               </a>

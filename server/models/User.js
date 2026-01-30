@@ -44,6 +44,12 @@ const locationSchema = new mongoose.Schema({
   city: String
 });
 
+const socialLinksSchema = new mongoose.Schema({
+  linkedin: String,
+  github: String,
+  website: String
+});
+
 const userSchema = new mongoose.Schema(
   {
     name: { type: String, required: true },
@@ -57,8 +63,10 @@ const userSchema = new mongoose.Schema(
       default: []
     },
     profileVisibility: { type: String, enum: ["public", "private"], default: "public" },
+    isPrivate: { type: Boolean, default: false },
     profilePictureUrl: String,
     profilePhotoUrl: String,
+    avatarUrl: String,
     resumeUrl: String,
     headline: String,
     bio: String,
@@ -90,6 +98,7 @@ const userSchema = new mongoose.Schema(
     projects: [projectSchema],
     skills: [String],
     links: [linkSchema],
+    socialLinks: { type: socialLinksSchema, default: {} },
     locationNow: locationSchema,
     mentorshipAvailability: {
       type: String,

@@ -40,6 +40,7 @@ export default function Opportunities() {
     visibilityRegion: "ALL",
     tags: ""
   });
+  const [editingId, setEditingId] = useState(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
 
@@ -96,8 +97,15 @@ export default function Opportunities() {
     };
 
     try {
-      const created = await apiClient.post("/opportunities", payload, token);
-      setOpportunities((prev) => [created, ...prev]);
+      if (editingId) {
+        const updated = await apiClient.patch(`/opportunities/${editingId}`, payload, token);
+        setOpportunities((prev) =>
+          prev.map((item) => (item._id === editingId ? updated : item))
+        );
+      } else {
+        const created = await apiClient.post("/opportunities", payload, token);
+        setOpportunities((prev) => [created, ...prev]);
+      }
       setForm((prev) => ({
         ...prev,
         title: "",
@@ -109,9 +117,47 @@ export default function Opportunities() {
         contactEmail: "",
         tags: ""
       }));
+      setEditingId(null);
       setShowForm(false);
     } catch (err) {
       setError(err.message || "Failed to post opportunity");
+    }
+  };
+
+  const startEdit = (opportunity) => {
+    setEditingId(opportunity._id);
+    setForm({
+      title: opportunity.title || "",
+      orgName: opportunity.orgName || "",
+      type: opportunity.type || "Internship",
+      locationMode: opportunity.locationMode || "Remote",
+      country: opportunity.country || "AZ",
+      city: opportunity.city || "",
+      description: opportunity.description || "",
+      requirements: (opportunity.requirements || []).join(", "),
+      applyUrl: opportunity.applyUrl || "",
+      contactEmail: opportunity.contactEmail || "",
+      visibilityRegion: opportunity.visibilityRegion || "ALL",
+      tags: (opportunity.tags || []).join(", ")
+    });
+    setShowForm(true);
+  };
+
+  const closeOpportunity = async (id) => {
+    try {
+      const updated = await apiClient.patch(`/opportunities/${id}/close`, {}, token);
+      setOpportunities((prev) => prev.map((item) => (item._id === id ? updated : item)));
+    } catch (err) {
+      setError(err.message || "Failed to close opportunity");
+    }
+  };
+
+  const deleteOpportunity = async (id) => {
+    try {
+      await apiClient.delete(`/opportunities/${id}`, token);
+      setOpportunities((prev) => prev.filter((item) => item._id !== id));
+    } catch (err) {
+      setError(err.message || "Failed to delete opportunity");
     }
   };
 
@@ -127,10 +173,15 @@ export default function Opportunities() {
           </div>
           {canPost && (
             <button
-              onClick={() => setShowForm((prev) => !prev)}
+              onClick={() => {
+                setShowForm((prev) => !prev);
+                if (showForm) {
+                  setEditingId(null);
+                }
+              }}
               className="rounded-full bg-coral px-5 py-2 text-xs font-semibold uppercase tracking-wide text-charcoal"
             >
-              {showForm ? "Close form" : "Post an opportunity"}
+              {showForm ? "Close form" : editingId ? "Edit opportunity" : "Post an opportunity"}
             </button>
           )}
         </div>
@@ -327,7 +378,14 @@ export default function Opportunities() {
       ) : (
         <div className="grid gap-4 md:grid-cols-2">
           {opportunities.map((opportunity) => (
-            <OpportunityCard key={opportunity._id} opportunity={opportunity} />
+            <OpportunityCard
+              key={opportunity._id}
+              opportunity={opportunity}
+              isOwner={opportunity.postedBy === user?._id}
+              onEdit={() => startEdit(opportunity)}
+              onClose={() => closeOpportunity(opportunity._id)}
+              onDelete={() => deleteOpportunity(opportunity._id)}
+            />
           ))}
         </div>
       )}

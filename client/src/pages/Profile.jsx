@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
-import { apiClient } from "../api/client";
+import { apiClient, uploadViaPresign } from "../api/client";
 import { useAuth } from "../utils/auth";
 import StatusBadge from "../components/StatusBadge";
 import RegionPill from "../components/RegionPill";
@@ -16,6 +16,8 @@ export default function Profile() {
   const [editMode, setEditMode] = useState(false);
   const [form, setForm] = useState({});
   const [docFile, setDocFile] = useState(null);
+  const [avatarFile, setAvatarFile] = useState(null);
+  const [resumeFile, setResumeFile] = useState(null);
   const [mentorInfo, setMentorInfo] = useState({ universityEmail: "", linkedinUrl: "", note: "" });
   const [message, setMessage] = useState("");
   const allowedTypes = ["application/pdf", "image/png", "image/jpeg"];
@@ -30,7 +32,13 @@ export default function Profile() {
       bio: data.bio || "",
       currentRegion: data.currentRegion || "AZ",
       skills: data.skills?.join(", ") || "",
-      links: data.links || []
+      links: data.links || [],
+      socialLinks: data.socialLinks || { linkedin: "", github: "", website: "" },
+      experience: data.experience || [],
+      locationNow: data.locationNow || { country: "", city: "" },
+      isPrivate: data.isPrivate || data.profileVisibility === "private",
+      avatarUrl: data.avatarUrl || data.profilePhotoUrl || data.profilePictureUrl || "",
+      resumeUrl: data.resumeUrl || ""
     });
   };
 
@@ -45,13 +53,93 @@ export default function Profile() {
       bio: form.bio,
       currentRegion: form.currentRegion,
       skills: form.skills.split(",").map((item) => item.trim()).filter(Boolean),
-      links: form.links
+      links: form.links,
+      socialLinks: form.socialLinks,
+      experience: form.experience,
+      locationNow: form.locationNow,
+      isPrivate: form.isPrivate,
+      avatarUrl: form.avatarUrl,
+      resumeUrl: form.resumeUrl
     };
 
     const updated = await apiClient.put("/users/me", payload, token);
     setProfile(updated);
     setUser(updated);
     setEditMode(false);
+  };
+
+  const handlePresignUpload = async (file, purpose) => {
+    if (!file) return null;
+    if (!allowedTypes.includes(file.type)) {
+      setMessage("Unsupported file type");
+      return null;
+    }
+    if (file.size > maxSizeBytes) {
+      setMessage("File must be 5MB or less");
+      return null;
+    }
+    const presign = await uploadViaPresign({ file, purpose }, token);
+    return presign.documentUrl;
+  };
+
+  const handleAvatarUpload = async () => {
+    setMessage("");
+    try {
+      if (!(avatarFile instanceof File)) {
+        setMessage("Select an image to upload.");
+        return;
+      }
+      const url = await handlePresignUpload(avatarFile, "avatar");
+      if (url) {
+        setForm((prev) => ({ ...prev, avatarUrl: url }));
+        setAvatarFile(null);
+      }
+    } catch (error) {
+      setMessage(error.message || "Failed to upload avatar");
+    }
+  };
+
+  const handleResumeUpload = async () => {
+    setMessage("");
+    try {
+      if (!(resumeFile instanceof File)) {
+        setMessage("Select a file to upload.");
+        return;
+      }
+      const url = await handlePresignUpload(resumeFile, "resume");
+      if (url) {
+        setForm((prev) => ({ ...prev, resumeUrl: url }));
+        setResumeFile(null);
+      }
+    } catch (error) {
+      setMessage(error.message || "Failed to upload resume");
+    }
+  };
+
+  const addExperience = () => {
+    setForm((prev) => ({
+      ...prev,
+      experience: [
+        ...(prev.experience || []),
+        { company: "", role: "", startDate: "", endDate: "", description: "" }
+      ]
+    }));
+  };
+
+  const updateExperience = (index, field, value) => {
+    setForm((prev) => {
+      const next = [...(prev.experience || [])];
+      next[index] = { ...next[index], [field]: value };
+      return { ...prev, experience: next };
+    });
+  };
+
+  const removeExperience = (index) => {
+    setForm((prev) => {
+      const next = [...(prev.experience || [])];
+      next.splice(index, 1);
+      return { ...prev, experience: next };
+    });
   };
 
   const handleStudentVerification = async () => {
@@ -72,27 +160,7 @@ export default function Profile() {
         return;
       }
 
-      const presign = await apiClient.post(
-        "/uploads/presign",
-        {
-          originalName: docFile.name,
-          mimeType: docFile.type,
-          sizeBytes: docFile.size,
-          purpose: "verification"
-        },
-        token
-      );
-
-      const uploadResponse = await fetch(presign.uploadUrl, {
-        method: "PUT",
-        headers: presign.headers || { "Content-Type": docFile.type },
-        body: docFile
-      });
-
-      if (!uploadResponse.ok) {
-        throw new Error("Upload failed");
-      }
-
+      const presign = await uploadViaPresign({ file: docFile, purpose: "verification" }, token);
       await apiClient.post(
         "/verification/student",
         { documentUrl: presign.documentUrl, objectKey: presign.objectKey },
@@ -113,6 +181,11 @@ export default function Profile() {
         return;
       }
 
+      if (!mentorInfo.universityEmail && !mentorInfo.linkedinUrl && !mentorInfo.note) {
+        setMessage("Provide at least one mentor detail.");
+        return;
+      }
+
       if (!allowedTypes.includes(docFile.type)) {
         setMessage("Unsupported file type");
         return;
@@ -123,27 +196,7 @@ export default function Profile() {
         return;
       }
 
-      const presign = await apiClient.post(
-        "/uploads/presign",
-        {
-          originalName: docFile.name,
-          mimeType: docFile.type,
-          sizeBytes: docFile.size,
-          purpose: "verification"
-        },
-        token
-      );
-
-      const uploadResponse = await fetch(presign.uploadUrl, {
-        method: "PUT",
-        headers: presign.headers || { "Content-Type": docFile.type },
-        body: docFile
-      });
-
-      if (!uploadResponse.ok) {
-        throw new Error("Upload failed");
-      }
-
+      const presign = await uploadViaPresign({ file: docFile, purpose: "verification" }, token);
       await apiClient.post(
         "/verification/mentor",
         {
@@ -161,6 +214,11 @@ export default function Profile() {
   };
 
   const skills = useMemo(() => profile?.skills || [], [profile]);
+  const studentStatus = profile?.studentVerificationStatus || "none";
+  const mentorStatus = profile?.mentorVerificationStatus || "none";
+  const isPendingVerification =
+    (profile?.userType === "student" && studentStatus === "pending") ||
+    (profile?.userType === "professional" && mentorStatus === "pending");
 
   if (!profile) {
     return <p className="text-sm text-mist">Loading profile...</p>;
@@ -225,6 +283,158 @@ export default function Profile() {
               onChange={(event) => setForm({ ...form, skills: event.target.value })}
               placeholder="Skills (comma separated)"
             />
+
+            <div className="md:col-span-2 space-y-2">
+              <p className="text-xs uppercase tracking-wide text-mist">Avatar</p>
+              <div className="flex flex-wrap items-center gap-3">
+                <input
+                  type="file"
+                  onChange={(event) => setAvatarFile(event.target.files?.[0] || null)}
+                  className="text-xs text-mist"
+                />
+                <button
+                  type="button"
+                  onClick={handleAvatarUpload}
+                  className="rounded-full border border-white/10 px-3 py-1 text-xs uppercase tracking-wide text-sand hover:border-teal"
+                >
+                  Upload avatar
+                </button>
+                {form.avatarUrl && (
+                  <span className="text-xs text-mist">Saved</span>
+                )}
+              </div>
+            </div>
+
+            <div className="md:col-span-2 space-y-2">
+              <p className="text-xs uppercase tracking-wide text-mist">Resume</p>
+              <div className="flex flex-wrap items-center gap-3">
+                <input
+                  type="file"
+                  onChange={(event) => setResumeFile(event.target.files?.[0] || null)}
+                  className="text-xs text-mist"
+                />
+                <button
+                  type="button"
+                  onClick={handleResumeUpload}
+                  className="rounded-full border border-white/10 px-3 py-1 text-xs uppercase tracking-wide text-sand hover:border-teal"
+                >
+                  Upload resume
+                </button>
+                {form.resumeUrl && (
+                  <span className="text-xs text-mist">Saved</span>
+                )}
+              </div>
+            </div>
+
+            <input
+              className="rounded-xl border border-white/10 bg-slate/40 px-4 py-2 text-sand"
+              value={form.socialLinks?.linkedin || ""}
+              onChange={(event) =>
+                setForm((prev) => ({
+                  ...prev,
+                  socialLinks: { ...prev.socialLinks, linkedin: event.target.value }
+                }))
+              }
+              placeholder="LinkedIn URL"
+            />
+            <input
+              className="rounded-xl border border-white/10 bg-slate/40 px-4 py-2 text-sand"
+              value={form.socialLinks?.github || ""}
+              onChange={(event) =>
+                setForm((prev) => ({
+                  ...prev,
+                  socialLinks: { ...prev.socialLinks, github: event.target.value }
+                }))
+              }
+              placeholder="GitHub URL"
+            />
+            <input
+              className="rounded-xl border border-white/10 bg-slate/40 px-4 py-2 text-sand"
+              value={form.socialLinks?.website || ""}
+              onChange={(event) =>
+                setForm((prev) => ({
+                  ...prev,
+                  socialLinks: { ...prev.socialLinks, website: event.target.value }
+                }))
+              }
+              placeholder="Website URL"
+            />
+            <input
+              className="rounded-xl border border-white/10 bg-slate/40 px-4 py-2 text-sand"
+              value={form.locationNow?.country || ""}
+              onChange={(event) =>
+                setForm((prev) => ({
+                  ...prev,
+                  locationNow: { ...prev.locationNow, country: event.target.value }
+                }))
+              }
+              placeholder="Country"
+            />
+            <input
+              className="rounded-xl border border-white/10 bg-slate/40 px-4 py-2 text-sand"
+              value={form.locationNow?.city || ""}
+              onChange={(event) =>
+                setForm((prev) => ({
+                  ...prev,
+                  locationNow: { ...prev.locationNow, city: event.target.value }
+                }))
+              }
+              placeholder="City"
+            />
+            <label className="md:col-span-2 flex items-center gap-2 text-xs text-mist">
+              <input
+                type="checkbox"
+                checked={!!form.isPrivate}
+                onChange={(event) =>
+                  setForm((prev) => ({ ...prev, isPrivate: event.target.checked }))
+                }
+              />
+              Private profile
+            </label>
+
+            <div className="md:col-span-2 space-y-2">
+              <div className="flex items-center justify-between">
+                <p className="text-xs uppercase tracking-wide text-mist">Experience</p>
+                <button
+                  type="button"
+                  onClick={addExperience}
+                  className="rounded-full border border-white/10 px-3 py-1 text-xs uppercase tracking-wide text-mist hover:border-teal"
+                >
+                  Add
+                </button>
+              </div>
+              {(form.experience || []).map((exp, index) => (
+                <div key={index} className="space-y-2 rounded-xl border border-white/10 p-3">
+                  <input
+                    className="w-full rounded-xl border border-white/10 bg-slate/40 px-3 py-2 text-sm text-sand"
+                    value={exp.company || ""}
+                    onChange={(event) => updateExperience(index, "company", event.target.value)}
+                    placeholder="Company"
+                  />
+                  <input
+                    className="w-full rounded-xl border border-white/10 bg-slate/40 px-3 py-2 text-sm text-sand"
+                    value={exp.role || ""}
+                    onChange={(event) => updateExperience(index, "role", event.target.value)}
+                    placeholder="Role"
+                  />
+                  <textarea
+                    className="w-full rounded-xl border border-white/10 bg-slate/40 px-3 py-2 text-sm text-sand"
+                    value={exp.description || ""}
+                    onChange={(event) => updateExperience(index, "description", event.target.value)}
+                    placeholder="Description"
+                    rows={2}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => removeExperience(index)}
+                    className="rounded-full border border-white/10 px-3 py-1 text-xs uppercase tracking-wide text-mist hover:border-teal"
+                  >
+                    Remove
+                  </button>
+                </div>
+              ))}
+            </div>
+
             <button
               onClick={handleSave}
               className="md:col-span-2 rounded-full bg-teal px-6 py-2 text-xs font-semibold uppercase tracking-wide text-charcoal"
@@ -252,7 +462,51 @@ export default function Profile() {
       <div className="glass rounded-2xl p-6">
         {activeTab === "Overview" && (
           <div className="space-y-4">
+            {(profile.avatarUrl || profile.profilePhotoUrl) && (
+              <img
+                src={profile.avatarUrl || profile.profilePhotoUrl}
+                alt={`${profile.name} avatar`}
+                className="h-20 w-20 rounded-full object-cover"
+              />
+            )}
             <p className="text-sm text-mist">{profile.bio || "No bio yet."}</p>
+            {profile.locationNow?.country && (
+              <p className="text-xs text-mist">
+                Based in {profile.locationNow.city ? `${profile.locationNow.city}, ` : ""}
+                {profile.locationNow.country}
+              </p>
+            )}
+            {profile.resumeUrl && (
+              <a
+                href={profile.resumeUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="text-xs text-teal underline"
+              >
+                View resume
+              </a>
+            )}
+            {(profile.socialLinks?.linkedin ||
+              profile.socialLinks?.github ||
+              profile.socialLinks?.website) && (
+              <div className="flex flex-wrap gap-3 text-xs text-mist">
+                {profile.socialLinks?.linkedin && (
+                  <a href={profile.socialLinks.linkedin} className="text-teal underline">
+                    LinkedIn
+                  </a>
+                )}
+                {profile.socialLinks?.github && (
+                  <a href={profile.socialLinks.github} className="text-teal underline">
+                    GitHub
+                  </a>
+                )}
+                {profile.socialLinks?.website && (
+                  <a href={profile.socialLinks.website} className="text-teal underline">
+                    Website
+                  </a>
+                )}
+              </div>
+            )}
             <div>
               <p className="text-xs uppercase tracking-wide text-mist">Skills</p>
               <div className="mt-2 flex flex-wrap gap-2">
@@ -271,8 +525,21 @@ export default function Profile() {
         )}
         {activeTab === "Experience" && (
           <>
-            {/* TODO: Render structured experience entries from the profile model. */}
-            <p className="text-sm text-mist">Experience entries coming soon.</p>
+            {profile.experience?.length ? (
+              <div className="space-y-3">
+                {profile.experience.map((item, index) => (
+                  <div key={index} className="rounded-xl border border-white/10 p-4">
+                    <p className="text-sm text-sand">{item.role || "Role"}</p>
+                    <p className="text-xs text-mist">{item.company || item.org}</p>
+                    {item.description && (
+                      <p className="text-xs text-mist mt-2">{item.description}</p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-mist">No experience entries yet.</p>
+            )}
           </>
         )}
         {activeTab === "Education" && (
@@ -313,12 +580,17 @@ export default function Profile() {
           <p className="text-xs text-mist">
             {docFile ? docFile.name : "No file chosen"}
           </p>
+          <p className="text-xs text-mist">
+            Status:{" "}
+            {profile.userType === "student" ? studentStatus : mentorStatus}
+          </p>
           {profile.userType === "student" ? (
             <button
               onClick={handleStudentVerification}
+              disabled={isPendingVerification}
               className="rounded-full bg-coral px-5 py-2 text-xs font-semibold uppercase tracking-wide text-charcoal"
             >
-              Request student verification
+              {isPendingVerification ? "Request pending" : "Request student verification"}
             </button>
           ) : (
             <div className="space-y-3">
@@ -347,9 +619,10 @@ export default function Profile() {
               />
               <button
                 onClick={handleMentorVerification}
+                disabled={isPendingVerification}
                 className="rounded-full bg-coral px-5 py-2 text-xs font-semibold uppercase tracking-wide text-charcoal"
               >
-                Request mentor verification
+                {isPendingVerification ? "Request pending" : "Request mentor verification"}
               </button>
               <p className="text-xs text-mist">TODO: Add automated verification options.</p>
             </div>

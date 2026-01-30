@@ -126,4 +126,60 @@ router.post("/", authMiddleware, blockBanned, async (req, res) => {
   }
 });
 
+const ensureOwner = (opportunity, userId) => opportunity.postedBy?.equals(userId);
+
+router.patch("/:id", authMiddleware, blockBanned, async (req, res) => {
+  try {
+    const opportunity = await Opportunity.findById(req.params.id);
+    if (!opportunity) {
+      return res.status(404).json({ message: "Opportunity not found" });
+    }
+    if (!ensureOwner(opportunity, req.user._id)) {
+      return res.status(403).json({ message: "Not authorized" });
+    }
+
+    const updates = { ...req.body };
+    delete updates.postedBy;
+    const updated = await Opportunity.findByIdAndUpdate(req.params.id, updates, {
+      new: true
+    });
+    res.json(updated);
+  } catch (error) {
+    res.status(500).json({ message: "Failed to update opportunity" });
+  }
+});
+
+router.patch("/:id/close", authMiddleware, blockBanned, async (req, res) => {
+  try {
+    const opportunity = await Opportunity.findById(req.params.id);
+    if (!opportunity) {
+      return res.status(404).json({ message: "Opportunity not found" });
+    }
+    if (!ensureOwner(opportunity, req.user._id)) {
+      return res.status(403).json({ message: "Not authorized" });
+    }
+    opportunity.status = "closed";
+    await opportunity.save();
+    res.json(opportunity);
+  } catch (error) {
+    res.status(500).json({ message: "Failed to close opportunity" });
+  }
+});
+
+router.delete("/:id", authMiddleware, blockBanned, async (req, res) => {
+  try {
+    const opportunity = await Opportunity.findById(req.params.id);
+    if (!opportunity) {
+      return res.status(404).json({ message: "Opportunity not found" });
+    }
+    if (!ensureOwner(opportunity, req.user._id)) {
+      return res.status(403).json({ message: "Not authorized" });
+    }
+    await Opportunity.deleteOne({ _id: req.params.id });
+    res.json({ ok: true });
+  } catch (error) {
+    res.status(500).json({ message: "Failed to delete opportunity" });
+  }
+});
+
 module.exports = router;

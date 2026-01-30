@@ -12,6 +12,10 @@ const uploadRoutes = require("./routes/upload");
 const uploadsRoutes = require("./routes/uploads");
 const mentorshipRoutes = require("./routes/mentorship");
 const opportunityRoutes = require("./routes/opportunities");
+const contactRoutes = require("./routes/contact");
+const notificationRoutes = require("./routes/notifications");
+const chatRoutes = require("./routes/chats");
+const networkRoutes = require("./routes/network");
 
 const app = express();
 
@@ -52,6 +56,10 @@ app.use("/api/upload", uploadRoutes);
 app.use("/api/uploads", uploadsRoutes);
 app.use("/api/mentorship-requests", mentorshipRoutes);
 app.use("/api/opportunities", opportunityRoutes);
+app.use("/api/contact", contactRoutes);
+app.use("/api/notifications", notificationRoutes);
+app.use("/api/chats", chatRoutes);
+app.use("/api", networkRoutes);
 
 const PORT = process.env.PORT || 5001;
 

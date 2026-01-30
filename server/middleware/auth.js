@@ -67,6 +67,20 @@ const requireRoleAny = (roles = []) => (req, res, next) => {
   next();
 };
 
+const roleMap = {
+  A: "adminA",
+  B: "staffB",
+  C: "staffC"
+};
+
+const requireRole = (level) => (req, res, next) => {
+  const mapped = roleMap[level] || level;
+  if (!hasRole(req.user, mapped)) {
+    return res.status(403).json({ message: "Access denied" });
+  }
+  next();
+};
+
 const requireAdmin = (req, res, next) => {
   if (!hasRole(req.user, "adminA")) {
     return res.status(403).json({ message: "Admin access required" });
@@ -76,4 +90,11 @@ const requireAdmin = (req, res, next) => {
 
 const requireAuth = authMiddleware;
 
-module.exports = { authMiddleware, requireAuth, blockBanned, requireAdmin, requireRoleAny };
+module.exports = {
+  authMiddleware,
+  requireAuth,
+  blockBanned,
+  requireAdmin,
+  requireRoleAny,
+  requireRole
+};

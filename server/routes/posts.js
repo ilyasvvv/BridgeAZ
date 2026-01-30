@@ -10,16 +10,16 @@ router.get("/", authMiddleware, blockBanned, async (req, res) => {
     const region = req.query.region || req.user.currentRegion;
     const visibility = region ? ["ALL", region] : ["ALL"];
 
-  const posts = await Post.find({ visibilityRegion: { $in: visibility } })
-    .populate("author", "name profilePhotoUrl currentRegion userType")
-    .populate({
-      path: "comments",
-      select: "author content createdAt",
-      options: { sort: { createdAt: -1 }, limit: 5 },
-      populate: { path: "author", select: "name profilePhotoUrl" }
-    })
-    .sort({ createdAt: -1 })
-    .limit(50);
+    const posts = await Post.find({ visibilityRegion: { $in: visibility } })
+      .populate("author", "name profilePhotoUrl currentRegion userType")
+      .populate({
+        path: "comments",
+        select: "author content createdAt",
+        options: { sort: { createdAt: -1 }, limit: 5 },
+        populate: { path: "author", select: "name profilePhotoUrl" }
+      })
+      .sort({ createdAt: -1 })
+      .limit(50);
 
     res.json(posts);
   } catch (error) {
@@ -69,7 +69,7 @@ router.post("/:id/like", authMiddleware, blockBanned, async (req, res) => {
   }
 });
 
-router.post("/:id/comment", authMiddleware, blockBanned, async (req, res) => {
+const handleCreateComment = async (req, res) => {
   try {
     const { content } = req.body;
     if (!content) {
@@ -106,7 +106,10 @@ router.post("/:id/comment", authMiddleware, blockBanned, async (req, res) => {
   } catch (error) {
     res.status(500).json({ message: "Failed to add comment" });
   }
-});
+};
+
+router.post("/:id/comment", authMiddleware, blockBanned, handleCreateComment);
+router.post("/:id/comments", authMiddleware, blockBanned, handleCreateComment);
 
 router.get("/:id/comments", authMiddleware, blockBanned, async (req, res) => {
   try {
@@ -122,6 +125,47 @@ router.get("/:id/comments", authMiddleware, blockBanned, async (req, res) => {
     res.json(comments);
   } catch (error) {
     res.status(500).json({ message: "Failed to load comments" });
+  }
+});
+
+router.patch("/:id", authMiddleware, blockBanned, async (req, res) => {
+  try {
+    const { content } = req.body || {};
+    if (!content) {
+      return res.status(400).json({ message: "Post content is required" });
+    }
+
+    const post = await Post.findById(req.params.id);
+    if (!post) {
+      return res.status(404).json({ message: "Post not found" });
+    }
+    if (!post.author.equals(req.user._id)) {
+      return res.status(403).json({ message: "Not authorized" });
+    }
+
+    post.content = content;
+    await post.save();
+    const populated = await post.populate("author", "name profilePhotoUrl currentRegion userType");
+    res.json(populated);
+  } catch (error) {
+    res.status(500).json({ message: "Failed to update post" });
+  }
+});
+
+router.delete("/:id", authMiddleware, blockBanned, async (req, res) => {
+  try {
+    const post = await Post.findById(req.params.id);
+    if (!post) {
+      return res.status(404).json({ message: "Post not found" });
+    }
+    if (!post.author.equals(req.user._id)) {
+      return res.status(403).json({ message: "Not authorized" });
+    }
+
+    await Post.deleteOne({ _id: req.params.id });
+    res.json({ ok: true });
+  } catch (error) {
+    res.status(500).json({ message: "Failed to delete post" });
   }
 });
 

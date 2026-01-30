@@ -125,7 +125,7 @@ export default function Register() {
         </button>
       </form>
       <p className="text-sm text-mist">
-        Already part of BridgeAZ? <Link to="/login" className="text-teal">Log in</Link>
+        Already part of BridgeAZ? <Link to="/join" className="text-teal">Log in</Link>
       </p>
     </div>
   );

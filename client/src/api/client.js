@@ -1,4 +1,6 @@
-export const API_BASE = import.meta.env.VITE_API_URL;
+const fallbackBase =
+  import.meta.env.MODE === "development" ? "http://localhost:5001/api" : "";
+export const API_BASE = import.meta.env.VITE_API_URL || fallbackBase;
 if (!API_BASE) {
   throw new Error(
     "Missing VITE_API_URL. Set it in Vercel env vars to https://bridgeaz.onrender.com/api"
@@ -49,23 +51,38 @@ export const apiClient = {
       },
       token
     ),
+  patch: (path, body, token) =>
+    request(
+      path,
+      {
+        method: "PATCH",
+        body: JSON.stringify(body)
+      },
+      token
+    ),
   delete: (path, token) => request(path, { method: "DELETE" }, token)
 };
 
-export const uploadFile = async (file, token) => {
-  const formData = new FormData();
-  formData.append("file", file);
+export const uploadViaPresign = async ({ file, purpose }, token) => {
+  const presign = await apiClient.post(
+    "/uploads/presign",
+    {
+      originalName: file.name,
+      mimeType: file.type,
+      sizeBytes: file.size,
+      purpose
+    },
+    token
+  );
 
-  const response = await fetch(`${API_BASE}/upload`, {
-    method: "POST",
-    headers: token ? { Authorization: `Bearer ${token}` } : {},
-    body: formData
+  const uploadResponse = await fetch(presign.uploadUrl, {
+    method: "PUT",
+    headers: presign.headers || { "Content-Type": file.type },
+    body: file
   });
-
-  if (!response.ok) {
-    const payload = await response.json().catch(() => ({}));
-    throw new Error(payload.message || "Upload failed");
+  if (!uploadResponse.ok) {
+    throw new Error("Upload failed");
   }
 
-  return response.json();
+  return presign;
 };

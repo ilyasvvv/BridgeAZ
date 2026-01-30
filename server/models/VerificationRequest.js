@@ -33,7 +33,9 @@ const verificationRequestSchema = new mongoose.Schema(
     adminReviewer: { type: mongoose.Schema.Types.ObjectId, ref: "User", alias: "reviewedBy" },
     adminComment: String,
     adminNotes: [adminNoteSchema],
-    reviewedAt: Date
+    reviewedAt: Date,
+    decidedBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+    decisionAt: Date
   },
   { timestamps: true }
 );

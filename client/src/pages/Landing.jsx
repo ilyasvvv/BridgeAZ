@@ -32,18 +32,18 @@ export default function Landing() {
             and the United States.
           </h1>
           <p className="text-base text-mist">
-            A warm, community-driven professional network built for mentorship, collaboration, and
-            opportunity-sharing. Think alumni energy, not corporate noise.
+            A community network for mentorship, career bridges, and collaboration across borders
+            without the noise of a corporate platform.
           </p>
           <div className="flex flex-wrap gap-4">
             <Link
-              to="/register"
+              to="/join"
               className="rounded-full bg-coral px-6 py-3 text-sm font-semibold uppercase tracking-wide text-charcoal"
             >
               Join as Student
             </Link>
             <Link
-              to="/register"
+              to="/join"
               className="rounded-full border border-white/20 px-6 py-3 text-sm font-semibold uppercase tracking-wide text-sand hover:border-teal"
             >
               Join as Professional

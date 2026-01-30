@@ -18,7 +18,9 @@ const validateDocumentUrl = (documentUrl) => {
   if (!documentUrl || typeof documentUrl !== "string") {
     return { ok: false, status: 400, message: "documentUrl is required" };
   }
-  if (!documentUrl.startsWith(`${baseUrl}/`)) {
+  const isR2Url = documentUrl.startsWith(`${baseUrl}/`);
+  const isHttps = documentUrl.startsWith("https://");
+  if (!isR2Url && !isHttps) {
     return { ok: false, status: 400, message: "Invalid documentUrl" };
   }
   return { ok: true };
@@ -72,6 +74,11 @@ router.post("/mentor", authMiddleware, blockBanned, async (req, res) => {
     const validation = validateDocumentUrl(documentUrl);
     if (!validation.ok) {
       return res.status(validation.status).json({ message: validation.message });
+    }
+    if (!universityEmail && !linkedinUrl && !note) {
+      return res
+        .status(400)
+        .json({ message: "Provide at least one mentor detail." });
     }
 
     const existing = await VerificationRequest.findOne({

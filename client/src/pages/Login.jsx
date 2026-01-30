@@ -19,7 +19,9 @@ export default function Login() {
     try {
       const data = await apiClient.post("/auth/login", form);
       login(data.token, data.user);
-      navigate(data.user.isAdmin ? "/admin" : "/fyp");
+      const roles = Array.isArray(data.user.roles) ? data.user.roles : [];
+      const canAdmin = data.user.isAdmin || roles.some((role) => ["staffC", "staffB", "adminA"].includes(role));
+      navigate(canAdmin ? "/admin" : "/fyp");
     } catch (err) {
       setError(err.message || "Login failed");
     }
@@ -61,7 +63,7 @@ export default function Login() {
         </button>
       </form>
       <p className="text-sm text-mist">
-        New here? <Link to="/register" className="text-teal">Create an account</Link>
+        New here? <Link to="/join" className="text-teal">Create an account</Link>
       </p>
     </div>
   );

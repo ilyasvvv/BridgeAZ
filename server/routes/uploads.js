@@ -33,17 +33,30 @@ router.post("/presign", authMiddleware, blockBanned, async (req, res) => {
       return res.status(400).json({ message: "Invalid upload request" });
     }
 
-    if (purpose !== "verification") {
+    const allowedPurposes = new Set(["verification", "avatar", "resume", "attachment"]);
+    if (!allowedPurposes.has(purpose)) {
       return res.status(400).json({ message: "Invalid upload purpose" });
     }
 
     try {
-      validateUpload({ mimeType, sizeBytes: parsedSize });
+      if (purpose === "avatar") {
+        if (!["image/png", "image/jpeg"].includes(mimeType)) {
+          throw new Error("Unsupported file type");
+        }
+        if (!Number.isFinite(parsedSize) || parsedSize <= 0) {
+          throw new Error("Invalid file size");
+        }
+        if (parsedSize > 5 * 1024 * 1024) {
+          throw new Error("File must be 5MB or less");
+        }
+      } else {
+        validateUpload({ mimeType, sizeBytes: parsedSize });
+      }
     } catch (error) {
       return res.status(400).json({ message: error.message });
     }
 
-    const objectKey = buildObjectKey(req.user._id, originalName);
+    const objectKey = buildObjectKey(req.user._id, originalName, purpose);
     const command = new PutObjectCommand({
       Bucket: process.env.R2_BUCKET,
       Key: objectKey,

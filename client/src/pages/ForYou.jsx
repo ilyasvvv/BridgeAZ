@@ -28,6 +28,10 @@ export default function ForYou() {
   const [savedPosts, setSavedPosts] = useState(new Set());
   const [activePostId, setActivePostId] = useState(null);
   const [commentDrafts, setCommentDrafts] = useState({});
+  const [editingPostId, setEditingPostId] = useState(null);
+  const [editDraft, setEditDraft] = useState("");
+  const [threadPostId, setThreadPostId] = useState(null);
+  const [threadComments, setThreadComments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -98,6 +102,41 @@ export default function ForYou() {
     void postId;
   };
 
+  const handleEdit = (post) => {
+    setEditingPostId(post._id);
+    setEditDraft(post.content || "");
+  };
+
+  const handleEditSave = async (postId) => {
+    try {
+      const updated = await apiClient.patch(`/posts/${postId}`, { content: editDraft }, token);
+      setPosts((prev) => prev.map((post) => (post._id === postId ? updated : post)));
+      setEditingPostId(null);
+      setEditDraft("");
+    } catch (err) {
+      setError(err.message || "Failed to update post");
+    }
+  };
+
+  const handleDelete = async (postId) => {
+    try {
+      await apiClient.delete(`/posts/${postId}`, token);
+      setPosts((prev) => prev.filter((post) => post._id !== postId));
+    } catch (err) {
+      setError(err.message || "Failed to delete post");
+    }
+  };
+
+  const handleViewReplies = async (postId) => {
+    try {
+      const comments = await apiClient.get(`/posts/${postId}/comments`, token);
+      setThreadPostId(postId);
+      setThreadComments(comments);
+    } catch (err) {
+      setError(err.message || "Failed to load replies");
+    }
+  };
+
   const handleReplySubmit = async (postId, event) => {
     event.preventDefault();
     const content = commentDrafts[postId];
@@ -105,7 +144,7 @@ export default function ForYou() {
 
     try {
       const updated = await apiClient.post(
-        `/posts/${postId}/comment`,
+        `/posts/${postId}/comments`,
         { content },
         token
       );
@@ -156,6 +195,10 @@ export default function ForYou() {
                     }
                     onSave={() => handleToggleSave(post._id)}
                     onFollow={() => handleFollow(post._id)}
+                    onEdit={() => handleEdit(post)}
+                    onDelete={() => handleDelete(post._id)}
+                    onViewReplies={() => handleViewReplies(post._id)}
+                    isOwner={post.author?._id === user?._id}
                     isSaved={savedPosts.has(post._id)}
                     showReply={activePostId === post._id}
                     replyValue={commentDrafts[post._id] || ""}
@@ -209,6 +252,10 @@ export default function ForYou() {
                     }
                     onSave={() => handleToggleSave(post._id)}
                     onFollow={() => handleFollow(post._id)}
+                    onEdit={() => handleEdit(post)}
+                    onDelete={() => handleDelete(post._id)}
+                    onViewReplies={() => handleViewReplies(post._id)}
+                    isOwner={post.author?._id === user?._id}
                     isSaved={savedPosts.has(post._id)}
                     showReply={activePostId === post._id}
                     replyValue={commentDrafts[post._id] || ""}
@@ -224,6 +271,58 @@ export default function ForYou() {
               </div>
             )}
           </section>
+
+          {editingPostId && (
+            <section className="glass rounded-2xl p-5 space-y-3">
+              <h3 className="font-display text-lg">Edit post</h3>
+              <textarea
+                value={editDraft}
+                onChange={(event) => setEditDraft(event.target.value)}
+                rows={3}
+                className="w-full rounded-xl border border-white/10 bg-slate/40 px-4 py-2 text-sm text-sand"
+              />
+              <div className="flex gap-2">
+                <button
+                  onClick={() => handleEditSave(editingPostId)}
+                  className="rounded-full bg-teal px-4 py-2 text-xs font-semibold uppercase tracking-wide text-charcoal"
+                >
+                  Save
+                </button>
+                <button
+                  onClick={() => setEditingPostId(null)}
+                  className="rounded-full border border-white/10 px-4 py-2 text-xs uppercase tracking-wide text-mist hover:border-teal"
+                >
+                  Cancel
+                </button>
+              </div>
+            </section>
+          )}
+
+          {threadPostId && (
+            <section className="glass rounded-2xl p-5 space-y-3">
+              <div className="flex items-center justify-between">
+                <h3 className="font-display text-lg">Replies</h3>
+                <button
+                  onClick={() => setThreadPostId(null)}
+                  className="text-xs uppercase tracking-wide text-mist hover:text-sand"
+                >
+                  Close
+                </button>
+              </div>
+              {threadComments.length === 0 ? (
+                <p className="text-sm text-mist">No replies yet.</p>
+              ) : (
+                <div className="space-y-2">
+                  {threadComments.map((comment) => (
+                    <div key={comment._id} className="rounded-xl border border-white/10 p-3 text-sm text-sand">
+                      <p className="text-xs text-mist">{comment.author?.name || "Member"}</p>
+                      <p>{comment.content}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </section>
+          )}
 
           <section className="glass rounded-2xl p-5 space-y-4">
             <div className="flex flex-wrap items-center justify-between gap-3">
