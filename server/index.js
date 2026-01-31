@@ -19,22 +19,34 @@ const networkRoutes = require("./routes/network");
 
 const app = express();
 
-const allowedOrigins = new Set([
-  "https://bridge-az.vercel.app",
-  "https://bridgeaz.onrender.com"
-]);
+const allowedOrigins = new Set(
+  (process.env.SERVER_ALLOWED_ORIGINS || "http://localhost:5173")
+    .split(",")
+    .map((origin) => origin.trim())
+    .filter(Boolean)
+);
+
+const originRegex = process.env.SERVER_ALLOWED_ORIGIN_REGEX
+  ? new RegExp(process.env.SERVER_ALLOWED_ORIGIN_REGEX)
+  : null;
 
 const corsOptions = {
   origin: (origin, callback) => {
     if (!origin) {
       return callback(null, true);
     }
-    if (allowedOrigins.has(origin) || /\.vercel\.app$/.test(origin)) {
+    if (allowedOrigins.has(origin)) {
       return callback(null, true);
+    }
+    if (originRegex && originRegex.test(origin)) {
+      return callback(null, true);
+    }
+    if (process.env.NODE_ENV !== "production") {
+      console.warn(`CORS blocked origin: ${origin}`);
     }
     return callback(new Error("Not allowed by CORS"));
   },
-  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization"],
   credentials: true
 };
