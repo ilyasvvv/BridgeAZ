@@ -23,6 +23,7 @@ export default function Admin() {
   const [banReason, setBanReason] = useState("");
   const [opportunities, setOpportunities] = useState([]);
   const [opportunityMessage, setOpportunityMessage] = useState("");
+  const [actionLoading, setActionLoading] = useState({});
 
   const roles = Array.isArray(user?.roles) ? user.roles : [];
   const canC = user?.isAdmin || roles.includes("staffC") || roles.includes("staffB") || roles.includes("adminA");
@@ -92,13 +93,22 @@ export default function Admin() {
 
   const handleAction = async (id, action) => {
     try {
-      await apiClient.patch(`/admin/verifications/${id}/${action}`, {
-        adminComment: comment[id] || ""
-      }, token);
+      setActionLoading((prev) => ({ ...prev, [id]: action }));
+      const response = await apiClient.patch(
+        `/admin/verifications/${id}/${action}`,
+        { adminNotes: comment[id] || "" },
+        token
+      );
       setMessage(`Request ${action}d.`);
-      loadRequests();
+      setRequests((prev) => prev.filter((item) => item._id !== response.verification?._id));
     } catch (error) {
       setMessage(error.message || "Action failed");
+    } finally {
+      setActionLoading((prev) => {
+        const next = { ...prev };
+        delete next[id];
+        return next;
+      });
     }
   };
 
@@ -218,15 +228,17 @@ export default function Admin() {
                 <div className="mt-4 flex gap-3">
                   <button
                     onClick={() => handleAction(request._id, "approve")}
+                    disabled={!!actionLoading[request._id]}
                     className="rounded-full bg-teal px-4 py-2 text-xs font-semibold uppercase tracking-wide text-charcoal"
                   >
-                    Approve
+                    {actionLoading[request._id] === "approve" ? "Approving..." : "Approve"}
                   </button>
                   <button
                     onClick={() => handleAction(request._id, "reject")}
+                    disabled={!!actionLoading[request._id]}
                     className="rounded-full border border-white/10 px-4 py-2 text-xs uppercase tracking-wide text-sand hover:border-coral"
                   >
-                    Reject
+                    {actionLoading[request._id] === "reject" ? "Rejecting..." : "Reject"}
                   </button>
                 </div>
               </div>

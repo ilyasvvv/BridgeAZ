@@ -146,10 +146,16 @@ router.patch(
       if (!request) {
         return res.status(404).json({ message: "Request not found" });
       }
+      if (request.status !== "pending") {
+        return res.status(400).json({ message: "Verification is not pending" });
+      }
 
       request.status = "approved";
       request.adminReviewer = req.user._id;
       request.adminComment = req.body.adminComment || "";
+      if (req.body.adminNotes) {
+        request.adminComment = req.body.adminNotes;
+      }
       request.decidedBy = req.user._id;
       request.decisionAt = new Date();
       request.reviewedAt = new Date();
@@ -176,7 +182,7 @@ router.patch(
         metadata: { requestId: request._id }
       });
 
-      res.json({ message: "Approved" });
+      res.json({ ok: true, verification: request });
     } catch (error) {
       res.status(500).json({ message: "Failed to approve" });
     }
@@ -193,10 +199,16 @@ router.patch(
       if (!request) {
         return res.status(404).json({ message: "Request not found" });
       }
+      if (request.status !== "pending") {
+        return res.status(400).json({ message: "Verification is not pending" });
+      }
 
       request.status = "rejected";
       request.adminReviewer = req.user._id;
       request.adminComment = req.body.adminComment || "";
+      if (req.body.adminNotes) {
+        request.adminComment = req.body.adminNotes;
+      }
       request.decidedBy = req.user._id;
       request.decisionAt = new Date();
       request.reviewedAt = new Date();
@@ -219,7 +231,7 @@ router.patch(
         metadata: { requestId: request._id }
       });
 
-      res.json({ message: "Rejected" });
+      res.json({ ok: true, verification: request });
     } catch (error) {
       res.status(500).json({ message: "Failed to reject" });
     }
