@@ -20,15 +20,27 @@ const networkRoutes = require("./routes/network");
 const app = express();
 
 const allowedOrigins = new Set(
-  (process.env.SERVER_ALLOWED_ORIGINS || "http://localhost:5173")
+  (
+    process.env.SERVER_ALLOWED_ORIGINS ||
+    process.env.CLIENT_URL ||
+    "http://localhost:5173,https://bridge-az.vercel.app"
+  )
     .split(",")
     .map((origin) => origin.trim())
     .filter(Boolean)
 );
 
-const originRegex = process.env.SERVER_ALLOWED_ORIGIN_REGEX
-  ? new RegExp(process.env.SERVER_ALLOWED_ORIGIN_REGEX)
-  : null;
+let originRegex = null;
+if (process.env.SERVER_ALLOWED_ORIGIN_REGEX) {
+  try {
+    originRegex = new RegExp(process.env.SERVER_ALLOWED_ORIGIN_REGEX);
+  } catch (error) {
+    if (process.env.NODE_ENV !== "production") {
+      console.warn("Invalid SERVER_ALLOWED_ORIGIN_REGEX; ignoring.");
+    }
+    originRegex = null;
+  }
+}
 
 const corsOptions = {
   origin: (origin, callback) => {
@@ -44,7 +56,7 @@ const corsOptions = {
     if (process.env.NODE_ENV !== "production") {
       console.warn(`CORS blocked origin: ${origin}`);
     }
-    return callback(new Error("Not allowed by CORS"));
+    return callback(null, false);
   },
   methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization"],
@@ -52,6 +64,7 @@ const corsOptions = {
 };
 
 app.use(cors(corsOptions));
+// Handle preflight globally so OPTIONS never reaches auth/routes.
 app.options("*", cors(corsOptions));
 app.use(express.json({ limit: "2mb" }));
 
