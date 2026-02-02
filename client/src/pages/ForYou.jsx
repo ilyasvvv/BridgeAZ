@@ -332,7 +332,16 @@ export default function ForYou() {
                 <div className="space-y-2">
                   {threadComments.map((comment) => (
                     <div key={comment._id} className="rounded-xl border border-white/10 p-3 text-sm text-sand">
-                      <p className="text-xs text-mist">{comment.author?.name || "Member"}</p>
+                      {comment.author?._id ? (
+                        <Link
+                          to={`/profile/${comment.author._id}`}
+                          className="text-xs text-mist hover:text-sand hover:underline"
+                        >
+                          {comment.author?.name || "Member"}
+                        </Link>
+                      ) : (
+                        <p className="text-xs text-mist">{comment.author?.name || "Member"}</p>
+                      )}
                       <p>{comment.content}</p>
                     </div>
                   ))}

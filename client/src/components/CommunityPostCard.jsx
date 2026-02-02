@@ -1,3 +1,5 @@
+import { useState } from "react";
+import { Link } from "react-router-dom";
 import RegionPill from "./RegionPill";
 import StatusBadge from "./StatusBadge";
 import { formatRelativeTime } from "../utils/format";
@@ -18,6 +20,7 @@ export default function CommunityPostCard({
   onReplyChange,
   onReplySubmit
 }) {
+  const [shareStatus, setShareStatus] = useState("");
   const comments = post.comments || [];
   const attachmentUrl = post.attachmentUrl;
   const attachmentContentType = post.attachmentContentType || "";
@@ -30,11 +33,45 @@ export default function CommunityPostCard({
   const attachmentLabel = attachmentUrl ? attachmentUrl.split("/").pop() : "";
   const liked = !!post.likedByMe;
   const likesCount = post.likesCount ?? post.likes?.length ?? 0;
+
+  const handleShare = async () => {
+    const url = `${window.location.origin}/post/${post._id}`;
+    const text = (post.content || "").slice(0, 80);
+
+    const setTempStatus = (value) => {
+      setShareStatus(value);
+      setTimeout(() => setShareStatus(""), 1500);
+    };
+
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: "BridgeAZ", text, url });
+        setTempStatus("Shared");
+        return;
+      } catch (error) {
+        // Fall back to clipboard on failure or cancel.
+      }
+    }
+
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(url);
+      setTempStatus("Copied");
+      return;
+    }
+
+    window.prompt("Copy link:", url);
+    setTempStatus("Copied");
+  };
   return (
     <div className="glass gradient-border relative rounded-2xl p-5 min-w-0">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <p className="text-sm text-mist">{post.author?.name || "Member"}</p>
+          <Link
+            to={post.author?._id ? `/profile/${post.author._id}` : "#"}
+            className="text-sm text-mist hover:text-sand hover:underline"
+          >
+            {post.author?.name || "Member"}
+          </Link>
           <div className="mt-2 flex items-center gap-2">
             <RegionPill region={post.author?.currentRegion || "AZ"} />
             <span className="text-xs text-mist">{formatRelativeTime(post.createdAt)}</span>
@@ -92,6 +129,12 @@ export default function CommunityPostCard({
           {liked ? "Liked" : "Like"}
         </button>
         <button
+          onClick={handleShare}
+          className="rounded-full border border-white/10 px-3 py-1 uppercase tracking-wide hover:border-teal"
+        >
+          {shareStatus || "Share"}
+        </button>
+        <button
           onClick={onRespond}
           className="rounded-full border border-white/10 px-3 py-1 uppercase tracking-wide hover:border-teal"
         >
@@ -132,7 +175,16 @@ export default function CommunityPostCard({
         <div className="mt-4 space-y-2 rounded-xl border border-white/10 bg-white/5 p-3 text-xs text-mist">
           {comments.map((comment) => (
             <div key={comment._id} className="space-y-1">
-              <p className="text-sand">{comment.author?.name || "Member"}</p>
+              {comment.author?._id ? (
+                <Link
+                  to={`/profile/${comment.author._id}`}
+                  className="text-xs text-mist hover:text-sand hover:underline"
+                >
+                  {comment.author?.name || "Member"}
+                </Link>
+              ) : (
+                <p className="text-xs text-mist">{comment.author?.name || "Member"}</p>
+              )}
               <p>{comment.content}</p>
             </div>
           ))}

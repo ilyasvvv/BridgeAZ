@@ -213,7 +213,7 @@ export default function Dashboard() {
             <a href="/explore" className="block hover:text-sand">
               Browse members
             </a>
-            <a href={`/profile/${user._id}`} className="block hover:text-sand">
+            <a href={`/profile/${user._id}/edit`} className="block hover:text-sand">
               View your profile
             </a>
             {(user.isAdmin || (user.roles || []).some((role) => ["staffC", "staffB", "adminA"].includes(role))) && (

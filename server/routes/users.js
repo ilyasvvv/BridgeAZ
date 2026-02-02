@@ -1,4 +1,5 @@
 const express = require("express");
+const mongoose = require("mongoose");
 const User = require("../models/User");
 const { authMiddleware, blockBanned } = require("../middleware/auth");
 
@@ -50,6 +51,23 @@ router.put("/me", authMiddleware, blockBanned, async (req, res) => {
     res.json(user);
   } catch (error) {
     res.status(500).json({ message: "Profile update failed" });
+  }
+});
+
+router.get("/:id/public", authMiddleware, blockBanned, async (req, res) => {
+  try {
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return res.status(400).json({ message: "Invalid user id" });
+    }
+    const user = await User.findById(req.params.id).select(
+      "name userType currentRegion profilePhotoUrl avatarUrl headline bio education experience skills links socialLinks createdAt"
+    );
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+    res.json(user);
+  } catch (error) {
+    res.status(500).json({ message: "Failed to load user" });
   }
 });
 

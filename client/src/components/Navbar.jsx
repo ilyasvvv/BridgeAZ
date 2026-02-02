@@ -69,7 +69,7 @@ export default function Navbar() {
               <NavLink className={navClass} to="/chats">
                 Chats
               </NavLink>
-              <NavLink className={navClass} to={`/profile/${user._id}`}>
+              <NavLink className={navClass} to={`/profile/${user._id}/edit`}>
                 Profile
               </NavLink>
             </>

@@ -22,6 +22,9 @@ router.post("/threads", authMiddleware, blockBanned, async (req, res) => {
     if (!userId) {
       return res.status(400).json({ message: "userId is required" });
     }
+    if (String(userId) === String(req.user._id)) {
+      return res.status(400).json({ message: "Cannot message yourself" });
+    }
 
     const existing = await ChatThread.findOne({
       participants: { $all: [req.user._id, userId] }

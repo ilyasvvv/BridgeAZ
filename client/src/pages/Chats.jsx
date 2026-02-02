@@ -1,22 +1,35 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useLocation } from "react-router-dom";
 import { apiClient } from "../api/client";
 import { useAuth } from "../utils/auth";
 
 export default function Chats() {
   const { token } = useAuth();
+  const location = useLocation();
   const [threads, setThreads] = useState([]);
   const [activeThread, setActiveThread] = useState(null);
   const [messages, setMessages] = useState([]);
   const [body, setBody] = useState("");
   const [error, setError] = useState("");
+  const requestedThreadId = useMemo(() => {
+    const params = new URLSearchParams(location.search);
+    return params.get("thread");
+  }, [location.search]);
 
   const loadThreads = async () => {
     setError("");
     try {
       const data = await apiClient.get("/chats/threads", token);
       setThreads(data);
-      if (data.length && !activeThread) {
-        setActiveThread(data[0]);
+      if (data.length) {
+        const preferred = requestedThreadId
+          ? data.find((thread) => thread._id === requestedThreadId)
+          : null;
+        if (preferred) {
+          setActiveThread(preferred);
+        } else if (!activeThread) {
+          setActiveThread(data[0]);
+        }
       }
     } catch (err) {
       setError(err.message || "Failed to load threads");
@@ -36,7 +49,7 @@ export default function Chats() {
     if (token) {
       loadThreads();
     }
-  }, [token]);
+  }, [token, requestedThreadId]);
 
   useEffect(() => {
     if (activeThread?._id) {

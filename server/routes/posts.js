@@ -1,4 +1,5 @@
 const express = require("express");
+const mongoose = require("mongoose");
 const Post = require("../models/Post");
 const Comment = require("../models/Comment");
 const Notification = require("../models/Notification");
@@ -122,6 +123,34 @@ router.post("/:id/like", authMiddleware, blockBanned, async (req, res) => {
     res.json({ likesCount: post.likes.length, likedByMe: !alreadyLiked });
   } catch (error) {
     res.status(500).json({ message: "Failed to toggle like" });
+  }
+});
+
+router.get("/:id", authMiddleware, blockBanned, async (req, res) => {
+  try {
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return res.status(400).json({ message: "Invalid post id" });
+    }
+
+    const post = await Post.findById(req.params.id)
+      .populate("author", "name profilePhotoUrl currentRegion userType")
+      .populate({
+        path: "comments",
+        select: "author content createdAt",
+        options: { sort: { createdAt: -1 }, limit: 5 },
+        populate: { path: "author", select: "name profilePhotoUrl" }
+      });
+
+    if (!post) {
+      return res.status(404).json({ message: "Post not found" });
+    }
+
+    const likedByMe = post.likes?.some((id) => id.equals(req.user._id)) || false;
+    const likesCount = post.likes?.length || 0;
+    const obj = post.toObject ? post.toObject() : post;
+    res.json({ ...obj, likedByMe, likesCount });
+  } catch (error) {
+    res.status(500).json({ message: "Failed to load post" });
   }
 });
 

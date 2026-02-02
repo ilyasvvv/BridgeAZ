@@ -1,8 +1,11 @@
+import { useState } from "react";
+import { Link } from "react-router-dom";
 import StatusBadge from "./StatusBadge";
 import RegionPill from "./RegionPill";
 import { formatRelativeTime } from "../utils/format";
 
 export default function PostCard({ post, onLike }) {
+  const [shareStatus, setShareStatus] = useState("");
   const attachmentUrl = post.attachmentUrl;
   const attachmentContentType = post.attachmentContentType || "";
   const lowerUrl = (attachmentUrl || "").toLowerCase();
@@ -14,11 +17,46 @@ export default function PostCard({ post, onLike }) {
   const attachmentLabel = attachmentUrl ? attachmentUrl.split("/").pop() : "";
   const liked = !!post.likedByMe;
   const likesCount = post.likesCount ?? post.likes?.length ?? 0;
+
+  const handleShare = async () => {
+    const url = `${window.location.origin}/post/${post._id}`;
+    const text = (post.content || "").slice(0, 80);
+
+    const setTempStatus = (value) => {
+      setShareStatus(value);
+      setTimeout(() => setShareStatus(""), 1500);
+    };
+
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: "BridgeAZ", text, url });
+        setTempStatus("Shared");
+        return;
+      } catch (error) {
+        // Fall back to clipboard on failure or cancel.
+      }
+    }
+
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(url);
+      setTempStatus("Copied");
+      return;
+    }
+
+    window.prompt("Copy link:", url);
+    setTempStatus("Copied");
+  };
+
   return (
     <div className="glass gradient-border relative rounded-2xl p-5 min-w-0">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <p className="text-sm text-mist">{post.author?.name || "Member"}</p>
+          <Link
+            to={post.author?._id ? `/profile/${post.author._id}` : "#"}
+            className="text-sm text-mist hover:text-sand hover:underline"
+          >
+            {post.author?.name || "Member"}
+          </Link>
           <div className="mt-2 flex items-center gap-2">
             <RegionPill region={post.author?.currentRegion || "AZ"} />
             <span className="text-xs text-mist">{formatRelativeTime(post.createdAt)}</span>
@@ -62,16 +100,24 @@ export default function PostCard({ post, onLike }) {
           )}
         </div>
       )}
-      <div className="mt-4 flex items-center justify-between text-xs text-mist">
+      <div className="mt-4 flex flex-wrap items-center justify-between gap-2 text-xs text-mist">
         <span>{likesCount} likes</span>
-        <button
-          onClick={() => onLike?.(post._id)}
-          className={`rounded-full border px-3 py-1 uppercase tracking-wide ${
-            liked ? "border-teal text-teal" : "border-white/10 hover:border-teal"
-          }`}
-        >
-          {liked ? "Liked" : "Like"}
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            onClick={() => onLike?.(post._id)}
+            className={`rounded-full border px-3 py-1 uppercase tracking-wide ${
+              liked ? "border-teal text-teal" : "border-white/10 hover:border-teal"
+            }`}
+          >
+            {liked ? "Liked" : "Like"}
+          </button>
+          <button
+            onClick={handleShare}
+            className="rounded-full border border-white/10 px-3 py-1 uppercase tracking-wide hover:border-teal"
+          >
+            {shareStatus || "Share"}
+          </button>
+        </div>
       </div>
     </div>
   );

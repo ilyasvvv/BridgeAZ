@@ -8,10 +8,12 @@ import Join from "./pages/Join";
 import Contact from "./pages/Contact";
 import Dashboard from "./pages/Dashboard";
 import Profile from "./pages/Profile";
+import PublicProfile from "./pages/PublicProfile";
 import Explore from "./pages/Explore";
 import Admin from "./pages/Admin";
 import AccessDenied from "./pages/AccessDenied";
 import ForYou from "./pages/ForYou";
+import PostDetail from "./pages/PostDetail";
 import Opportunities from "./pages/Opportunities";
 import OpportunityDetail from "./pages/OpportunityDetail";
 import Notifications from "./pages/Notifications";
@@ -53,6 +55,14 @@ export default function App() {
           }
         />
         <Route
+          path="/post/:id"
+          element={
+            <ProtectedRoute>
+              <PostDetail />
+            </ProtectedRoute>
+          }
+        />
+        <Route
           path="/dashboard"
           element={
             <ProtectedRoute>
@@ -77,7 +87,15 @@ export default function App() {
           }
         />
         <Route
-          path="/profile/:userId"
+          path="/profile/:id"
+          element={
+            <ProtectedRoute>
+              <PublicProfile />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/profile/:id/edit"
           element={
             <ProtectedRoute>
               <Profile />
