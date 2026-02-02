@@ -102,6 +102,21 @@ export default function ForYou() {
     void postId;
   };
 
+  const handleLike = async (postId) => {
+    try {
+      const response = await apiClient.post(`/posts/${postId}/like`, {}, token);
+      setPosts((prev) =>
+        prev.map((post) =>
+          post._id === postId
+            ? { ...post, likesCount: response.likesCount, likedByMe: response.likedByMe }
+            : post
+        )
+      );
+    } catch (err) {
+      setError(err.message || "Failed to like");
+    }
+  };
+
   const handleEdit = (post) => {
     setEditingPostId(post._id);
     setEditDraft(post.content || "");
@@ -195,6 +210,7 @@ export default function ForYou() {
                     }
                     onSave={() => handleToggleSave(post._id)}
                     onFollow={() => handleFollow(post._id)}
+                    onLike={() => handleLike(post._id)}
                     onEdit={() => handleEdit(post)}
                     onDelete={() => handleDelete(post._id)}
                     onViewReplies={() => handleViewReplies(post._id)}
@@ -252,6 +268,7 @@ export default function ForYou() {
                     }
                     onSave={() => handleToggleSave(post._id)}
                     onFollow={() => handleFollow(post._id)}
+                    onLike={() => handleLike(post._id)}
                     onEdit={() => handleEdit(post)}
                     onDelete={() => handleDelete(post._id)}
                     onViewReplies={() => handleViewReplies(post._id)}

@@ -7,6 +7,7 @@ export default function CommunityPostCard({
   onRespond,
   onSave,
   onFollow,
+  onLike,
   onEdit,
   onDelete,
   onViewReplies,
@@ -27,6 +28,8 @@ export default function CommunityPostCard({
   const isPdf =
     attachmentContentType === "application/pdf" || lowerUrl.endsWith(".pdf");
   const attachmentLabel = attachmentUrl ? attachmentUrl.split("/").pop() : "";
+  const liked = !!post.likedByMe;
+  const likesCount = post.likesCount ?? post.likes?.length ?? 0;
   return (
     <div className="glass gradient-border relative rounded-2xl p-5 min-w-0">
       <div className="flex flex-wrap items-start justify-between gap-4">
@@ -76,10 +79,18 @@ export default function CommunityPostCard({
         </div>
       )}
       <div className="mt-4 flex flex-wrap items-center gap-3 text-xs text-mist">
-        <span>{post.likes?.length || 0} likes</span>
+        <span>{likesCount} likes</span>
         <span>{post.comments?.length || 0} responses</span>
       </div>
       <div className="mt-4 flex flex-wrap items-center gap-3 text-xs text-mist">
+        <button
+          onClick={() => onLike?.(post._id)}
+          className={`rounded-full border px-3 py-1 uppercase tracking-wide ${
+            liked ? "border-teal text-teal" : "border-white/10 hover:border-teal"
+          }`}
+        >
+          {liked ? "Liked" : "Like"}
+        </button>
         <button
           onClick={onRespond}
           className="rounded-full border border-white/10 px-3 py-1 uppercase tracking-wide hover:border-teal"

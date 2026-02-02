@@ -12,6 +12,8 @@ export default function PostCard({ post, onLike }) {
   const isPdf =
     attachmentContentType === "application/pdf" || lowerUrl.endsWith(".pdf");
   const attachmentLabel = attachmentUrl ? attachmentUrl.split("/").pop() : "";
+  const liked = !!post.likedByMe;
+  const likesCount = post.likesCount ?? post.likes?.length ?? 0;
   return (
     <div className="glass gradient-border relative rounded-2xl p-5 min-w-0">
       <div className="flex items-start justify-between gap-4">
@@ -61,12 +63,14 @@ export default function PostCard({ post, onLike }) {
         </div>
       )}
       <div className="mt-4 flex items-center justify-between text-xs text-mist">
-        <span>{post.likes?.length || 0} likes</span>
+        <span>{likesCount} likes</span>
         <button
           onClick={() => onLike?.(post._id)}
-          className="rounded-full border border-white/10 px-3 py-1 uppercase tracking-wide hover:border-teal"
+          className={`rounded-full border px-3 py-1 uppercase tracking-wide ${
+            liked ? "border-teal text-teal" : "border-white/10 hover:border-teal"
+          }`}
         >
-          Like
+          {liked ? "Liked" : "Like"}
         </button>
       </div>
     </div>

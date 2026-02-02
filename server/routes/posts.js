@@ -21,7 +21,14 @@ router.get("/", authMiddleware, blockBanned, async (req, res) => {
       .sort({ createdAt: -1 })
       .limit(50);
 
-    res.json(posts);
+    const enriched = posts.map((post) => {
+      const likedByMe = post.likes?.some((id) => id.equals(req.user._id)) || false;
+      const likesCount = post.likes?.length || 0;
+      const obj = post.toObject ? post.toObject() : post;
+      return { ...obj, likedByMe, likesCount };
+    });
+
+    res.json(enriched);
   } catch (error) {
     res.status(500).json({ message: "Failed to load posts" });
   }
@@ -87,7 +94,7 @@ router.post("/:id/like", authMiddleware, blockBanned, async (req, res) => {
     }
 
     await post.save();
-    res.json({ likes: post.likes.length });
+    res.json({ likesCount: post.likes.length, likedByMe: !alreadyLiked });
   } catch (error) {
     res.status(500).json({ message: "Failed to toggle like" });
   }

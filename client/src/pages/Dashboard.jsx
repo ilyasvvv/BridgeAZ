@@ -79,8 +79,18 @@ export default function Dashboard() {
 
   const handleLike = async (postId) => {
     try {
-      await apiClient.post(`/posts/${postId}/like`, {}, token);
-      loadPosts(region);
+      const response = await apiClient.post(`/posts/${postId}/like`, {}, token);
+      setPosts((prev) =>
+        prev.map((post) =>
+          post._id === postId
+            ? {
+                ...post,
+                likesCount: response.likesCount,
+                likedByMe: response.likedByMe
+              }
+            : post
+        )
+      );
     } catch (err) {
       setError(err.message || "Failed to like");
     }
