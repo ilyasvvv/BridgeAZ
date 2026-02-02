@@ -69,6 +69,7 @@ export const uploadViaPresign = async ({ file, purpose }, token) => {
     {
       originalName: file.name,
       mimeType: file.type,
+      contentType: file.type,
       sizeBytes: file.size,
       purpose
     },

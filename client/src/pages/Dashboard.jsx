@@ -44,6 +44,7 @@ export default function Dashboard() {
     setError("");
     try {
       let attachmentUrl;
+      let attachmentContentType;
       if (attachment) {
         if (!allowedTypes.includes(attachment.type)) {
           setError("Unsupported file type");
@@ -56,10 +57,16 @@ export default function Dashboard() {
 
         const upload = await uploadViaPresign({ file: attachment, purpose: "attachment" }, token);
         attachmentUrl = upload.documentUrl;
+        attachmentContentType = attachment.type || "application/octet-stream";
       }
       const created = await apiClient.post(
         "/posts",
-        { content, attachmentUrl, visibilityRegion: region === "ALL" ? "ALL" : region },
+        {
+          content,
+          attachmentUrl,
+          attachmentContentType,
+          visibilityRegion: region === "ALL" ? "ALL" : region
+        },
         token
       );
       setPosts((prev) => [created, ...prev]);

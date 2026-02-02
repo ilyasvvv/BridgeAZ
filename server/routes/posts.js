@@ -29,15 +29,39 @@ router.get("/", authMiddleware, blockBanned, async (req, res) => {
 
 router.post("/", authMiddleware, blockBanned, async (req, res) => {
   try {
-    const { content, attachmentUrl, visibilityRegion } = req.body;
+    const { content, attachmentUrl, attachmentContentType, visibilityRegion } = req.body;
     if (!content) {
       return res.status(400).json({ message: "Post content is required" });
     }
+
+    const inferContentTypeFromUrl = (url) => {
+      if (!url) return "";
+      const lower = url.toLowerCase();
+      if (lower.endsWith(".png")) return "image/png";
+      if (lower.endsWith(".jpg") || lower.endsWith(".jpeg")) return "image/jpeg";
+      if (lower.endsWith(".webp")) return "image/webp";
+      if (lower.endsWith(".gif")) return "image/gif";
+      if (lower.endsWith(".pdf")) return "application/pdf";
+      return "";
+    };
+
+    const resolveKind = (type, url) => {
+      const t = type || inferContentTypeFromUrl(url);
+      if (t.startsWith("image/")) return "image";
+      if (t === "application/pdf") return "pdf";
+      return "file";
+    };
+
+    const normalizedContentType =
+      attachmentContentType || inferContentTypeFromUrl(attachmentUrl) || undefined;
+    const attachmentKind = attachmentUrl ? resolveKind(normalizedContentType, attachmentUrl) : undefined;
 
     const post = await Post.create({
       author: req.user._id,
       content,
       attachmentUrl,
+      attachmentContentType: normalizedContentType,
+      attachmentKind,
       visibilityRegion: visibilityRegion || "ALL"
     });
 

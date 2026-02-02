@@ -10,6 +10,8 @@ const postSchema = new mongoose.Schema(
     },
     content: { type: String, required: true },
     attachmentUrl: String,
+    attachmentContentType: String,
+    attachmentKind: { type: String, enum: ["image", "pdf", "file"] },
     visibilityRegion: {
       type: String,
       enum: ["ALL", "AZ", "TR", "US"],

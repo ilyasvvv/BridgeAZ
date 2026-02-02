@@ -27,9 +27,10 @@ router.post("/presign", authMiddleware, blockBanned, async (req, res) => {
       return res.status(500).json({ message: "Upload storage not configured" });
     }
 
-    const { originalName, mimeType, sizeBytes, purpose } = req.body || {};
+    const { originalName, mimeType, contentType, sizeBytes, purpose } = req.body || {};
     const parsedSize = Number(sizeBytes);
-    if (!originalName || !mimeType || !sizeBytes || !purpose) {
+    const resolvedContentType = contentType || mimeType || "application/octet-stream";
+    if (!originalName || !sizeBytes || !purpose) {
       return res.status(400).json({ message: "Invalid upload request" });
     }
 
@@ -38,9 +39,11 @@ router.post("/presign", authMiddleware, blockBanned, async (req, res) => {
       return res.status(400).json({ message: "Invalid upload purpose" });
     }
 
+    const objectKey = buildObjectKey(req.user._id, originalName, purpose);
+
     try {
       if (purpose === "avatar") {
-        if (!["image/png", "image/jpeg"].includes(mimeType)) {
+        if (!["image/png", "image/jpeg"].includes(resolvedContentType)) {
           throw new Error("Unsupported file type");
         }
         if (!Number.isFinite(parsedSize) || parsedSize <= 0) {
@@ -49,18 +52,44 @@ router.post("/presign", authMiddleware, blockBanned, async (req, res) => {
         if (parsedSize > 5 * 1024 * 1024) {
           throw new Error("File must be 5MB or less");
         }
+      } else if (purpose === "attachment") {
+        const allowed = new Set([
+          "image/png",
+          "image/jpeg",
+          "image/webp",
+          "application/pdf"
+        ]);
+        if (!Number.isFinite(parsedSize) || parsedSize <= 0) {
+          throw new Error("Invalid file size");
+        }
+        if (parsedSize > 5 * 1024 * 1024) {
+          throw new Error("File must be 5MB or less");
+        }
+        if (!allowed.has(resolvedContentType)) {
+          const fallbackCommand = new PutObjectCommand({
+            Bucket: process.env.R2_BUCKET,
+            Key: objectKey,
+            ContentType: "application/octet-stream"
+          });
+          const uploadUrl = await getSignedUrl(r2Client, fallbackCommand, { expiresIn: 300 });
+          return res.json({
+            uploadUrl,
+            objectKey,
+            documentUrl: buildPublicUrl(objectKey),
+            headers: { "Content-Type": "application/octet-stream" }
+          });
+        }
       } else {
-        validateUpload({ mimeType, sizeBytes: parsedSize });
+        validateUpload({ mimeType: resolvedContentType, sizeBytes: parsedSize });
       }
     } catch (error) {
       return res.status(400).json({ message: error.message });
     }
 
-    const objectKey = buildObjectKey(req.user._id, originalName, purpose);
     const command = new PutObjectCommand({
       Bucket: process.env.R2_BUCKET,
       Key: objectKey,
-      ContentType: mimeType
+      ContentType: resolvedContentType
     });
 
     const uploadUrl = await getSignedUrl(r2Client, command, { expiresIn: 300 });
@@ -68,7 +97,7 @@ router.post("/presign", authMiddleware, blockBanned, async (req, res) => {
       uploadUrl,
       objectKey,
       documentUrl: buildPublicUrl(objectKey),
-      headers: { "Content-Type": mimeType }
+      headers: { "Content-Type": resolvedContentType }
     });
   } catch (error) {
     res.status(500).json({ message: "Failed to create upload URL" });
