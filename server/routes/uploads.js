@@ -34,7 +34,13 @@ router.post("/presign", authMiddleware, blockBanned, async (req, res) => {
       return res.status(400).json({ message: "Invalid upload request" });
     }
 
-    const allowedPurposes = new Set(["verification", "avatar", "resume", "attachment"]);
+    const allowedPurposes = new Set([
+      "verification",
+      "avatar",
+      "resume",
+      "attachment",
+      "chat_attachment"
+    ]);
     if (!allowedPurposes.has(purpose)) {
       return res.status(400).json({ message: "Invalid upload purpose" });
     }
@@ -52,7 +58,7 @@ router.post("/presign", authMiddleware, blockBanned, async (req, res) => {
         if (parsedSize > 5 * 1024 * 1024) {
           throw new Error("File must be 5MB or less");
         }
-      } else if (purpose === "attachment") {
+      } else if (purpose === "attachment" || purpose === "chat_attachment") {
         const allowed = new Set([
           "image/png",
           "image/jpeg",

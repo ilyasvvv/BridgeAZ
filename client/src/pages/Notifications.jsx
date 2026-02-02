@@ -1,9 +1,11 @@
 import { useEffect, useState } from "react";
 import { apiClient } from "../api/client";
 import { useAuth } from "../utils/auth";
+import { useNavigate } from "react-router-dom";
 
 export default function Notifications() {
   const { token } = useAuth();
+  const navigate = useNavigate();
   const [notifications, setNotifications] = useState([]);
   const [error, setError] = useState("");
 
@@ -32,6 +34,14 @@ export default function Notifications() {
     }
   };
 
+  const handleOpen = (note) => {
+    if (note.link) {
+      navigate(note.link);
+      return;
+    }
+    markRead(note._id);
+  };
+
   return (
     <div className="mx-auto max-w-3xl space-y-6">
       <h1 className="font-display text-3xl">Notifications</h1>
@@ -41,12 +51,18 @@ export default function Notifications() {
           <p className="text-sm text-mist">No notifications yet.</p>
         ) : (
           notifications.map((note) => (
-            <div key={note._id} className="glass rounded-2xl p-5">
-              <div className="flex items-center justify-between">
-                <div>
+            <div
+              key={note._id}
+              className="glass rounded-2xl p-5"
+            >
+              <div className="flex items-center justify-between gap-4">
+                <button
+                  onClick={() => handleOpen(note)}
+                  className="text-left"
+                >
                   <p className="text-sm text-sand">{note.title}</p>
                   <p className="text-xs text-mist">{note.body}</p>
-                </div>
+                </button>
                 {!note.read && (
                   <button
                     onClick={() => markRead(note._id)}
