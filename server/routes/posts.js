@@ -1,6 +1,7 @@
 const express = require("express");
 const Post = require("../models/Post");
 const Comment = require("../models/Comment");
+const Notification = require("../models/Notification");
 const { authMiddleware, blockBanned } = require("../middleware/auth");
 
 const router = express.Router();
@@ -94,6 +95,30 @@ router.post("/:id/like", authMiddleware, blockBanned, async (req, res) => {
     }
 
     await post.save();
+    if (!alreadyLiked && !post.author.equals(req.user._id)) {
+      const preview = post.content ? post.content.slice(0, 140) : "";
+      await Notification.findOneAndUpdate(
+        {
+          type: "post_like",
+          userId: post.author,
+          actorId: req.user._id,
+          postId: post._id
+        },
+        {
+          $setOnInsert: {
+            type: "post_like",
+            userId: post.author,
+            actorId: req.user._id,
+            postId: post._id,
+            title: `${req.user.name} liked your post`,
+            body: preview,
+            metadata: { postId: post._id, actorName: req.user.name },
+            read: false
+          }
+        },
+        { upsert: true, new: true }
+      );
+    }
     res.json({ likesCount: post.likes.length, likedByMe: !alreadyLiked });
   } catch (error) {
     res.status(500).json({ message: "Failed to toggle like" });
