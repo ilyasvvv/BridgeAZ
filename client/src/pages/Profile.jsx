@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { apiClient, uploadViaPresign } from "../api/client";
 import { useAuth } from "../utils/auth";
 import StatusBadge from "../components/StatusBadge";
@@ -8,9 +8,10 @@ import RegionPill from "../components/RegionPill";
 const tabs = ["Overview", "Experience", "Education", "Projects", "Activity"];
 
 export default function Profile() {
-  const { userId } = useParams();
+  const { id } = useParams();
+  const navigate = useNavigate();
   const { user, token, setUser } = useAuth();
-  const isOwner = user?._id === userId;
+  const isOwner = user?._id && id && String(user._id) === String(id);
   const [profile, setProfile] = useState(null);
   const [activeTab, setActiveTab] = useState("Overview");
   const [editMode, setEditMode] = useState(false);
@@ -24,7 +25,7 @@ export default function Profile() {
   const maxSizeBytes = 5 * 1024 * 1024;
 
   const loadProfile = async () => {
-    const data = await apiClient.get(`/users/${userId}`, token);
+    const data = await apiClient.get("/users/me", token);
     setProfile(data);
     setForm({
       name: data.name || "",
@@ -43,8 +44,13 @@ export default function Profile() {
   };
 
   useEffect(() => {
+    if (!token) return;
+    if (id && user?._id && String(id) !== String(user._id)) {
+      navigate(`/profile/${user._id}/edit`, { replace: true });
+      return;
+    }
     loadProfile();
-  }, [userId]);
+  }, [id, token, user?._id]);
 
   const handleSave = async () => {
     const payload = {
