@@ -11,7 +11,7 @@ export default function Join() {
     email: "",
     password: "",
     userType: "student",
-    currentRegion: "AZ"
+    currentRegion: ""
   });
   const [error, setError] = useState("");
   const navigate = useNavigate();
@@ -159,18 +159,15 @@ export default function Join() {
               </select>
             </div>
             <div>
-              <label className="text-xs uppercase tracking-wide text-mist">Region</label>
-              <select
+              <label className="text-xs uppercase tracking-wide text-mist">Based in (country/city)</label>
+              <input
                 value={registerForm.currentRegion}
                 onChange={(event) =>
                   setRegisterForm((prev) => ({ ...prev, currentRegion: event.target.value }))
                 }
                 className="mt-2 w-full rounded-xl border border-white/10 bg-slate/40 px-4 py-2 text-sand"
-              >
-                <option value="AZ">Azerbaijan</option>
-                <option value="TR">Turkey</option>
-                <option value="US">United States</option>
-              </select>
+                placeholder="e.g., Toronto, Canada"
+              />
             </div>
           </div>
           <button

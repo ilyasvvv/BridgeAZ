@@ -3,6 +3,7 @@ const Opportunity = require("../models/Opportunity");
 const { authMiddleware, blockBanned } = require("../middleware/auth");
 
 const router = express.Router();
+const normalizeToken = (value) => (typeof value === "string" ? value.trim() : "");
 
 const normalizeArray = (value) =>
   Array.isArray(value)
@@ -17,10 +18,8 @@ router.get("/", authMiddleware, blockBanned, async (req, res) => {
     const { search, region, type, country, status } = req.query;
     const query = {};
 
-    const visibilityRegion = region || req.user.currentRegion;
-    if (visibilityRegion === "ALL") {
-      query.visibilityRegion = "ALL";
-    } else if (visibilityRegion) {
+    const visibilityRegion = normalizeToken(region || req.user.currentRegion);
+    if (visibilityRegion && visibilityRegion.toUpperCase() !== "ALL") {
       query.visibilityRegion = { $in: ["ALL", visibilityRegion] };
     }
 
@@ -55,7 +54,8 @@ router.get("/:id", authMiddleware, blockBanned, async (req, res) => {
       return res.status(404).json({ message: "Opportunity not found" });
     }
 
-    const allowedRegions = ["ALL", req.user.currentRegion];
+    const userRegion = normalizeToken(req.user.currentRegion);
+    const allowedRegions = userRegion ? ["ALL", userRegion] : ["ALL"];
     const isAdmin = req.user.isAdmin || (req.user.roles || []).includes("adminA");
     if (!isAdmin && !allowedRegions.includes(opportunity.visibilityRegion)) {
       return res.status(403).json({ message: "Not authorized to view opportunity" });
@@ -99,6 +99,7 @@ router.post("/", authMiddleware, blockBanned, async (req, res) => {
         .status(400)
         .json({ message: "Title, organization, and description are required" });
     }
+    const normalizedVisibilityRegion = normalizeToken(visibilityRegion) || "ALL";
 
     const opportunity = await Opportunity.create({
       title,
@@ -114,7 +115,7 @@ router.post("/", authMiddleware, blockBanned, async (req, res) => {
       requirements: normalizeArray(requirements),
       applyUrl,
       contactEmail,
-      visibilityRegion,
+      visibilityRegion: normalizedVisibilityRegion,
       tags: normalizeArray(tags),
       status,
       postedBy: req.user._id

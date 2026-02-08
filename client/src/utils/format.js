@@ -12,17 +12,16 @@ export const formatRelativeTime = (dateString) => {
 };
 
 export const regionLabel = (region) => {
-  if (region === "ALL") return "All regions";
-  if (region === "AZ") return "Azerbaijan";
-  if (region === "TR") return "Turkey";
-  if (region === "US") return "United States";
-  return region;
+  if (region === null || region === undefined) return "";
+  const value = String(region).trim();
+  if (!value) return "";
+  if (value.toUpperCase() === "ALL") return "All";
+  return value;
 };
 
 export const countryLabel = (country) => {
-  if (country === "AZ") return "Azerbaijan";
-  if (country === "TR") return "Turkey";
-  if (country === "US") return "United States";
-  if (country === "OTHER") return "Other";
-  return country;
+  if (country === null || country === undefined) return "";
+  const value = String(country).trim();
+  if (!value) return "";
+  return value;
 };

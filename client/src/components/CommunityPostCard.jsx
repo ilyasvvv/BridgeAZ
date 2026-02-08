@@ -73,7 +73,7 @@ export default function CommunityPostCard({
             {post.author?.name || "Member"}
           </Link>
           <div className="mt-2 flex items-center gap-2">
-            <RegionPill region={post.author?.currentRegion || "AZ"} />
+            <RegionPill region={post.author?.currentRegion} />
             <span className="text-xs text-mist">{formatRelativeTime(post.createdAt)}</span>
           </div>
         </div>

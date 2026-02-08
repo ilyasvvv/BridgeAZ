@@ -6,11 +6,7 @@ const educationSchema = new mongoose.Schema({
   fieldOfStudy: String,
   startYear: Number,
   endYear: Number,
-  country: {
-    type: String,
-    enum: ["AZ", "TR", "US", "OTHER"],
-    default: "OTHER"
-  }
+  country: { type: String, trim: true }
 });
 
 const experienceSchema = new mongoose.Schema({
@@ -21,11 +17,7 @@ const experienceSchema = new mongoose.Schema({
   startDate: Date,
   endDate: Date,
   description: String,
-  country: {
-    type: String,
-    enum: ["AZ", "TR", "US", "OTHER"],
-    default: "OTHER"
-  }
+  country: { type: String, trim: true }
 });
 
 const linkSchema = new mongoose.Schema({
@@ -56,7 +48,7 @@ const userSchema = new mongoose.Schema(
     email: { type: String, required: true, unique: true, lowercase: true },
     passwordHash: { type: String, required: true },
     userType: { type: String, enum: ["student", "professional"], required: true },
-    currentRegion: { type: String, enum: ["AZ", "TR", "US"], required: true },
+    currentRegion: { type: String, trim: true },
     roles: {
       type: [String],
       enum: ["student", "professional", "mentor", "staffC", "staffB", "adminA"],

@@ -14,7 +14,7 @@ const postSchema = new mongoose.Schema(
     attachmentKind: { type: String, enum: ["image", "pdf", "file"] },
     visibilityRegion: {
       type: String,
-      enum: ["ALL", "AZ", "TR", "US"],
+      trim: true,
       default: "ALL"
     },
     likes: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }]

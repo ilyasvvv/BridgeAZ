@@ -47,8 +47,15 @@ export default function ForYou() {
       setOpportunities(opportunitiesData);
 
       if (user?.userType === "student") {
+        const mentorParams = new URLSearchParams({
+          userType: "professional",
+          isMentor: "true"
+        });
+        if (user.currentRegion) {
+          mentorParams.set("region", user.currentRegion);
+        }
         const mentorsData = await apiClient.get(
-          `/users?region=${user.currentRegion}&userType=professional&isMentor=true`,
+          `/users?${mentorParams.toString()}`,
           token
         );
         setMentors(mentorsData.filter((mentor) => mentor.mentorVerified));
@@ -69,7 +76,7 @@ export default function ForYou() {
     }
   }, [token, user]);
 
-  // TODO: Replace keyword heuristic with smarter ranking once engagement signals exist.
+  // Replace keyword heuristic with smarter ranking once engagement signals exist.
   const progressPosts = useMemo(() => {
     return posts.filter((post) =>
       progressKeywords.some((keyword) =>
@@ -79,7 +86,7 @@ export default function ForYou() {
   }, [posts]);
 
   const filteredRegionalPosts = useMemo(() => {
-    if (regionFilter === "ALL") {
+    if (regionFilter === "ALL" || !user?.currentRegion) {
       return posts;
     }
     return posts.filter((post) => post.visibilityRegion === user?.currentRegion);
@@ -98,7 +105,7 @@ export default function ForYou() {
   };
 
   const handleFollow = (postId) => {
-    // TODO: Wire follow system once profiles support follow relationships.
+    // Wire follow system once profiles support follow relationships.
     void postId;
   };
 
@@ -171,7 +178,7 @@ export default function ForYou() {
     }
   };
 
-  const headerRegion = regionLabel(user?.currentRegion || "AZ");
+  const headerRegion = regionLabel(user?.currentRegion) || "—";
   const opportunityPreview = opportunities.slice(0, 5);
 
   return (
@@ -179,8 +186,7 @@ export default function ForYou() {
       <section className="glass rounded-2xl p-5">
         <p className="text-xs uppercase tracking-wide text-mist">Your context</p>
         <p className="mt-2 text-sm text-sand">
-          You are currently based in {headerRegion}. Connected across Azerbaijan, Turkey,
-          and the US.
+          You are currently based in {headerRegion}. Connected with members across the community.
         </p>
       </section>
 
@@ -406,7 +412,7 @@ export default function ForYou() {
                     </div>
                   ))}
                   <p className="text-xs text-mist">
-                    TODO: Add mentor request flow with intent notes and scheduling.
+                    Mentor request flow updates are in progress.
                   </p>
                 </div>
               ) : (

@@ -1,6 +1,6 @@
 # BridgeAZ
 
-BridgeAZ is a warm, community-driven professional and alumni network for Azerbaijani students and professionals across Azerbaijan, Turkey, and the United States. It is designed as a mentorship-first diaspora platform, blending alumni connection, project sharing, and regional discovery without the coldness of a generic corporate network.
+BridgeAZ is a warm, community-driven global community network for Azerbaijanis (students and professionals). It blends alumni connection, project sharing, and discovery without the coldness of a generic corporate network.
 
 The goal of BridgeAZ is to help students find trusted mentors, help professionals give back to the next generation, and build long-term relationships across borders. Verification is built into the experience to keep the community high-trust while still feeling youthful and accessible.
 
@@ -75,11 +75,11 @@ Your R2 bucket CORS must allow browser origins (e.g., Vercel + localhost) for `P
 
 Implemented now:
 - JWT auth with role-aware registration
-- Profiles with region awareness and mentor flags
-- Posts feed with region visibility
+- Profiles with location fields and mentor flags
+- Posts feed with flexible visibility tokens
 - Student + mentor verification requests (manual admin review)
 - Admin panel for verification approvals
-- Region filtering in the feed and explore pages
+- Location filtering in the feed and explore pages
 - Seed data for demo readiness
 
 Planned later:

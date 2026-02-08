@@ -4,17 +4,10 @@ import { useAuth } from "../utils/auth";
 import PostCard from "../components/PostCard";
 import StatusBadge from "../components/StatusBadge";
 
-const regions = [
-  { value: "ALL", label: "All Regions" },
-  { value: "AZ", label: "Azerbaijan" },
-  { value: "TR", label: "Turkey" },
-  { value: "US", label: "United States" }
-];
-
 export default function Dashboard() {
   const { user, token, setUser } = useAuth();
   const [posts, setPosts] = useState([]);
-  const [region, setRegion] = useState("ALL");
+  const [region, setRegion] = useState("");
   const [content, setContent] = useState("");
   const [attachment, setAttachment] = useState(null);
   const [error, setError] = useState("");
@@ -25,7 +18,7 @@ export default function Dashboard() {
   const loadPosts = async (regionFilter) => {
     setLoading(true);
     try {
-      const query = regionFilter && regionFilter !== "ALL" ? `?region=${regionFilter}` : "";
+      const query = regionFilter ? `?region=${encodeURIComponent(regionFilter)}` : "";
       const data = await apiClient.get(`/posts${query}`, token);
       setPosts(data);
     } catch (err) {
@@ -65,7 +58,7 @@ export default function Dashboard() {
           content,
           attachmentUrl,
           attachmentContentType,
-          visibilityRegion: region === "ALL" ? "ALL" : region
+          visibilityRegion: region || "ALL"
         },
         token
       );
@@ -115,17 +108,12 @@ export default function Dashboard() {
         <form onSubmit={handlePost} className="glass rounded-2xl p-5">
           <div className="flex items-center justify-between">
             <h2 className="font-display text-xl">Share an update</h2>
-            <select
+            <input
               value={region}
               onChange={(event) => setRegion(event.target.value)}
-              className="rounded-full border border-white/10 bg-slate/40 px-4 py-2 text-xs uppercase tracking-wide text-sand"
-            >
-              {regions.map((item) => (
-                <option key={item.value} value={item.value}>
-                  {item.label}
-                </option>
-              ))}
-            </select>
+              className="rounded-full border border-white/10 bg-slate/40 px-4 py-2 text-xs tracking-wide text-sand"
+              placeholder="Visibility (leave empty for all)"
+            />
           </div>
           <textarea
             value={content}
@@ -185,7 +173,6 @@ export default function Dashboard() {
           <p className="mt-2 text-sm text-mist">
             Professionals can opt-in to mentor and request verification.
           </p>
-          {/* TODO: Add a full mentor verification request flow with document upload + admin status. */}
           {user.userType === "professional" ? (
             <button
               onClick={handleMentorToggle}
@@ -196,9 +183,7 @@ export default function Dashboard() {
           ) : (
             <p className="mt-4 text-sm text-mist">Students can browse mentors in Explore.</p>
           )}
-          <p className="mt-3 text-xs text-mist">
-            TODO: Add mentor verification request form.
-          </p>
+          <p className="mt-3 text-xs text-mist">Mentor verification tools are available in profile verification.</p>
         </div>
 
         <div className="glass rounded-2xl p-5">

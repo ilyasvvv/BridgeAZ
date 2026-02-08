@@ -6,11 +6,12 @@ const Notification = require("../models/Notification");
 const { authMiddleware, blockBanned } = require("../middleware/auth");
 
 const router = express.Router();
+const normalizeToken = (value) => (typeof value === "string" ? value.trim() : "");
 
 router.get("/", authMiddleware, blockBanned, async (req, res) => {
   try {
-    const region = req.query.region || req.user.currentRegion;
-    const visibility = region ? ["ALL", region] : ["ALL"];
+    const region = normalizeToken(req.query.region || req.user.currentRegion);
+    const visibility = region && region.toUpperCase() !== "ALL" ? ["ALL", region] : ["ALL"];
 
     const posts = await Post.find({ visibilityRegion: { $in: visibility } })
       .populate("author", "name profilePhotoUrl currentRegion userType")
@@ -71,7 +72,7 @@ router.post("/", authMiddleware, blockBanned, async (req, res) => {
       attachmentUrl,
       attachmentContentType: normalizedContentType,
       attachmentKind,
-      visibilityRegion: visibilityRegion || "ALL"
+      visibilityRegion: normalizeToken(visibilityRegion) || "ALL"
     });
 
     const populated = await post.populate("author", "name profilePhotoUrl currentRegion userType");

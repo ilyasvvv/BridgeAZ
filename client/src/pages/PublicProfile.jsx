@@ -87,7 +87,7 @@ export default function PublicProfile() {
           <div className="min-w-0">
             <h1 className="text-2xl text-sand">{profile.name}</h1>
             <div className="mt-2 flex flex-wrap items-center gap-2">
-              <RegionPill region={profile.currentRegion || "AZ"} />
+              <RegionPill region={profile.currentRegion} />
               <StatusBadge label={profile.userType || "member"} tone="slate" />
             </div>
           </div>
