@@ -284,18 +284,14 @@ export default function Admin() {
               className="rounded-xl border border-white/10 bg-slate/40 px-4 py-2 text-sm text-sand md:col-span-2"
               placeholder="Search by name or email"
             />
-            <select
+            <input
               value={userFilters.region}
               onChange={(event) =>
                 setUserFilters((prev) => ({ ...prev, region: event.target.value }))
               }
               className="rounded-xl border border-white/10 bg-slate/40 px-4 py-2 text-sm text-sand"
-            >
-              <option value="">All regions</option>
-              <option value="AZ">Azerbaijan</option>
-              <option value="TR">Turkey</option>
-              <option value="US">United States</option>
-            </select>
+              placeholder="Based in (country/city)"
+            />
             <select
               value={userFilters.userType}
               onChange={(event) =>

@@ -26,7 +26,7 @@ router.post("/register", async (req, res) => {
   try {
     const { name, email, password, userType, currentRegion } = req.body;
 
-    if (!name || !email || !password || !userType || !currentRegion) {
+    if (!name || !email || !password || !userType) {
       return res.status(400).json({ message: "Missing required fields" });
     }
 
@@ -41,7 +41,7 @@ router.post("/register", async (req, res) => {
       email: email.toLowerCase(),
       passwordHash,
       userType,
-      currentRegion,
+      currentRegion: (currentRegion || "").trim(),
       roles: [userType],
       studentVerified: false,
       mentorVerified: false,

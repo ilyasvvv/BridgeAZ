@@ -31,7 +31,7 @@ export default function Profile() {
       name: data.name || "",
       headline: data.headline || "",
       bio: data.bio || "",
-      currentRegion: data.currentRegion || "AZ",
+      currentRegion: data.currentRegion || "",
       skills: data.skills?.join(", ") || "",
       links: data.links || [],
       socialLinks: data.socialLinks || { linkedin: "", github: "", website: "" },
@@ -550,19 +550,19 @@ export default function Profile() {
         )}
         {activeTab === "Education" && (
           <>
-            {/* TODO: Render education history with school metadata. */}
+            {/* Render education history with school metadata. */}
             <p className="text-sm text-mist">Education entries coming soon.</p>
           </>
         )}
         {activeTab === "Projects" && (
           <>
-            {/* TODO: Add project cards once project entries are stored on the profile. */}
+            {/* Add project cards once project entries are stored on the profile. */}
             <p className="text-sm text-mist">Project showcase coming soon.</p>
           </>
         )}
         {activeTab === "Activity" && (
           <>
-            {/* TODO: Filter posts authored by this user and display here. */}
+            {/* Filter posts authored by this user and display here. */}
             <p className="text-sm text-mist">User posts will appear here.</p>
           </>
         )}
@@ -630,7 +630,7 @@ export default function Profile() {
               >
                 {isPendingVerification ? "Request pending" : "Request mentor verification"}
               </button>
-              <p className="text-xs text-mist">TODO: Add automated verification options.</p>
+              <p className="text-xs text-mist">Additional verification options are coming soon.</p>
             </div>
           )}
           {message && <p className="text-sm text-teal">{message}</p>}

@@ -29,8 +29,8 @@ const opportunitySchema = new mongoose.Schema(
     },
     country: {
       type: String,
-      enum: ["AZ", "TR", "US", "OTHER"],
-      default: "AZ"
+      trim: true,
+      default: ""
     },
     city: { type: String, trim: true },
     description: { type: String, required: true, trim: true },
@@ -39,7 +39,7 @@ const opportunitySchema = new mongoose.Schema(
     contactEmail: String,
     visibilityRegion: {
       type: String,
-      enum: ["ALL", "AZ", "TR", "US"],
+      trim: true,
       default: "ALL"
     },
     tags: [String],

@@ -19,7 +19,7 @@ const seed = async () => {
       email: adminEmail,
       passwordHash: adminPasswordHash,
       userType: "professional",
-      currentRegion: "US",
+      currentRegion: "Global",
       headline: "BridgeAZ administrator",
       bio: "Managing the BridgeAZ community.",
       isAdmin: true,
@@ -39,7 +39,7 @@ const seed = async () => {
         email: "rashad@student.com",
         passwordHash,
         userType: "student",
-        currentRegion: "TR",
+        currentRegion: "Istanbul, Turkey",
         headline: "CS Masters at ITU",
         bio: "Exploring AI and looking for mentors in product and ML.",
         studentVerified: true,
@@ -51,7 +51,7 @@ const seed = async () => {
         email: "leyla@student.com",
         passwordHash,
         userType: "student",
-        currentRegion: "US",
+        currentRegion: "Boston, USA",
         headline: "Undergrad in Business Analytics",
         bio: "Interested in fintech and diaspora entrepreneurship.",
         skills: ["Excel", "SQL", "Product"]
@@ -61,7 +61,7 @@ const seed = async () => {
         email: "farid@mentor.com",
         passwordHash,
         userType: "professional",
-        currentRegion: "US",
+        currentRegion: "San Francisco, USA",
         headline: "Senior Software Engineer",
         bio: "I mentor students breaking into tech.",
         isMentor: true,
@@ -72,7 +72,7 @@ const seed = async () => {
         email: "nigar@mentor.com",
         passwordHash,
         userType: "professional",
-        currentRegion: "AZ",
+        currentRegion: "Baku, Azerbaijan",
         headline: "Founder at Baku Studio",
         bio: "Building creative communities in Baku.",
         isMentor: true
@@ -87,7 +87,7 @@ const seed = async () => {
         {
           author: studentTR._id,
           content: "Anyone in Istanbul working on AI research? Looking to connect!",
-          visibilityRegion: "TR"
+          visibilityRegion: "Istanbul"
         },
         {
           author: mentorUS._id,
@@ -96,13 +96,13 @@ const seed = async () => {
         },
         {
           author: studentUS._id,
-          content: "Just started a fintech capstone. Would love mentors with US fintech experience.",
-          visibilityRegion: "US"
+          content: "Just started a fintech capstone. Would love mentors with fintech experience.",
+          visibilityRegion: "North America"
         },
         {
           author: mentorAZ._id,
           content: "Baku meetup this Friday for creatives and founders!",
-          visibilityRegion: "AZ"
+          visibilityRegion: "Baku"
         }
       ]);
     }
@@ -116,7 +116,7 @@ const seed = async () => {
           orgName: "BridgeAZ",
           type: "Internship",
           locationMode: "Remote",
-          country: "AZ",
+          country: "Global",
           description:
             "Support community outreach and student engagement. Light research, scheduling, and storytelling.",
           requirements: ["Strong writing", "Comfort with async coordination"],
@@ -129,12 +129,12 @@ const seed = async () => {
           orgName: "Baku Studio",
           type: "Contract",
           locationMode: "On-site",
-          country: "AZ",
+          country: "Azerbaijan",
           city: "Baku",
           description:
             "Short-term contract to help coordinate local workshops and small events.",
           requirements: ["Event coordination", "Fluent Azerbaijani"],
-          visibilityRegion: "AZ",
+          visibilityRegion: "Baku",
           tags: ["events", "creative"]
         },
         {
@@ -143,12 +143,12 @@ const seed = async () => {
           orgName: "Diaspora Lab",
           type: "Research",
           locationMode: "Hybrid",
-          country: "US",
+          country: "USA",
           city: "Boston",
           description:
             "Assist with data cleaning and literature review for applied NLP projects.",
           requirements: ["Python", "Basic ML familiarity"],
-          visibilityRegion: "US",
+          visibilityRegion: "North America",
           tags: ["research", "nlp", "python"]
         },
         {
@@ -157,7 +157,7 @@ const seed = async () => {
           orgName: "Bridgefin",
           type: "Full-time",
           locationMode: "Remote",
-          country: "US",
+          country: "Remote",
           description:
             "Work with a small fintech team to map user journeys and define metrics.",
           requirements: ["SQL", "Spreadsheet fluency"],
@@ -170,12 +170,12 @@ const seed = async () => {
           orgName: "Ankara Impact",
           type: "Part-time",
           locationMode: "Hybrid",
-          country: "TR",
+          country: "Turkey",
           city: "Ankara",
           description:
             "Coordinate weekly sessions for student cohorts and track progress notes.",
           requirements: ["Program coordination", "Turkish language"],
-          visibilityRegion: "TR",
+          visibilityRegion: "Ankara",
           tags: ["education", "community"]
         },
         {
@@ -184,11 +184,11 @@ const seed = async () => {
           orgName: "Open Baku",
           type: "Volunteer",
           locationMode: "Remote",
-          country: "AZ",
+          country: "Azerbaijan",
           description:
             "Help clean public datasets and publish summaries for local civic groups.",
           requirements: ["Attention to detail"],
-          visibilityRegion: "AZ",
+          visibilityRegion: "Baku",
           status: "closed",
           tags: ["civic", "data"]
         }

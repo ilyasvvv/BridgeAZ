@@ -27,16 +27,12 @@ export default function Explore() {
       <div className="glass rounded-2xl p-5">
         <h2 className="font-display text-2xl">Explore members</h2>
         <div className="mt-4 grid gap-4 md:grid-cols-3">
-          <select
+          <input
             value={filters.region}
             onChange={(event) => setFilters((prev) => ({ ...prev, region: event.target.value }))}
             className="rounded-xl border border-white/10 bg-slate/40 px-4 py-2 text-sm text-sand"
-          >
-            <option value="">All Regions</option>
-            <option value="AZ">Azerbaijan</option>
-            <option value="TR">Turkey</option>
-            <option value="US">United States</option>
-          </select>
+            placeholder="Based in (country/city)"
+          />
           <select
             value={filters.userType}
             onChange={(event) => setFilters((prev) => ({ ...prev, userType: event.target.value }))}

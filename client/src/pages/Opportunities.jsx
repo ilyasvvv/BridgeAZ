@@ -13,7 +13,6 @@ const typeOptions = [
 ];
 
 const locationModes = ["On-site", "Hybrid", "Remote"];
-const countries = ["AZ", "TR", "US", "OTHER"];
 
 export default function Opportunities() {
   const { user, token } = useAuth();
@@ -31,7 +30,7 @@ export default function Opportunities() {
     orgName: "",
     type: "Internship",
     locationMode: "Remote",
-    country: "AZ",
+    country: "",
     city: "",
     description: "",
     requirements: "",
@@ -131,7 +130,7 @@ export default function Opportunities() {
       orgName: opportunity.orgName || "",
       type: opportunity.type || "Internship",
       locationMode: opportunity.locationMode || "Remote",
-      country: opportunity.country || "AZ",
+      country: opportunity.country || "",
       city: opportunity.city || "",
       description: opportunity.description || "",
       requirements: (opportunity.requirements || []).join(", "),
@@ -226,17 +225,15 @@ export default function Opportunities() {
                 </option>
               ))}
             </select>
-            <select
-              className="rounded-xl border border-white/10 bg-slate/40 px-4 py-2 text-sand"
-              value={form.country}
-              onChange={(event) => setForm((prev) => ({ ...prev, country: event.target.value }))}
-            >
-              {countries.map((option) => (
-                <option key={option} value={option}>
-                  {option}
-                </option>
-              ))}
-            </select>
+            <div className="space-y-2">
+              <p className="text-xs uppercase tracking-wide text-mist">Location</p>
+              <input
+                className="w-full rounded-xl border border-white/10 bg-slate/40 px-4 py-2 text-sand"
+                placeholder="e.g., Remote / Paris, France"
+                value={form.country}
+                onChange={(event) => setForm((prev) => ({ ...prev, country: event.target.value }))}
+              />
+            </div>
             <input
               className="rounded-xl border border-white/10 bg-slate/40 px-4 py-2 text-sand"
               placeholder="City (optional)"
@@ -280,18 +277,14 @@ export default function Opportunities() {
               />
             </div>
             <div className="grid gap-4 md:grid-cols-2 md:col-span-2">
-              <select
+              <input
                 className="rounded-xl border border-white/10 bg-slate/40 px-4 py-2 text-sand"
                 value={form.visibilityRegion}
                 onChange={(event) =>
                   setForm((prev) => ({ ...prev, visibilityRegion: event.target.value }))
                 }
-              >
-                <option value="ALL">Visible to all</option>
-                <option value="AZ">Azerbaijan</option>
-                <option value="TR">Turkey</option>
-                <option value="US">United States</option>
-              </select>
+                placeholder="Visibility token (use ALL for global)"
+              />
               <input
                 className="rounded-xl border border-white/10 bg-slate/40 px-4 py-2 text-sand"
                 placeholder="Tags (comma separated)"
@@ -320,17 +313,12 @@ export default function Opportunities() {
             className="rounded-xl border border-white/10 bg-slate/40 px-4 py-2 text-sm text-sand md:col-span-2"
             placeholder="Search by title, org, or description"
           />
-          <select
+          <input
             value={filters.region}
             onChange={(event) => setFilters((prev) => ({ ...prev, region: event.target.value }))}
             className="rounded-xl border border-white/10 bg-slate/40 px-4 py-2 text-sm text-sand"
-          >
-            <option value="">All visibility</option>
-            <option value="ALL">Visible to all</option>
-            <option value="AZ">Azerbaijan</option>
-            <option value="TR">Turkey</option>
-            <option value="US">United States</option>
-          </select>
+            placeholder="Visibility token (ALL or custom)"
+          />
           <select
             value={filters.type}
             onChange={(event) => setFilters((prev) => ({ ...prev, type: event.target.value }))}
@@ -343,20 +331,14 @@ export default function Opportunities() {
               </option>
             ))}
           </select>
-          <select
+          <input
             value={filters.country}
             onChange={(event) =>
               setFilters((prev) => ({ ...prev, country: event.target.value }))
             }
             className="rounded-xl border border-white/10 bg-slate/40 px-4 py-2 text-sm text-sand"
-          >
-            <option value="">All countries</option>
-            {countries.map((option) => (
-              <option key={option} value={option}>
-                {option}
-              </option>
-            ))}
-          </select>
+            placeholder="Location filter"
+          />
           <select
             value={filters.status}
             onChange={(event) => setFilters((prev) => ({ ...prev, status: event.target.value }))}

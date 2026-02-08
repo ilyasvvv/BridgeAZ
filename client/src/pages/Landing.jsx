@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 
 const stats = [
-  { label: "Members across AZ/TR/US", value: "3,500+" },
+  { label: "Members worldwide", value: "3,500+" },
   { label: "Mentorship matches", value: "420" },
   { label: "Community projects launched", value: "96" }
 ];
@@ -26,14 +26,15 @@ export default function Landing() {
     <div className="mx-auto flex max-w-6xl flex-col gap-16">
       <section className="grid gap-10 md:grid-cols-[1.2fr_0.8fr] md:items-center">
         <div className="space-y-6">
-          <p className="text-sm uppercase tracking-[0.4em] text-teal">Azerbaijani diaspora network</p>
+          <p className="text-sm uppercase tracking-[0.4em] text-teal">Azerbaijani Diaspora Network</p>
           <h1 className="font-display text-4xl md:text-5xl">
-            BridgeAZ connects Azerbaijani students and professionals across Azerbaijan, Turkey,
-            and the United States.
+            BridgeAZ is a global community network for Azerbaijanis.
           </h1>
           <p className="text-base text-mist">
-            A community network for mentorship, career bridges, and collaboration across borders
-            without the noise of a corporate platform.
+            Students and professionals connect here for mentorship, opportunities, and collaboration.
+          </p>
+          <p className="text-sm text-mist">
+            “Diaspora Network” means this community of users, not affiliated organizations.
           </p>
           <div className="flex flex-wrap gap-4">
             <Link
@@ -54,7 +55,7 @@ export default function Landing() {
           <h2 className="font-display text-2xl">Why BridgeAZ?</h2>
           <ul className="mt-4 space-y-3 text-sm text-mist">
             <li>Mentorship that actually feels human.</li>
-            <li>Region-aware community matches across AZ, TR, and US.</li>
+            <li>Community matches across locations worldwide.</li>
             <li>Verified profiles for higher trust.</li>
           </ul>
         </div>
@@ -73,7 +74,7 @@ export default function Landing() {
         <div className="glass rounded-2xl p-6">
           <h3 className="font-display text-2xl">For Students</h3>
           <p className="mt-3 text-sm text-mist">
-            Find alumni mentors, share progress, and unlock internships in your region.
+            Find mentors, share progress, and unlock internships from anywhere.
           </p>
           <ul className="mt-4 space-y-2 text-sm text-mist">
             <li>Discover verified mentors in your field.</li>
@@ -89,7 +90,7 @@ export default function Landing() {
           <ul className="mt-4 space-y-2 text-sm text-mist">
             <li>Mentor students who remind you of yourself.</li>
             <li>Surface internships and projects from your team.</li>
-            <li>Stay connected to the diaspora network.</li>
+            <li>Stay connected to the community network.</li>
           </ul>
         </div>
       </section>
