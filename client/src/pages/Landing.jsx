@@ -26,15 +26,12 @@ export default function Landing() {
     <div className="mx-auto flex max-w-6xl flex-col gap-16">
       <section className="grid gap-10 md:grid-cols-[1.2fr_0.8fr] md:items-center">
         <div className="space-y-6">
-          <p className="text-sm uppercase tracking-[0.4em] text-teal">Azerbaijani Diaspora Network</p>
+          <p className="text-sm uppercase tracking-[0.4em] text-teal">Connecting Azerbaijanis Worldwide</p>
           <h1 className="font-display text-4xl md:text-5xl">
-            BridgeAZ is a global community network for Azerbaijanis.
+            BridgeAZ is a global community for Azerbaijanis.
           </h1>
           <p className="text-base text-mist">
-            Students and professionals connect here for mentorship, opportunities, and collaboration.
-          </p>
-          <p className="text-sm text-mist">
-            “Diaspora Network” means this community of users, not affiliated organizations.
+            Students and professionals connect here for mentorship, opportunities, and collaboration—without the noise.
           </p>
           <div className="flex flex-wrap gap-4">
             <Link

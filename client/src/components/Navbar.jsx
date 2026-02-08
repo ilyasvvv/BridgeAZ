@@ -41,9 +41,6 @@ export default function Navbar() {
               <NavLink className={navClass} to="/">
                 About
               </NavLink>
-              <NavLink className={navClass} to="/join">
-                Join
-              </NavLink>
               <NavLink className={navClass} to="/contact">
                 Contact
               </NavLink>

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { apiClient } from "../api/client";
 import { useAuth } from "../utils/auth";
+import CountryCombobox from "../components/CountryCombobox";
 
 export default function Register() {
   const [form, setForm] = useState({
@@ -96,13 +97,13 @@ export default function Register() {
           </div>
         </div>
         <div>
-          <label className="text-xs uppercase tracking-wide text-mist">Based in (country/city)</label>
-          <input
-            name="currentRegion"
+          <CountryCombobox
+            id="register-country"
+            label="Country"
             value={form.currentRegion}
-            onChange={handleChange}
-            className="mt-2 w-full rounded-xl border border-white/10 bg-slate/40 px-4 py-2 text-sand"
-            placeholder="e.g., Berlin, Germany"
+            onChange={(nextValue) =>
+              setForm((prev) => ({ ...prev, currentRegion: nextValue }))
+            }
           />
         </div>
         {error && <p className="text-sm text-coral">{error}</p>}

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { apiClient } from "../api/client";
 import { useAuth } from "../utils/auth";
+import CountryCombobox from "../components/CountryCombobox";
 
 export default function Join() {
   const [mode, setMode] = useState("login");
@@ -159,14 +160,13 @@ export default function Join() {
               </select>
             </div>
             <div>
-              <label className="text-xs uppercase tracking-wide text-mist">Based in (country/city)</label>
-              <input
+              <CountryCombobox
+                id="join-country"
+                label="Country"
                 value={registerForm.currentRegion}
-                onChange={(event) =>
-                  setRegisterForm((prev) => ({ ...prev, currentRegion: event.target.value }))
+                onChange={(nextValue) =>
+                  setRegisterForm((prev) => ({ ...prev, currentRegion: nextValue }))
                 }
-                className="mt-2 w-full rounded-xl border border-white/10 bg-slate/40 px-4 py-2 text-sand"
-                placeholder="e.g., Toronto, Canada"
               />
             </div>
           </div>
