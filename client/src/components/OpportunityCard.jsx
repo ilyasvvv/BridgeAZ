@@ -12,7 +12,7 @@ export default function OpportunityCard({ opportunity, isOwner, onEdit, onClose,
   };
 
   return (
-    <div className="glass gradient-border relative flex h-[308px] flex-col overflow-hidden rounded-2xl p-4">
+    <div className="glass gradient-border relative overflow-hidden rounded-2xl p-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <p className="text-xs uppercase tracking-wide text-mist">{opportunity.orgName}</p>
@@ -43,7 +43,7 @@ export default function OpportunityCard({ opportunity, isOwner, onEdit, onClose,
           ))}
         </div>
       ) : null}
-      <div className="mt-auto flex items-center justify-between pt-3 text-xs text-mist">
+      <div className="mt-3 flex items-center justify-between text-xs text-mist">
         <span className="uppercase tracking-wide">{opportunity.status}</span>
         <div className="flex items-center gap-2">
           {isOwner && (
