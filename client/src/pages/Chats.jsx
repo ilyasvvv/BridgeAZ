@@ -8,7 +8,12 @@ const allowedAttachmentTypes = new Set([
   "image/png",
   "image/jpeg",
   "image/webp",
-  "application/pdf"
+  "application/pdf",
+  "application/msword",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  "application/vnd.ms-excel",
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  "text/csv"
 ]);
 const maxAttachmentBytes = 5 * 1024 * 1024;
 
@@ -22,10 +27,11 @@ export default function Chats() {
   const [connectionIds, setConnectionIds] = useState(new Set());
   const [mentorshipIds, setMentorshipIds] = useState(new Set());
   const [body, setBody] = useState("");
-  const [attachment, setAttachment] = useState(null);
+  const [attachments, setAttachments] = useState([]);
+  const [attachmentPreviewUrls, setAttachmentPreviewUrls] = useState([]);
   const [isDragOver, setIsDragOver] = useState(false);
-  const [attachmentPreviewUrl, setAttachmentPreviewUrl] = useState("");
   const [viewerAttachment, setViewerAttachment] = useState(null);
+  const [viewerZoom, setViewerZoom] = useState(1);
   const [error, setError] = useState("");
   const requestedThreadId = useMemo(() => {
     const params = new URLSearchParams(location.search);
@@ -87,10 +93,60 @@ export default function Chats() {
     }
   };
 
+  const getAttachmentKind = (contentType, url) => {
+    const type = (contentType || "").toLowerCase();
+    const lowerUrl = (url || "").toLowerCase();
+    if (
+      type.startsWith("image/") ||
+      [".png", ".jpg", ".jpeg", ".webp", ".gif"].some((ext) => lowerUrl.endsWith(ext))
+    ) {
+      return "image";
+    }
+    if (type === "application/pdf" || lowerUrl.endsWith(".pdf")) {
+      return "pdf";
+    }
+    return "file";
+  };
+
+  const normalizeMessageAttachments = (message) => {
+    if (Array.isArray(message.attachments) && message.attachments.length > 0) {
+      return message.attachments
+        .filter((item) => item?.url)
+        .map((item) => ({
+          url: item.url,
+          contentType: item.contentType || "",
+          kind: item.kind || getAttachmentKind(item.contentType, item.url),
+          name: item.name || item.url.split("/").pop() || "Attachment"
+        }));
+    }
+    if (message.attachmentUrl) {
+      return [
+        {
+          url: message.attachmentUrl,
+          contentType: message.attachmentContentType || "",
+          kind:
+            message.attachmentKind ||
+            getAttachmentKind(message.attachmentContentType, message.attachmentUrl),
+          name:
+            message.attachmentName ||
+            message.attachmentUrl.split("/").pop() ||
+            "Attachment"
+        }
+      ];
+    }
+    return [];
+  };
+
+  const openViewer = (attachment) => {
+    setViewerAttachment(attachment);
+    setViewerZoom(1);
+  };
+
   const toPreviewText = (message) => {
     if (!message) return "No messages yet.";
     const base = (message.body || "").trim();
-    const fallback = message.attachmentUrl ? "Attachment" : "No messages yet.";
+    const hasAttachment = normalizeMessageAttachments(message).length > 0;
+    const fallback = hasAttachment ? "Attachment" : "No messages yet.";
     const text = base || fallback;
     const prefix = message.senderId === user?._id ? "You: " : "";
     const combined = `${prefix}${text}`;
@@ -150,21 +206,6 @@ export default function Chats() {
 
   const normalizeThreadStatus = (thread) => thread?.status || "active";
 
-  const getAttachmentKind = (contentType, url) => {
-    const type = (contentType || "").toLowerCase();
-    const lowerUrl = (url || "").toLowerCase();
-    if (
-      type.startsWith("image/") ||
-      [".png", ".jpg", ".jpeg", ".webp", ".gif"].some((ext) => lowerUrl.endsWith(ext))
-    ) {
-      return "image";
-    }
-    if (type === "application/pdf" || lowerUrl.endsWith(".pdf")) {
-      return "pdf";
-    }
-    return "file";
-  };
-
   const validateAttachment = (file) => {
     if (!file) return "No file selected";
     if (!allowedAttachmentTypes.has(file.type)) {
@@ -176,79 +217,67 @@ export default function Chats() {
     return "";
   };
 
-  const applyAttachment = (file) => {
-    const validationError = validateAttachment(file);
-    if (validationError) {
-      setError(validationError);
-      return;
+  const addAttachments = (files) => {
+    if (!files.length) return;
+    const accepted = [];
+    let firstError = "";
+
+    for (const file of files) {
+      const validationError = validateAttachment(file);
+      if (validationError) {
+        if (!firstError) firstError = validationError;
+        continue;
+      }
+      accepted.push(file);
     }
-    setError("");
-    setAttachment(file);
+
+    if (accepted.length) {
+      setError("");
+      setAttachments((prev) => [...prev, ...accepted]);
+    } else if (firstError) {
+      setError(firstError);
+    }
   };
 
-  const renderAttachment = (message) => {
-    if (!message.attachmentUrl) return null;
-    const contentType = message.attachmentContentType || "";
-    const kind = getAttachmentKind(contentType, message.attachmentUrl);
-    const label = message.attachmentName || message.attachmentUrl.split("/").pop();
+  const removeAttachment = (index) => {
+    setAttachments((prev) => prev.filter((_, i) => i !== index));
+  };
 
-    if (kind === "image") {
-      return (
-        <button
-          type="button"
-          onClick={() =>
-            setViewerAttachment({
-              kind,
-              url: message.attachmentUrl,
-              contentType,
-              name: label || "Image"
-            })
-          }
-          className="mt-2 block w-full"
-        >
-          <img
-            src={message.attachmentUrl}
-            alt="Chat attachment"
-            className="w-full max-h-[240px] rounded-lg object-contain"
-          />
-        </button>
-      );
-    }
-    if (kind === "pdf") {
-      return (
-        <button
-          type="button"
-          onClick={() =>
-            setViewerAttachment({
-              kind,
-              url: message.attachmentUrl,
-              contentType,
-              name: label || "PDF attachment"
-            })
-          }
-          className="mt-2 flex w-full items-center justify-between rounded-lg border border-white/10 px-2 py-1 text-[11px] hover:border-teal"
-        >
-          <span className="truncate">PDF attachment</span>
-          <span className="text-teal underline">Open</span>
-        </button>
-      );
-    }
+  const renderAttachmentBlock = (message) => {
+    const items = normalizeMessageAttachments(message);
+    if (!items.length) return null;
+
     return (
-      <button
-        type="button"
-        onClick={() =>
-          setViewerAttachment({
-            kind,
-            url: message.attachmentUrl,
-            contentType,
-            name: label || "File attachment"
-          })
-        }
-        className="mt-2 block w-full truncate text-left text-[11px] text-teal underline"
-        title={label || "File attachment"}
-      >
-        {label || "View attachment"}
-      </button>
+      <div className="mt-2 space-y-2">
+        {items.map((item, index) => (
+          <div key={`${item.url}-${index}`}>
+            {item.kind === "image" ? (
+              <button
+                type="button"
+                onClick={() => openViewer(item)}
+                className="block w-full"
+              >
+                <img
+                  src={item.url}
+                  alt={item.name}
+                  className="w-full max-h-[220px] rounded-lg object-contain"
+                />
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => openViewer(item)}
+                className="flex w-full items-center justify-between rounded-lg border border-white/10 px-2 py-1 text-[11px] hover:border-teal"
+              >
+                <span className="truncate">
+                  {item.kind === "pdf" ? "PDF" : "File"}: {item.name}
+                </span>
+                <span className="text-teal underline">Open</span>
+              </button>
+            )}
+          </div>
+        ))}
+      </div>
     );
   };
 
@@ -275,20 +304,22 @@ export default function Chats() {
   }, [activeThread]);
 
   useEffect(() => {
-    if (!attachment) {
-      setAttachmentPreviewUrl("");
+    if (!attachments.length) {
+      setAttachmentPreviewUrls([]);
       return;
     }
-    if (!attachment.type.startsWith("image/")) {
-      setAttachmentPreviewUrl("");
-      return;
-    }
-    const objectUrl = URL.createObjectURL(attachment);
-    setAttachmentPreviewUrl(objectUrl);
+
+    const next = attachments.map((file) =>
+      file.type.startsWith("image/") ? URL.createObjectURL(file) : ""
+    );
+    setAttachmentPreviewUrls(next);
+
     return () => {
-      URL.revokeObjectURL(objectUrl);
+      next.forEach((url) => {
+        if (url) URL.revokeObjectURL(url);
+      });
     };
-  }, [attachment]);
+  }, [attachments]);
 
   useEffect(() => {
     if (!viewerAttachment) return undefined;
@@ -305,53 +336,56 @@ export default function Chats() {
     event.preventDefault();
     setError("");
     if (!activeThread) return;
-    if (!body && !attachment) {
+    if (!body && attachments.length === 0) {
       setError("Message body or attachment is required");
       return;
     }
     if (normalizeThreadStatus(activeThread) !== "active") return;
+
     try {
-      let attachmentUrl;
-      let attachmentContentType;
-      let attachmentKind;
-      let attachmentName;
-      if (attachment) {
-        const validationError = validateAttachment(attachment);
-        if (validationError) {
-          setError(validationError);
+      let uploadedAttachments = [];
+      if (attachments.length) {
+        const hasInvalid = attachments.some((file) => !!validateAttachment(file));
+        if (hasInvalid) {
+          setError("One or more attachments are invalid");
           return;
         }
-        const presign = await uploadViaPresign(
-          { file: attachment, purpose: "chat_attachment" },
-          token
+
+        uploadedAttachments = await Promise.all(
+          attachments.map(async (file) => {
+            const presign = await uploadViaPresign(
+              { file, purpose: "chat_attachment" },
+              token
+            );
+            const kind = getAttachmentKind(file.type, file.name || "");
+            return {
+              url: presign.documentUrl,
+              contentType: file.type,
+              kind,
+              name: file.name
+            };
+          })
         );
-        attachmentUrl = presign.documentUrl;
-        attachmentContentType = attachment.type;
-        attachmentName = attachment.name;
-        if (attachment.type.startsWith("image/")) {
-          attachmentKind = "image";
-        } else if (attachment.type === "application/pdf") {
-          attachmentKind = "pdf";
-        } else {
-          attachmentKind = "file";
-        }
       }
 
+      const firstAttachment = uploadedAttachments[0];
       const message = await apiClient.post(
         `/chats/threads/${activeThread._id}/messages`,
         {
           body: body || undefined,
-          attachmentUrl,
-          attachmentContentType,
-          attachmentKind,
-          attachmentName
+          attachments: uploadedAttachments,
+          attachmentUrl: firstAttachment?.url,
+          attachmentContentType: firstAttachment?.contentType,
+          attachmentKind: firstAttachment?.kind,
+          attachmentName: firstAttachment?.name
         },
         token
       );
+
       setMessages((prev) => [...prev, message]);
       setThreadPreviews((prev) => ({ ...prev, [activeThread._id]: toPreviewText(message) }));
       setBody("");
-      setAttachment(null);
+      setAttachments([]);
     } catch (err) {
       setError(err.message || "Failed to send message");
     }
@@ -403,9 +437,9 @@ export default function Chats() {
   const handleDrop = (event) => {
     event.preventDefault();
     setIsDragOver(false);
-    const file = event.dataTransfer?.files?.[0];
-    if (!file) return;
-    applyAttachment(file);
+    if (!activeThread || activeStatus !== "active") return;
+    const files = Array.from(event.dataTransfer?.files || []);
+    addAttachments(files);
   };
 
   return (
@@ -435,12 +469,12 @@ export default function Chats() {
             >
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0 flex-1">
-                <UserChip
-                  user={thread.otherParticipant}
-                  size={USER_CHIP_SIZES.THREAD_LIST}
-                  showRole={false}
-                  onClick={(event) => event.stopPropagation()}
-                />
+                  <UserChip
+                    user={thread.otherParticipant}
+                    size={USER_CHIP_SIZES.THREAD_LIST}
+                    showRole={false}
+                    onClick={(event) => event.stopPropagation()}
+                  />
                   <p className="mt-1 truncate text-xs text-mist">
                     {threadPreviews[thread._id] || "Loading preview..."}
                   </p>
@@ -531,7 +565,7 @@ export default function Chats() {
                   }`}
                 >
                   {message.body && <p>{message.body}</p>}
-                  {renderAttachment(message)}
+                  {renderAttachmentBlock(message)}
                   <p className="mt-1 text-[10px] text-mist">
                     {formatTime(message.createdAt)}
                   </p>
@@ -555,31 +589,37 @@ export default function Chats() {
               : "border-white/10 bg-transparent"
           }`}
         >
-          {attachment && (
-            <div className="mb-2 rounded-xl border border-white/10 bg-white/5 p-2">
-              {attachmentPreviewUrl ? (
-                <img
-                  src={attachmentPreviewUrl}
-                  alt="Attachment preview"
-                  className="max-h-28 rounded-lg object-contain"
-                />
-              ) : attachment.type === "application/pdf" ? (
-                <div className="flex items-center gap-2 text-xs text-mist">
-                  <span>PDF</span>
-                  <span className="truncate">{attachment.name}</span>
+          {attachments.length > 0 && (
+            <div className="mb-2 rounded-xl border border-white/10 bg-white/5 p-2 space-y-2">
+              {attachments.map((file, index) => (
+                <div key={`${file.name}-${file.size}-${index}`} className="rounded-lg border border-white/10 p-2">
+                  {attachmentPreviewUrls[index] ? (
+                    <img
+                      src={attachmentPreviewUrls[index]}
+                      alt={file.name}
+                      className="max-h-28 rounded-lg object-contain"
+                    />
+                  ) : (
+                    <div className="flex items-center gap-2 text-xs text-mist">
+                      <span>{file.type === "application/pdf" ? "PDF" : "File"}</span>
+                      <span className="truncate">{file.name}</span>
+                    </div>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => removeAttachment(index)}
+                    className="mt-2 text-xs uppercase tracking-wide text-coral"
+                  >
+                    × Remove
+                  </button>
                 </div>
-              ) : (
-                <div className="flex items-center gap-2 text-xs text-mist">
-                  <span>File</span>
-                  <span className="truncate">{attachment.name}</span>
-                </div>
-              )}
+              ))}
               <button
                 type="button"
-                onClick={() => setAttachment(null)}
-                className="mt-2 text-xs uppercase tracking-wide text-coral"
+                onClick={() => setAttachments([])}
+                className="text-xs uppercase tracking-wide text-mist hover:text-sand"
               >
-                × Remove
+                Clear all
               </button>
             </div>
           )}
@@ -596,8 +636,12 @@ export default function Chats() {
               <input
                 type="file"
                 className="hidden"
-                onChange={(event) => applyAttachment(event.target.files?.[0] || null)}
-                accept="image/png,image/jpeg,image/webp,application/pdf"
+                multiple
+                onChange={(event) => {
+                  addAttachments(Array.from(event.target.files || []));
+                  event.target.value = "";
+                }}
+                accept="image/png,image/jpeg,image/webp,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv"
                 disabled={!activeThread || activeStatus !== "active"}
               />
             </label>
@@ -609,9 +653,9 @@ export default function Chats() {
               Send
             </button>
           </form>
-          {!attachment && (
+          {attachments.length === 0 && (
             <p className="mt-2 text-[11px] text-mist">
-              Drag and drop a file here, or use Attach.
+              Drag and drop files here, or use Attach.
             </p>
           )}
         </div>
@@ -622,43 +666,75 @@ export default function Chats() {
           onClick={() => setViewerAttachment(null)}
         >
           <div
-            className="glass w-full max-w-3xl rounded-2xl p-4 space-y-3"
+            className="glass w-full max-w-5xl max-h-[85vh] overflow-hidden rounded-2xl p-4 space-y-3"
             onClick={(event) => event.stopPropagation()}
           >
-            <div className="flex items-center justify-between gap-3">
-              <p className="truncate text-sm text-sand">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <p className="truncate text-sm text-sand max-w-[60%]">
                 {viewerAttachment.name || "Attachment"}
               </p>
-              <button
-                type="button"
-                onClick={() => setViewerAttachment(null)}
-                className="rounded-full border border-white/10 px-3 py-1 text-xs uppercase tracking-wide text-sand hover:border-teal"
-              >
-                Close
-              </button>
+              <div className="flex flex-wrap items-center gap-2">
+                {viewerAttachment.kind === "image" && (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => setViewerZoom((prev) => Math.max(0.5, Number((prev - 0.25).toFixed(2))))}
+                      className="rounded-full border border-white/10 px-3 py-1 text-xs uppercase tracking-wide text-sand hover:border-teal"
+                    >
+                      -
+                    </button>
+                    <span className="text-xs text-mist">{Math.round(viewerZoom * 100)}%</span>
+                    <button
+                      type="button"
+                      onClick={() => setViewerZoom((prev) => Math.min(3, Number((prev + 0.25).toFixed(2))))}
+                      className="rounded-full border border-white/10 px-3 py-1 text-xs uppercase tracking-wide text-sand hover:border-teal"
+                    >
+                      +
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setViewerZoom(1)}
+                      className="rounded-full border border-white/10 px-3 py-1 text-xs uppercase tracking-wide text-sand hover:border-teal"
+                    >
+                      Reset
+                    </button>
+                  </>
+                )}
+                <a
+                  href={viewerAttachment.url}
+                  download
+                  className="rounded-full bg-teal px-3 py-1 text-xs font-semibold uppercase tracking-wide text-charcoal"
+                >
+                  Download
+                </a>
+                <button
+                  type="button"
+                  onClick={() => setViewerAttachment(null)}
+                  className="rounded-full border border-white/10 px-3 py-1 text-xs uppercase tracking-wide text-sand hover:border-teal"
+                >
+                  Close
+                </button>
+              </div>
             </div>
             {viewerAttachment.kind === "image" ? (
-              <img
-                src={viewerAttachment.url}
-                alt={viewerAttachment.name || "Attachment image"}
-                className="max-h-[70vh] w-full rounded-xl object-contain"
-              />
+              <div className="h-[72vh] overflow-auto rounded-xl border border-white/10 bg-black/20">
+                <img
+                  src={viewerAttachment.url}
+                  alt={viewerAttachment.name || "Attachment image"}
+                  className="mx-auto my-4 max-w-full rounded-xl object-contain"
+                  style={{ transform: `scale(${viewerZoom})`, transformOrigin: "center" }}
+                />
+              </div>
             ) : viewerAttachment.kind === "pdf" ? (
               <iframe
                 src={viewerAttachment.url}
                 title={viewerAttachment.name || "PDF attachment"}
-                className="h-[70vh] w-full rounded-xl border border-white/10"
+                className="h-[72vh] w-full rounded-xl border border-white/10"
               />
             ) : (
               <div className="space-y-3 rounded-xl border border-white/10 p-4">
-                <p className="text-sm text-mist">{viewerAttachment.name || "File attachment"}</p>
-                <a
-                  href={viewerAttachment.url}
-                  download
-                  className="inline-flex rounded-full bg-teal px-4 py-2 text-xs font-semibold uppercase tracking-wide text-charcoal"
-                >
-                  Download
-                </a>
+                <p className="text-sm text-mist break-all">{viewerAttachment.name || "File attachment"}</p>
+                <p className="text-xs text-mist">Preview unavailable for this file type.</p>
               </div>
             )}
           </div>

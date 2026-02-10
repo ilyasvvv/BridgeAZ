@@ -167,12 +167,29 @@ router.post("/threads/:id/messages", authMiddleware, blockBanned, async (req, re
   try {
     const {
       body,
+      attachments,
       attachmentUrl,
       attachmentContentType,
       attachmentKind,
       attachmentName
     } = req.body || {};
-    if (!attachmentUrl && (!body || !body.trim())) {
+    const normalizedAttachments = Array.isArray(attachments)
+      ? attachments
+          .map((item) => ({
+            url: item?.url,
+            contentType: item?.contentType,
+            kind: item?.kind,
+            name: item?.name
+          }))
+          .filter((item) => typeof item.url === "string" && item.url.length > 0)
+      : [];
+    const primaryAttachment = normalizedAttachments[0] || null;
+    const resolvedAttachmentUrl = attachmentUrl || primaryAttachment?.url;
+    const resolvedAttachmentContentType = attachmentContentType || primaryAttachment?.contentType;
+    const resolvedAttachmentKind = attachmentKind || primaryAttachment?.kind;
+    const resolvedAttachmentName = attachmentName || primaryAttachment?.name;
+
+    if (!resolvedAttachmentUrl && normalizedAttachments.length === 0 && (!body || !body.trim())) {
       return res.status(400).json({ message: "Message body or attachment is required" });
     }
 
@@ -195,10 +212,11 @@ router.post("/threads/:id/messages", authMiddleware, blockBanned, async (req, re
       threadId: req.params.id,
       senderId: req.user._id,
       body,
-      attachmentUrl,
-      attachmentContentType,
-      attachmentKind,
-      attachmentName
+      attachments: normalizedAttachments,
+      attachmentUrl: resolvedAttachmentUrl,
+      attachmentContentType: resolvedAttachmentContentType,
+      attachmentKind: resolvedAttachmentKind,
+      attachmentName: resolvedAttachmentName
     });
 
     thread.lastMessageAt = new Date();
@@ -222,7 +240,7 @@ router.post("/threads/:id/messages", authMiddleware, blockBanned, async (req, re
               userId: recipient,
               actorId: req.user._id,
               title: `${req.user.name} messaged you`,
-              body: message.body.slice(0, 140),
+              body: (message.body || "Sent an attachment").slice(0, 140),
               link: `/chats?thread=${thread._id}`,
               read: false,
               metadata: { threadId: thread._id, actorName: req.user.name }
