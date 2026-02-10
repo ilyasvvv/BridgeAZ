@@ -82,6 +82,9 @@ export default function Opportunities() {
   const [notifyFeedback, setNotifyFeedback] = useState("");
   const [viewMode, setViewMode] = useState(getInitialViewMode);
   const [selectedOpportunityId, setSelectedOpportunityId] = useState(null);
+  const [opportunityDetailCache, setOpportunityDetailCache] = useState({});
+  const [detailLoadingId, setDetailLoadingId] = useState("");
+  const [detailError, setDetailError] = useState("");
   const [form, setForm] = useState({
     title: "",
     orgName: "",
@@ -109,6 +112,10 @@ export default function Opportunities() {
     () => opportunities.find((item) => item._id === selectedOpportunityId) || opportunities[0] || null,
     [opportunities, selectedOpportunityId]
   );
+  const selectedOpportunityDetail = selectedOpportunity?._id
+    ? opportunityDetailCache[selectedOpportunity._id] || null
+    : null;
+  const selectedOpportunityForPane = selectedOpportunityDetail || selectedOpportunity;
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -125,6 +132,34 @@ export default function Opportunities() {
       setSelectedOpportunityId(opportunities[0]?._id || null);
     }
   }, [opportunities, selectedOpportunityId]);
+
+  useEffect(() => {
+    if (!token || viewMode !== "list" || !selectedOpportunity?._id) return;
+    if (opportunityDetailCache[selectedOpportunity._id]) return;
+    let cancelled = false;
+
+    const loadOpportunityDetail = async () => {
+      setDetailError("");
+      setDetailLoadingId(selectedOpportunity._id);
+      try {
+        const detail = await apiClient.get(`/opportunities/${selectedOpportunity._id}`, token);
+        if (cancelled) return;
+        setOpportunityDetailCache((prev) => ({ ...prev, [selectedOpportunity._id]: detail }));
+      } catch (detailLoadError) {
+        if (cancelled) return;
+        setDetailError(detailLoadError.message || "Failed to load full details");
+      } finally {
+        if (!cancelled) {
+          setDetailLoadingId("");
+        }
+      }
+    };
+
+    loadOpportunityDetail();
+    return () => {
+      cancelled = true;
+    };
+  }, [token, viewMode, selectedOpportunity?._id, opportunityDetailCache]);
 
   useEffect(() => {
     if (!token) return;
@@ -600,29 +635,52 @@ export default function Opportunities() {
             ))}
           </div>
 
-          {selectedOpportunity ? (
+          {selectedOpportunityForPane ? (
             <div className="glass rounded-2xl p-5 space-y-4">
+              {detailLoadingId === selectedOpportunityForPane._id && (
+                <p className="text-xs text-mist">Loading full details...</p>
+              )}
+              {detailError && detailLoadingId !== selectedOpportunityForPane._id && (
+                <p className="text-xs text-coral">{detailError}</p>
+              )}
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
                   <p className="text-xs uppercase tracking-wide text-mist">
-                    {selectedOpportunity.orgName}
+                    {selectedOpportunityForPane.orgName || selectedOpportunityForPane.company}
                   </p>
-                  <h3 className="mt-1 text-2xl text-sand">{selectedOpportunity.title}</h3>
+                  <h3 className="mt-1 text-2xl text-sand">{selectedOpportunityForPane.title}</h3>
                 </div>
-                <StatusBadge label={selectedOpportunity.type} tone="slate" />
+                <StatusBadge label={selectedOpportunityForPane.type} tone="slate" />
               </div>
               <div className="flex flex-wrap items-center gap-3 text-xs text-mist">
-                <span>{selectedOpportunity.locationMode}</span>
+                <span>{selectedOpportunityForPane.locationMode}</span>
                 <span>
-                  {countryLabel(selectedOpportunity.country)}
-                  {selectedOpportunity.city ? ` · ${selectedOpportunity.city}` : ""}
+                  {countryLabel(selectedOpportunityForPane.country)}
+                  {selectedOpportunityForPane.city ? ` · ${selectedOpportunityForPane.city}` : ""}
                 </span>
-                <span>{formatRelativeTime(selectedOpportunity.createdAt)}</span>
+                <span>{formatRelativeTime(selectedOpportunityForPane.createdAt)}</span>
+                <span className="uppercase tracking-wide">{selectedOpportunityForPane.status}</span>
+                {selectedOpportunityForPane.visibilityRegion && (
+                  <span>Visibility: {selectedOpportunityForPane.visibilityRegion}</span>
+                )}
+                {selectedOpportunityForPane.postedBy === user?._id && <span>Posted by you</span>}
               </div>
-              <p className="text-sm text-mist whitespace-pre-wrap">{selectedOpportunity.description}</p>
-              {selectedOpportunity.tags?.length ? (
+              <p className="text-sm text-mist whitespace-pre-wrap">
+                {selectedOpportunityForPane.description}
+              </p>
+              {selectedOpportunityForPane.requirements?.length ? (
+                <div>
+                  <p className="text-xs uppercase tracking-wide text-mist">Requirements</p>
+                  <ul className="mt-2 space-y-1 text-sm text-sand">
+                    {selectedOpportunityForPane.requirements.map((item) => (
+                      <li key={item}>• {item}</li>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
+              {selectedOpportunityForPane.tags?.length ? (
                 <div className="flex flex-wrap gap-2">
-                  {selectedOpportunity.tags.map((tag) => (
+                  {selectedOpportunityForPane.tags.map((tag) => (
                     <span
                       key={tag}
                       className="rounded-full bg-white/10 px-3 py-1 text-xs text-mist"
@@ -633,36 +691,77 @@ export default function Opportunities() {
                 </div>
               ) : null}
               <div className="flex flex-wrap gap-2">
+                {selectedOpportunityForPane.applyUrl ? (
+                  <a
+                    href={selectedOpportunityForPane.applyUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="rounded-full bg-teal px-4 py-2 text-xs font-semibold uppercase tracking-wide text-charcoal"
+                  >
+                    Apply
+                  </a>
+                ) : null}
+                {selectedOpportunityForPane.link ? (
+                  <a
+                    href={selectedOpportunityForPane.link}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="rounded-full bg-teal px-4 py-2 text-xs font-semibold uppercase tracking-wide text-charcoal"
+                  >
+                    Contact
+                  </a>
+                ) : null}
+                {selectedOpportunityForPane.contactEmail ? (
+                  <a
+                    href={`mailto:${selectedOpportunityForPane.contactEmail}`}
+                    className="rounded-full bg-teal px-4 py-2 text-xs font-semibold uppercase tracking-wide text-charcoal"
+                  >
+                    Email
+                  </a>
+                ) : null}
+                {!selectedOpportunityForPane.applyUrl &&
+                  !selectedOpportunityForPane.link &&
+                  !selectedOpportunityForPane.contactEmail && (
+                    <>
+                      <Link
+                        to={`/opportunities/${selectedOpportunityForPane._id}`}
+                        className="rounded-full bg-teal px-4 py-2 text-xs font-semibold uppercase tracking-wide text-charcoal"
+                      >
+                        Open details
+                      </Link>
+                      <p className="self-center text-xs text-mist">No application link provided.</p>
+                    </>
+                  )}
                 <Link
-                  to={`/opportunities/${selectedOpportunity._id}`}
-                  className="rounded-full bg-teal px-4 py-2 text-xs font-semibold uppercase tracking-wide text-charcoal"
+                  to={`/opportunities/${selectedOpportunityForPane._id}`}
+                  className="rounded-full border border-white/10 px-4 py-2 text-xs uppercase tracking-wide text-sand hover:border-teal"
                 >
                   View details
                 </Link>
                 <a
-                  href={`/opportunities/${selectedOpportunity._id}`}
+                  href={`/opportunities/${selectedOpportunityForPane._id}`}
                   target="_blank"
                   rel="noreferrer"
                   className="rounded-full border border-white/10 px-4 py-2 text-xs uppercase tracking-wide text-sand hover:border-teal"
                 >
-                  Open new tab
+                  Open in new tab
                 </a>
-                {selectedOpportunity.postedBy === user?._id && (
+                {selectedOpportunityForPane.postedBy === user?._id && (
                   <>
                     <button
-                      onClick={() => startEdit(selectedOpportunity)}
+                      onClick={() => startEdit(selectedOpportunityForPane)}
                       className="rounded-full border border-white/10 px-4 py-2 text-xs uppercase tracking-wide text-sand hover:border-teal"
                     >
                       Edit
                     </button>
                     <button
-                      onClick={() => closeOpportunity(selectedOpportunity._id)}
+                      onClick={() => closeOpportunity(selectedOpportunityForPane._id)}
                       className="rounded-full border border-white/10 px-4 py-2 text-xs uppercase tracking-wide text-sand hover:border-teal"
                     >
                       Close
                     </button>
                     <button
-                      onClick={() => deleteOpportunity(selectedOpportunity._id)}
+                      onClick={() => deleteOpportunity(selectedOpportunityForPane._id)}
                       className="rounded-full border border-white/10 px-4 py-2 text-xs uppercase tracking-wide text-sand hover:border-teal"
                     >
                       Delete
