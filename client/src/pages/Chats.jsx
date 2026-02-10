@@ -4,6 +4,14 @@ import { apiClient, uploadViaPresign } from "../api/client";
 import { useAuth } from "../utils/auth";
 import UserChip, { USER_CHIP_SIZES } from "../components/UserChip";
 
+const allowedAttachmentTypes = new Set([
+  "image/png",
+  "image/jpeg",
+  "image/webp",
+  "application/pdf"
+]);
+const maxAttachmentBytes = 5 * 1024 * 1024;
+
 export default function Chats() {
   const { token, user } = useAuth();
   const location = useLocation();
@@ -15,6 +23,9 @@ export default function Chats() {
   const [mentorshipIds, setMentorshipIds] = useState(new Set());
   const [body, setBody] = useState("");
   const [attachment, setAttachment] = useState(null);
+  const [isDragOver, setIsDragOver] = useState(false);
+  const [attachmentPreviewUrl, setAttachmentPreviewUrl] = useState("");
+  const [viewerAttachment, setViewerAttachment] = useState(null);
   const [error, setError] = useState("");
   const requestedThreadId = useMemo(() => {
     const params = new URLSearchParams(location.search);
@@ -139,50 +150,105 @@ export default function Chats() {
 
   const normalizeThreadStatus = (thread) => thread?.status || "active";
 
+  const getAttachmentKind = (contentType, url) => {
+    const type = (contentType || "").toLowerCase();
+    const lowerUrl = (url || "").toLowerCase();
+    if (
+      type.startsWith("image/") ||
+      [".png", ".jpg", ".jpeg", ".webp", ".gif"].some((ext) => lowerUrl.endsWith(ext))
+    ) {
+      return "image";
+    }
+    if (type === "application/pdf" || lowerUrl.endsWith(".pdf")) {
+      return "pdf";
+    }
+    return "file";
+  };
+
+  const validateAttachment = (file) => {
+    if (!file) return "No file selected";
+    if (!allowedAttachmentTypes.has(file.type)) {
+      return "Unsupported file type";
+    }
+    if (file.size > maxAttachmentBytes) {
+      return "File must be 5MB or less";
+    }
+    return "";
+  };
+
+  const applyAttachment = (file) => {
+    const validationError = validateAttachment(file);
+    if (validationError) {
+      setError(validationError);
+      return;
+    }
+    setError("");
+    setAttachment(file);
+  };
+
   const renderAttachment = (message) => {
     if (!message.attachmentUrl) return null;
     const contentType = message.attachmentContentType || "";
-    const lowerUrl = message.attachmentUrl.toLowerCase();
-    const isImage =
-      contentType.startsWith("image/") ||
-      [".png", ".jpg", ".jpeg", ".webp", ".gif"].some((ext) => lowerUrl.endsWith(ext));
-    const isPdf = contentType === "application/pdf" || lowerUrl.endsWith(".pdf");
+    const kind = getAttachmentKind(contentType, message.attachmentUrl);
     const label = message.attachmentName || message.attachmentUrl.split("/").pop();
 
-    if (isImage) {
+    if (kind === "image") {
       return (
-        <img
-          src={message.attachmentUrl}
-          alt="Chat attachment"
-          className="mt-2 w-full max-h-[240px] rounded-lg object-contain"
-        />
+        <button
+          type="button"
+          onClick={() =>
+            setViewerAttachment({
+              kind,
+              url: message.attachmentUrl,
+              contentType,
+              name: label || "Image"
+            })
+          }
+          className="mt-2 block w-full"
+        >
+          <img
+            src={message.attachmentUrl}
+            alt="Chat attachment"
+            className="w-full max-h-[240px] rounded-lg object-contain"
+          />
+        </button>
       );
     }
-    if (isPdf) {
+    if (kind === "pdf") {
       return (
-        <div className="mt-2 flex items-center justify-between rounded-lg border border-white/10 px-2 py-1 text-[11px]">
+        <button
+          type="button"
+          onClick={() =>
+            setViewerAttachment({
+              kind,
+              url: message.attachmentUrl,
+              contentType,
+              name: label || "PDF attachment"
+            })
+          }
+          className="mt-2 flex w-full items-center justify-between rounded-lg border border-white/10 px-2 py-1 text-[11px] hover:border-teal"
+        >
           <span className="truncate">PDF attachment</span>
-          <a
-            href={message.attachmentUrl}
-            target="_blank"
-            rel="noreferrer"
-            className="text-teal underline"
-          >
-            View
-          </a>
-        </div>
+          <span className="text-teal underline">Open</span>
+        </button>
       );
     }
     return (
-      <a
-        href={message.attachmentUrl}
-        target="_blank"
-        rel="noreferrer"
-        className="mt-2 block truncate text-[11px] text-teal underline"
-        title={label}
+      <button
+        type="button"
+        onClick={() =>
+          setViewerAttachment({
+            kind,
+            url: message.attachmentUrl,
+            contentType,
+            name: label || "File attachment"
+          })
+        }
+        className="mt-2 block w-full truncate text-left text-[11px] text-teal underline"
+        title={label || "File attachment"}
       >
         {label || "View attachment"}
-      </a>
+      </button>
     );
   };
 
@@ -208,6 +274,33 @@ export default function Chats() {
     }
   }, [activeThread]);
 
+  useEffect(() => {
+    if (!attachment) {
+      setAttachmentPreviewUrl("");
+      return;
+    }
+    if (!attachment.type.startsWith("image/")) {
+      setAttachmentPreviewUrl("");
+      return;
+    }
+    const objectUrl = URL.createObjectURL(attachment);
+    setAttachmentPreviewUrl(objectUrl);
+    return () => {
+      URL.revokeObjectURL(objectUrl);
+    };
+  }, [attachment]);
+
+  useEffect(() => {
+    if (!viewerAttachment) return undefined;
+    const onKeyDown = (event) => {
+      if (event.key === "Escape") {
+        setViewerAttachment(null);
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [viewerAttachment]);
+
   const handleSend = async (event) => {
     event.preventDefault();
     setError("");
@@ -223,18 +316,9 @@ export default function Chats() {
       let attachmentKind;
       let attachmentName;
       if (attachment) {
-        const allowed = new Set([
-          "image/png",
-          "image/jpeg",
-          "image/webp",
-          "application/pdf"
-        ]);
-        if (!allowed.has(attachment.type)) {
-          setError("Unsupported file type");
-          return;
-        }
-        if (attachment.size > 5 * 1024 * 1024) {
-          setError("File must be 5MB or less");
+        const validationError = validateAttachment(attachment);
+        if (validationError) {
+          setError(validationError);
           return;
         }
         const presign = await uploadViaPresign(
@@ -314,6 +398,14 @@ export default function Chats() {
     if (otherId && mentorshipIds.has(otherId)) return "Mentor";
     if (otherId && connectionIds.has(otherId)) return "Link";
     return "Reach";
+  };
+
+  const handleDrop = (event) => {
+    event.preventDefault();
+    setIsDragOver(false);
+    const file = event.dataTransfer?.files?.[0];
+    if (!file) return;
+    applyAttachment(file);
   };
 
   return (
@@ -449,36 +541,129 @@ export default function Chats() {
             ))
           )}
         </div>
-        <form onSubmit={handleSend} className="flex gap-2">
-          <input
-            value={body}
-            onChange={(event) => setBody(event.target.value)}
-            className="flex-1 rounded-xl border border-white/10 bg-slate/40 px-4 py-2 text-sm text-sand"
-            placeholder="Type a message..."
-            disabled={!activeThread || activeStatus !== "active"}
-          />
-          <label className="rounded-full border border-white/10 px-3 py-2 text-xs uppercase tracking-wide text-mist hover:border-teal cursor-pointer">
-            Attach
+        <div
+          onDragOver={(event) => {
+            event.preventDefault();
+            if (!activeThread || activeStatus !== "active") return;
+            setIsDragOver(true);
+          }}
+          onDragLeave={() => setIsDragOver(false)}
+          onDrop={handleDrop}
+          className={`rounded-xl border p-2 transition ${
+            isDragOver
+              ? "border-teal bg-teal/10"
+              : "border-white/10 bg-transparent"
+          }`}
+        >
+          {attachment && (
+            <div className="mb-2 rounded-xl border border-white/10 bg-white/5 p-2">
+              {attachmentPreviewUrl ? (
+                <img
+                  src={attachmentPreviewUrl}
+                  alt="Attachment preview"
+                  className="max-h-28 rounded-lg object-contain"
+                />
+              ) : attachment.type === "application/pdf" ? (
+                <div className="flex items-center gap-2 text-xs text-mist">
+                  <span>PDF</span>
+                  <span className="truncate">{attachment.name}</span>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2 text-xs text-mist">
+                  <span>File</span>
+                  <span className="truncate">{attachment.name}</span>
+                </div>
+              )}
+              <button
+                type="button"
+                onClick={() => setAttachment(null)}
+                className="mt-2 text-xs uppercase tracking-wide text-coral"
+              >
+                × Remove
+              </button>
+            </div>
+          )}
+          <form onSubmit={handleSend} className="flex gap-2">
             <input
-              type="file"
-              className="hidden"
-              onChange={(event) => setAttachment(event.target.files?.[0] || null)}
-              accept="image/png,image/jpeg,image/webp,application/pdf"
+              value={body}
+              onChange={(event) => setBody(event.target.value)}
+              className="flex-1 rounded-xl border border-white/10 bg-slate/40 px-4 py-2 text-sm text-sand"
+              placeholder="Type a message..."
               disabled={!activeThread || activeStatus !== "active"}
             />
-          </label>
-          <button
-            type="submit"
-            className="rounded-full bg-teal px-4 py-2 text-xs font-semibold uppercase tracking-wide text-charcoal disabled:opacity-60"
-            disabled={!activeThread || activeStatus !== "active"}
-          >
-            Send
-          </button>
-        </form>
-        {attachment && (
-          <p className="text-xs text-mist">Attachment: {attachment.name}</p>
-        )}
+            <label className="rounded-full border border-white/10 px-3 py-2 text-xs uppercase tracking-wide text-mist hover:border-teal cursor-pointer">
+              Attach
+              <input
+                type="file"
+                className="hidden"
+                onChange={(event) => applyAttachment(event.target.files?.[0] || null)}
+                accept="image/png,image/jpeg,image/webp,application/pdf"
+                disabled={!activeThread || activeStatus !== "active"}
+              />
+            </label>
+            <button
+              type="submit"
+              className="rounded-full bg-teal px-4 py-2 text-xs font-semibold uppercase tracking-wide text-charcoal disabled:opacity-60"
+              disabled={!activeThread || activeStatus !== "active"}
+            >
+              Send
+            </button>
+          </form>
+          {!attachment && (
+            <p className="mt-2 text-[11px] text-mist">
+              Drag and drop a file here, or use Attach.
+            </p>
+          )}
+        </div>
       </section>
+      {viewerAttachment && (
+        <div
+          className="fixed inset-0 z-40 flex items-center justify-center bg-charcoal/60 px-4"
+          onClick={() => setViewerAttachment(null)}
+        >
+          <div
+            className="glass w-full max-w-3xl rounded-2xl p-4 space-y-3"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="flex items-center justify-between gap-3">
+              <p className="truncate text-sm text-sand">
+                {viewerAttachment.name || "Attachment"}
+              </p>
+              <button
+                type="button"
+                onClick={() => setViewerAttachment(null)}
+                className="rounded-full border border-white/10 px-3 py-1 text-xs uppercase tracking-wide text-sand hover:border-teal"
+              >
+                Close
+              </button>
+            </div>
+            {viewerAttachment.kind === "image" ? (
+              <img
+                src={viewerAttachment.url}
+                alt={viewerAttachment.name || "Attachment image"}
+                className="max-h-[70vh] w-full rounded-xl object-contain"
+              />
+            ) : viewerAttachment.kind === "pdf" ? (
+              <iframe
+                src={viewerAttachment.url}
+                title={viewerAttachment.name || "PDF attachment"}
+                className="h-[70vh] w-full rounded-xl border border-white/10"
+              />
+            ) : (
+              <div className="space-y-3 rounded-xl border border-white/10 p-4">
+                <p className="text-sm text-mist">{viewerAttachment.name || "File attachment"}</p>
+                <a
+                  href={viewerAttachment.url}
+                  download
+                  className="inline-flex rounded-full bg-teal px-4 py-2 text-xs font-semibold uppercase tracking-wide text-charcoal"
+                >
+                  Download
+                </a>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
