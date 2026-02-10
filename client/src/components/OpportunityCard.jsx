@@ -4,8 +4,15 @@ import StatusBadge from "./StatusBadge";
 import { countryLabel, formatRelativeTime } from "../utils/format";
 
 export default function OpportunityCard({ opportunity, isOwner, onEdit, onClose, onDelete }) {
+  const clampStyle = {
+    display: "-webkit-box",
+    WebkitLineClamp: 4,
+    WebkitBoxOrient: "vertical",
+    overflow: "hidden"
+  };
+
   return (
-    <div className="glass gradient-border relative rounded-2xl p-5">
+    <div className="glass gradient-border relative flex h-[340px] flex-col overflow-hidden rounded-2xl p-5">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <p className="text-xs uppercase tracking-wide text-mist">{opportunity.orgName}</p>
@@ -24,7 +31,9 @@ export default function OpportunityCard({ opportunity, isOwner, onEdit, onClose,
           <span className="text-xs text-mist">{formatRelativeTime(opportunity.createdAt)}</span>
         </div>
       </div>
-      <p className="mt-4 text-sm text-mist">{opportunity.description}</p>
+      <p className="mt-4 text-sm text-mist" style={clampStyle}>
+        {opportunity.description}
+      </p>
       {opportunity.tags?.length ? (
         <div className="mt-4 flex flex-wrap gap-2">
           {opportunity.tags.slice(0, 4).map((tag) => (
@@ -34,7 +43,7 @@ export default function OpportunityCard({ opportunity, isOwner, onEdit, onClose,
           ))}
         </div>
       ) : null}
-      <div className="mt-4 flex items-center justify-between text-xs text-mist">
+      <div className="mt-auto flex items-center justify-between pt-4 text-xs text-mist">
         <span className="uppercase tracking-wide">{opportunity.status}</span>
         <div className="flex items-center gap-2">
           {isOwner && (

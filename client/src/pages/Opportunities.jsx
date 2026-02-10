@@ -1,7 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { apiClient } from "../api/client";
 import { useAuth } from "../utils/auth";
 import OpportunityCard from "../components/OpportunityCard";
+import StatusBadge from "../components/StatusBadge";
+import { countries } from "../utils/countries";
+import { countryLabel, formatRelativeTime } from "../utils/format";
 
 const typeOptions = [
   "Internship",
@@ -13,18 +17,66 @@ const typeOptions = [
 ];
 
 const locationModes = ["On-site", "Hybrid", "Remote"];
+const visibilityOptions = ["ALL", "LOCAL", "NETWORK"];
+const notifyTypeOptions = ["internship", "full-time", "contract", "collaboration", "other"];
+const notifyLocationModes = ["remote", "hybrid", "onsite"];
+const OPP_VIEW_MODE_KEY = "oppViewMode:v1";
+const OPP_NOTIFY_PREFS_KEY = "oppNotifyPrefs:v1";
+
+const defaultNotifyPrefs = {
+  types: [],
+  locationModes: [],
+  country: "",
+  keyword: ""
+};
+
+const getInitialViewMode = () => {
+  if (typeof window === "undefined") return "grid";
+  const saved = window.localStorage.getItem(OPP_VIEW_MODE_KEY);
+  return saved === "list" ? "list" : "grid";
+};
+
+const getInitialNotifyPrefs = () => {
+  if (typeof window === "undefined") return defaultNotifyPrefs;
+  try {
+    const parsed = JSON.parse(window.localStorage.getItem(OPP_NOTIFY_PREFS_KEY) || "{}");
+    return {
+      types: Array.isArray(parsed.types) ? parsed.types : [],
+      locationModes: Array.isArray(parsed.locationModes) ? parsed.locationModes : [],
+      country: typeof parsed.country === "string" ? parsed.country : "",
+      keyword: typeof parsed.keyword === "string" ? parsed.keyword : ""
+    };
+  } catch (error) {
+    return defaultNotifyPrefs;
+  }
+};
+
+const toggleMultiValue = (values, nextValue) =>
+  values.includes(nextValue) ? values.filter((item) => item !== nextValue) : [...values, nextValue];
+
+const resolveRegionFilter = (region, userRegion) => {
+  if (!region || region === "LOCAL") return "";
+  if (region === "NETWORK") return userRegion || "";
+  return region;
+};
 
 export default function Opportunities() {
   const { user, token } = useAuth();
+  const navigate = useNavigate();
   const [opportunities, setOpportunities] = useState([]);
   const [filters, setFilters] = useState({
     search: "",
-    region: "",
+    region: "LOCAL",
     type: "",
     country: "",
     status: "open"
   });
   const [showForm, setShowForm] = useState(false);
+  const [showNotifyModal, setShowNotifyModal] = useState(false);
+  const [notifyPrefs, setNotifyPrefs] = useState(getInitialNotifyPrefs);
+  const [notifyFeedback, setNotifyFeedback] = useState("");
+  const [viewMode, setViewMode] = useState(getInitialViewMode);
+  const [selectedOpportunityId, setSelectedOpportunityId] = useState(null);
   const [form, setForm] = useState({
     title: "",
     orgName: "",
@@ -48,13 +100,35 @@ export default function Opportunities() {
     [user]
   );
 
+  const selectedOpportunity = useMemo(
+    () => opportunities.find((item) => item._id === selectedOpportunityId) || opportunities[0] || null,
+    [opportunities, selectedOpportunityId]
+  );
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem(OPP_VIEW_MODE_KEY, viewMode);
+    }
+  }, [viewMode]);
+
+  useEffect(() => {
+    if (!selectedOpportunityId && opportunities.length) {
+      setSelectedOpportunityId(opportunities[0]._id);
+      return;
+    }
+    if (selectedOpportunityId && !opportunities.some((item) => item._id === selectedOpportunityId)) {
+      setSelectedOpportunityId(opportunities[0]?._id || null);
+    }
+  }, [opportunities, selectedOpportunityId]);
+
   const loadOpportunities = async () => {
     setLoading(true);
     setError("");
     try {
       const params = new URLSearchParams();
       if (filters.search) params.set("search", filters.search);
-      if (filters.region) params.set("region", filters.region);
+      const region = resolveRegionFilter(filters.region, user?.currentRegion);
+      if (region) params.set("region", region);
       if (filters.type) params.set("type", filters.type);
       if (filters.country) params.set("country", filters.country);
       if (filters.status) params.set("status", filters.status);
@@ -72,7 +146,7 @@ export default function Opportunities() {
     if (token) {
       loadOpportunities();
     }
-  }, [filters, token]);
+  }, [filters, token, user?.currentRegion]);
 
   const handleSubmit = async (event) => {
     event.preventDefault();
@@ -92,7 +166,9 @@ export default function Opportunities() {
       tags: form.tags
         .split(",")
         .map((item) => item.trim())
-        .filter(Boolean)
+        .filter(Boolean),
+      visibilityRegion:
+        form.visibilityRegion === "LOCAL" ? user?.currentRegion || "ALL" : form.visibilityRegion
     };
 
     try {
@@ -160,30 +236,51 @@ export default function Opportunities() {
     }
   };
 
+  const handleNotifySave = () => {
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem(OPP_NOTIFY_PREFS_KEY, JSON.stringify(notifyPrefs));
+    }
+    setNotifyFeedback("Saved");
+    setShowNotifyModal(false);
+    setTimeout(() => setNotifyFeedback(""), 1600);
+  };
+
+  const handleRowSelect = (opportunityId) => {
+    if (typeof window !== "undefined" && window.innerWidth < 768) {
+      navigate(`/opportunities/${opportunityId}`);
+      return;
+    }
+    setSelectedOpportunityId(opportunityId);
+  };
+
   return (
     <div className="mx-auto max-w-6xl space-y-6">
       <div className="glass rounded-2xl p-6">
         <div className="flex flex-wrap items-center justify-between gap-4">
-          <div>
-            <h1 className="font-display text-3xl">Jobs & opportunities</h1>
-            <p className="mt-2 text-sm text-mist">
-              A calm board for internships, roles, and collaborations shared by the community.
-            </p>
-          </div>
-          {canPost && (
+          <h1 className="font-display text-3xl">Opportunities</h1>
+          <div className="flex flex-wrap items-center gap-2">
             <button
-              onClick={() => {
-                setShowForm((prev) => !prev);
-                if (showForm) {
-                  setEditingId(null);
-                }
-              }}
-              className="rounded-full bg-coral px-5 py-2 text-xs font-semibold uppercase tracking-wide text-charcoal"
+              onClick={() => setShowNotifyModal(true)}
+              className="rounded-full border border-white/10 px-5 py-2 text-xs font-semibold uppercase tracking-wide text-sand hover:border-teal"
             >
-              {showForm ? "Close form" : editingId ? "Edit opportunity" : "Post an opportunity"}
+              Get notified
             </button>
-          )}
+            {canPost && (
+              <button
+                onClick={() => {
+                  setShowForm((prev) => !prev);
+                  if (showForm) {
+                    setEditingId(null);
+                  }
+                }}
+                className="rounded-full bg-coral px-5 py-2 text-xs font-semibold uppercase tracking-wide text-charcoal"
+              >
+                {showForm ? "Close form" : editingId ? "Edit opportunity" : "Post an opportunity"}
+              </button>
+            )}
+          </div>
         </div>
+        {notifyFeedback && <p className="mt-3 text-xs text-teal">{notifyFeedback}</p>}
 
         {showForm && (
           <form onSubmit={handleSubmit} className="mt-6 grid gap-4 md:grid-cols-2">
@@ -225,15 +322,18 @@ export default function Opportunities() {
                 </option>
               ))}
             </select>
-            <div className="space-y-2">
-              <p className="text-xs uppercase tracking-wide text-mist">Location</p>
-              <input
-                className="w-full rounded-xl border border-white/10 bg-slate/40 px-4 py-2 text-sand"
-                placeholder="e.g., Remote / Paris, France"
-                value={form.country}
-                onChange={(event) => setForm((prev) => ({ ...prev, country: event.target.value }))}
-              />
-            </div>
+            <select
+              className="w-full rounded-xl border border-white/10 bg-slate/40 px-4 py-2 text-sand"
+              value={form.country}
+              onChange={(event) => setForm((prev) => ({ ...prev, country: event.target.value }))}
+            >
+              <option value="">All countries</option>
+              {countries.map((country) => (
+                <option key={country} value={country}>
+                  {country}
+                </option>
+              ))}
+            </select>
             <input
               className="rounded-xl border border-white/10 bg-slate/40 px-4 py-2 text-sand"
               placeholder="City (optional)"
@@ -277,14 +377,19 @@ export default function Opportunities() {
               />
             </div>
             <div className="grid gap-4 md:grid-cols-2 md:col-span-2">
-              <input
+              <select
                 className="rounded-xl border border-white/10 bg-slate/40 px-4 py-2 text-sand"
                 value={form.visibilityRegion}
                 onChange={(event) =>
                   setForm((prev) => ({ ...prev, visibilityRegion: event.target.value }))
                 }
-                placeholder="Visibility token (use ALL for global)"
-              />
+              >
+                {visibilityOptions.map((option) => (
+                  <option key={option} value={option}>
+                    {option === "LOCAL" ? "LOCAL (my region)" : option}
+                  </option>
+                ))}
+              </select>
               <input
                 className="rounded-xl border border-white/10 bg-slate/40 px-4 py-2 text-sand"
                 placeholder="Tags (comma separated)"
@@ -303,8 +408,33 @@ export default function Opportunities() {
       </div>
 
       <div className="glass rounded-2xl p-5">
-        <h2 className="font-display text-2xl">Filters</h2>
-        <div className="mt-4 grid gap-4 md:grid-cols-5">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h2 className="font-display text-2xl">Filters</h2>
+          <div className="flex items-center gap-2 text-xs uppercase tracking-wide">
+            <button
+              onClick={() => setViewMode("grid")}
+              className={`rounded-full border px-3 py-1 ${
+                viewMode === "grid"
+                  ? "border-teal bg-teal/10 text-teal"
+                  : "border-white/10 text-mist hover:border-teal"
+              }`}
+            >
+              Grid
+            </button>
+            <button
+              onClick={() => setViewMode("list")}
+              className={`rounded-full border px-3 py-1 ${
+                viewMode === "list"
+                  ? "border-teal bg-teal/10 text-teal"
+                  : "border-white/10 text-mist hover:border-teal"
+              }`}
+            >
+              List
+            </button>
+          </div>
+        </div>
+
+        <div className="mt-4 grid gap-4 md:grid-cols-6">
           <input
             value={filters.search}
             onChange={(event) =>
@@ -313,12 +443,17 @@ export default function Opportunities() {
             className="rounded-xl border border-white/10 bg-slate/40 px-4 py-2 text-sm text-sand md:col-span-2"
             placeholder="Search by title, org, or description"
           />
-          <input
+          <select
             value={filters.region}
             onChange={(event) => setFilters((prev) => ({ ...prev, region: event.target.value }))}
             className="rounded-xl border border-white/10 bg-slate/40 px-4 py-2 text-sm text-sand"
-            placeholder="Visibility token (ALL or custom)"
-          />
+          >
+            <option value="LOCAL">My region</option>
+            <option value="ALL">All regions</option>
+            {user?.currentRegion ? (
+              <option value="NETWORK">Network ({user.currentRegion})</option>
+            ) : null}
+          </select>
           <select
             value={filters.type}
             onChange={(event) => setFilters((prev) => ({ ...prev, type: event.target.value }))}
@@ -331,14 +466,20 @@ export default function Opportunities() {
               </option>
             ))}
           </select>
-          <input
+          <select
             value={filters.country}
             onChange={(event) =>
               setFilters((prev) => ({ ...prev, country: event.target.value }))
             }
             className="rounded-xl border border-white/10 bg-slate/40 px-4 py-2 text-sm text-sand"
-            placeholder="Location filter"
-          />
+          >
+            <option value="">All locations</option>
+            {countries.map((country) => (
+              <option key={country} value={country}>
+                {country}
+              </option>
+            ))}
+          </select>
           <select
             value={filters.status}
             onChange={(event) => setFilters((prev) => ({ ...prev, status: event.target.value }))}
@@ -357,8 +498,8 @@ export default function Opportunities() {
         <p className="text-sm text-mist">Loading opportunities...</p>
       ) : opportunities.length === 0 ? (
         <p className="text-sm text-mist">No opportunities match these filters.</p>
-      ) : (
-        <div className="grid gap-4 md:grid-cols-2">
+      ) : viewMode === "grid" ? (
+        <div className="grid items-start gap-4 md:grid-cols-2">
           {opportunities.map((opportunity) => (
             <OpportunityCard
               key={opportunity._id}
@@ -369,6 +510,196 @@ export default function Opportunities() {
               onDelete={() => deleteOpportunity(opportunity._id)}
             />
           ))}
+        </div>
+      ) : (
+        <div className="grid gap-4 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
+          <div className="glass rounded-2xl p-3 space-y-2">
+            {opportunities.map((opportunity) => (
+              <button
+                key={opportunity._id}
+                onClick={() => handleRowSelect(opportunity._id)}
+                className={`w-full rounded-xl border p-3 text-left ${
+                  selectedOpportunity?._id === opportunity._id
+                    ? "border-teal bg-teal/10"
+                    : "border-white/10 bg-white/5 hover:border-teal"
+                }`}
+              >
+                <p className="text-sm text-sand">{opportunity.title}</p>
+                <p className="text-xs text-mist">{opportunity.orgName}</p>
+                <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-mist">
+                  <StatusBadge label={opportunity.type} tone="slate" />
+                  <span>{opportunity.locationMode}</span>
+                  <span>{countryLabel(opportunity.country)}</span>
+                  <span>{formatRelativeTime(opportunity.createdAt)}</span>
+                </div>
+              </button>
+            ))}
+          </div>
+
+          {selectedOpportunity ? (
+            <div className="glass rounded-2xl p-5 space-y-4">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <p className="text-xs uppercase tracking-wide text-mist">
+                    {selectedOpportunity.orgName}
+                  </p>
+                  <h3 className="mt-1 text-2xl text-sand">{selectedOpportunity.title}</h3>
+                </div>
+                <StatusBadge label={selectedOpportunity.type} tone="slate" />
+              </div>
+              <div className="flex flex-wrap items-center gap-3 text-xs text-mist">
+                <span>{selectedOpportunity.locationMode}</span>
+                <span>
+                  {countryLabel(selectedOpportunity.country)}
+                  {selectedOpportunity.city ? ` · ${selectedOpportunity.city}` : ""}
+                </span>
+                <span>{formatRelativeTime(selectedOpportunity.createdAt)}</span>
+              </div>
+              <p className="text-sm text-mist whitespace-pre-wrap">{selectedOpportunity.description}</p>
+              {selectedOpportunity.tags?.length ? (
+                <div className="flex flex-wrap gap-2">
+                  {selectedOpportunity.tags.map((tag) => (
+                    <span
+                      key={tag}
+                      className="rounded-full bg-white/10 px-3 py-1 text-xs text-mist"
+                    >
+                      {tag}
+                    </span>
+                  ))}
+                </div>
+              ) : null}
+              <div className="flex flex-wrap gap-2">
+                <Link
+                  to={`/opportunities/${selectedOpportunity._id}`}
+                  className="rounded-full bg-teal px-4 py-2 text-xs font-semibold uppercase tracking-wide text-charcoal"
+                >
+                  View details
+                </Link>
+                <a
+                  href={`/opportunities/${selectedOpportunity._id}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="rounded-full border border-white/10 px-4 py-2 text-xs uppercase tracking-wide text-sand hover:border-teal"
+                >
+                  Open new tab
+                </a>
+                {selectedOpportunity.postedBy === user?._id && (
+                  <>
+                    <button
+                      onClick={() => startEdit(selectedOpportunity)}
+                      className="rounded-full border border-white/10 px-4 py-2 text-xs uppercase tracking-wide text-sand hover:border-teal"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      onClick={() => closeOpportunity(selectedOpportunity._id)}
+                      className="rounded-full border border-white/10 px-4 py-2 text-xs uppercase tracking-wide text-sand hover:border-teal"
+                    >
+                      Close
+                    </button>
+                    <button
+                      onClick={() => deleteOpportunity(selectedOpportunity._id)}
+                      className="rounded-full border border-white/10 px-4 py-2 text-xs uppercase tracking-wide text-sand hover:border-teal"
+                    >
+                      Delete
+                    </button>
+                  </>
+                )}
+              </div>
+            </div>
+          ) : null}
+        </div>
+      )}
+
+      {showNotifyModal && (
+        <div className="fixed inset-0 z-40 flex items-center justify-center bg-charcoal/60 px-4">
+          <div className="glass w-full max-w-lg rounded-2xl p-6 space-y-4">
+            <div>
+              <h3 className="font-display text-xl text-sand">Get notified Modal</h3>
+              <p className="text-sm text-mist">Choose your opportunity notification preferences.</p>
+            </div>
+
+            <div className="space-y-2">
+              <p className="text-xs uppercase tracking-wide text-mist">Opportunity type</p>
+              <div className="flex flex-wrap gap-2">
+                {notifyTypeOptions.map((type) => (
+                  <label key={type} className="flex items-center gap-2 text-xs text-sand">
+                    <input
+                      type="checkbox"
+                      checked={notifyPrefs.types.includes(type)}
+                      onChange={() =>
+                        setNotifyPrefs((prev) => ({
+                          ...prev,
+                          types: toggleMultiValue(prev.types, type)
+                        }))
+                      }
+                    />
+                    {type}
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <p className="text-xs uppercase tracking-wide text-mist">Location mode</p>
+              <div className="flex flex-wrap gap-2">
+                {notifyLocationModes.map((mode) => (
+                  <label key={mode} className="flex items-center gap-2 text-xs text-sand">
+                    <input
+                      type="checkbox"
+                      checked={notifyPrefs.locationModes.includes(mode)}
+                      onChange={() =>
+                        setNotifyPrefs((prev) => ({
+                          ...prev,
+                          locationModes: toggleMultiValue(prev.locationModes, mode)
+                        }))
+                      }
+                    />
+                    {mode}
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            <select
+              value={notifyPrefs.country}
+              onChange={(event) =>
+                setNotifyPrefs((prev) => ({ ...prev, country: event.target.value }))
+              }
+              className="w-full rounded-xl border border-white/10 bg-slate/40 px-3 py-2 text-sm text-sand"
+            >
+              <option value="">Region/Country (optional)</option>
+              {countries.map((country) => (
+                <option key={country} value={country}>
+                  {country}
+                </option>
+              ))}
+            </select>
+
+            <input
+              value={notifyPrefs.keyword}
+              onChange={(event) =>
+                setNotifyPrefs((prev) => ({ ...prev, keyword: event.target.value }))
+              }
+              className="w-full rounded-xl border border-white/10 bg-slate/40 px-3 py-2 text-sm text-sand"
+              placeholder="Keyword include (optional)"
+            />
+
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => setShowNotifyModal(false)}
+                className="rounded-full border border-white/10 px-4 py-2 text-xs uppercase tracking-wide text-sand hover:border-teal"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleNotifySave}
+                className="rounded-full bg-teal px-4 py-2 text-xs font-semibold uppercase tracking-wide text-charcoal"
+              >
+                Save preferences
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>
