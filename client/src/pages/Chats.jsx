@@ -16,6 +16,7 @@ const allowedAttachmentTypes = new Set([
   "text/csv"
 ]);
 const maxAttachmentBytes = 5 * 1024 * 1024;
+const quickReactions = ["👍", "❤️", "😂", "😮", "👎"];
 
 export default function Chats() {
   const { token, user } = useAuth();
@@ -32,6 +33,8 @@ export default function Chats() {
   const [isDragOver, setIsDragOver] = useState(false);
   const [viewerAttachment, setViewerAttachment] = useState(null);
   const [viewerZoom, setViewerZoom] = useState(1);
+  const [replyingTo, setReplyingTo] = useState(null);
+  const [activeReactionMessageId, setActiveReactionMessageId] = useState("");
   const [error, setError] = useState("");
   const requestedThreadId = useMemo(() => {
     const params = new URLSearchParams(location.search);
@@ -135,6 +138,32 @@ export default function Chats() {
       ];
     }
     return [];
+  };
+
+  const normalizeReactions = (reactionsValue) => {
+    if (!reactionsValue) return {};
+    if (reactionsValue instanceof Map) {
+      return Object.fromEntries(reactionsValue.entries());
+    }
+    if (typeof reactionsValue === "object") {
+      return reactionsValue;
+    }
+    return {};
+  };
+
+  const getSenderName = (senderId) => {
+    if (String(senderId) === String(user?._id)) return "You";
+    if (String(senderId) === String(activeThread?.otherParticipant?._id)) {
+      return activeThread?.otherParticipant?.name || "Member";
+    }
+    return "Member";
+  };
+
+  const getReplySnippet = (message) => {
+    const base = (message?.body || "").trim();
+    const fallback = normalizeMessageAttachments(message).length ? "Attachment" : "";
+    const text = base || fallback || "Message";
+    return text.length > 80 ? `${text.slice(0, 79)}…` : text;
   };
 
   const openViewer = (attachment) => {
@@ -296,6 +325,8 @@ export default function Chats() {
 
   useEffect(() => {
     if (activeThread?._id) {
+      setReplyingTo(null);
+      setActiveReactionMessageId("");
       (async () => {
         await loadMessages(activeThread._id);
         await markThreadRead(activeThread._id);
@@ -373,6 +404,13 @@ export default function Chats() {
         `/chats/threads/${activeThread._id}/messages`,
         {
           body: body || undefined,
+          replyTo: replyingTo
+            ? {
+                messageId: replyingTo.messageId,
+                body: replyingTo.body,
+                senderId: replyingTo.senderId
+              }
+            : undefined,
           attachments: uploadedAttachments,
           attachmentUrl: firstAttachment?.url,
           attachmentContentType: firstAttachment?.contentType,
@@ -386,6 +424,7 @@ export default function Chats() {
       setThreadPreviews((prev) => ({ ...prev, [activeThread._id]: toPreviewText(message) }));
       setBody("");
       setAttachments([]);
+      setReplyingTo(null);
     } catch (err) {
       setError(err.message || "Failed to send message");
     }
@@ -440,6 +479,39 @@ export default function Chats() {
     if (!activeThread || activeStatus !== "active") return;
     const files = Array.from(event.dataTransfer?.files || []);
     addAttachments(files);
+  };
+
+  const handleToggleReaction = async (messageId, emoji) => {
+    const myId = String(user?._id || "");
+    const previousMessages = messages;
+    const optimisticMessages = messages.map((message) => {
+      if (message._id !== messageId) return message;
+      const currentReactions = normalizeReactions(message.reactions);
+      const currentList = Array.isArray(currentReactions[emoji])
+        ? currentReactions[emoji].map((id) => String(id))
+        : [];
+      const nextList = currentList.includes(myId)
+        ? currentList.filter((id) => id !== myId)
+        : [...currentList, myId];
+      const nextReactions = { ...currentReactions };
+      if (nextList.length) {
+        nextReactions[emoji] = nextList;
+      } else {
+        delete nextReactions[emoji];
+      }
+      return { ...message, reactions: nextReactions };
+    });
+    setMessages(optimisticMessages);
+
+    try {
+      const updated = await apiClient.post(`/chats/messages/${messageId}/react`, { emoji }, token);
+      setMessages((prev) =>
+        prev.map((message) => (message._id === messageId ? { ...message, ...updated } : message))
+      );
+    } catch (reactionError) {
+      setMessages(previousMessages);
+      setError(reactionError.message || "Failed to react");
+    }
   };
 
   return (
@@ -552,27 +624,112 @@ export default function Chats() {
           {messages.length === 0 ? (
             <p className="text-sm text-mist">Select a thread to view messages.</p>
           ) : (
-            messages.map((message) => (
-              <div
-                key={message._id}
-                className={`flex ${message.senderId === user?._id ? "justify-end" : "justify-start"}`}
-              >
+            messages.map((message) => {
+              const reactions = normalizeReactions(message.reactions);
+              const reactionEntries = Object.entries(reactions).filter(
+                ([, users]) => Array.isArray(users) && users.length > 0
+              );
+              const myId = String(user?._id || "");
+              const quote = message.replyTo;
+
+              return (
                 <div
-                  className={`max-w-[70%] rounded-xl px-3 py-2 text-sm ${
-                    message.senderId === user?._id
-                      ? "bg-teal/20 text-sand"
-                      : "border border-white/10 text-sand"
-                  }`}
+                  key={message._id}
+                  className={`group flex ${message.senderId === user?._id ? "justify-end" : "justify-start"}`}
                 >
-                  {message.body && <p>{message.body}</p>}
-                  {renderAttachmentBlock(message)}
-                  <p className="mt-1 text-[10px] text-mist">
-                    {formatTime(message.createdAt)}
-                  </p>
-                  {message._id === seenMessageId && <p className="text-[10px] text-mist">Seen</p>}
+                  <div
+                    className={`max-w-[70%] rounded-xl px-3 py-2 text-sm ${
+                      message.senderId === user?._id
+                        ? "bg-teal/20 text-sand"
+                        : "border border-white/10 text-sand"
+                    }`}
+                  >
+                    {quote?.messageId && (
+                      <div className="mb-2 rounded-lg border border-white/10 bg-white/5 px-2 py-1">
+                        <p className="text-[10px] uppercase tracking-wide text-mist">
+                          {getSenderName(quote.senderId)}
+                        </p>
+                        <p className="truncate text-xs text-mist">
+                          {quote.body || "Attachment"}
+                        </p>
+                      </div>
+                    )}
+                    {message.body && <p>{message.body}</p>}
+                    {renderAttachmentBlock(message)}
+                    <div className="mt-1 flex items-center gap-2">
+                      <p className="text-[10px] text-mist">
+                        {formatTime(message.createdAt)}
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setReplyingTo({
+                            messageId: message._id,
+                            body: getReplySnippet(message),
+                            senderId: message.senderId
+                          })
+                        }
+                        className="text-[10px] uppercase tracking-wide text-mist hover:text-sand"
+                      >
+                        Reply
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setActiveReactionMessageId((prev) =>
+                            prev === message._id ? "" : message._id
+                          )
+                        }
+                        className="text-[10px] uppercase tracking-wide text-mist hover:text-sand"
+                      >
+                        React
+                      </button>
+                    </div>
+                    <div
+                      className={`mt-1 flex-wrap gap-1 ${
+                        activeReactionMessageId === message._id
+                          ? "flex"
+                          : "hidden group-hover:flex"
+                      }`}
+                    >
+                        {quickReactions.map((emoji) => (
+                          <button
+                            key={emoji}
+                            type="button"
+                            onClick={() => handleToggleReaction(message._id, emoji)}
+                            className="rounded-full border border-white/10 px-2 py-0.5 text-xs hover:border-teal"
+                          >
+                            {emoji}
+                          </button>
+                        ))}
+                    </div>
+                    {reactionEntries.length > 0 && (
+                      <div className="mt-1 flex flex-wrap gap-1">
+                        {reactionEntries.map(([emoji, users]) => {
+                          const normalizedUsers = users.map((id) => String(id));
+                          const mine = normalizedUsers.includes(myId);
+                          return (
+                            <button
+                              key={emoji}
+                              type="button"
+                              onClick={() => handleToggleReaction(message._id, emoji)}
+                              className={`rounded-full border px-2 py-0.5 text-[11px] ${
+                                mine
+                                  ? "border-teal bg-teal/10 text-teal"
+                                  : "border-white/10 text-mist"
+                              }`}
+                            >
+                              {emoji} {normalizedUsers.length}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+                    {message._id === seenMessageId && <p className="text-[10px] text-mist">Seen</p>}
+                  </div>
                 </div>
-              </div>
-            ))
+              );
+            })
           )}
         </div>
         <div
@@ -589,6 +746,23 @@ export default function Chats() {
               : "border-white/10 bg-transparent"
           }`}
         >
+          {replyingTo && (
+            <div className="mb-2 flex items-start justify-between gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2">
+              <div className="min-w-0">
+                <p className="text-[10px] uppercase tracking-wide text-mist">
+                  Replying to {getSenderName(replyingTo.senderId)}
+                </p>
+                <p className="truncate text-xs text-mist">{replyingTo.body}</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setReplyingTo(null)}
+                className="text-xs uppercase tracking-wide text-coral"
+              >
+                ×
+              </button>
+            </div>
+          )}
           {attachments.length > 0 && (
             <div className="mb-2 rounded-xl border border-white/10 bg-white/5 p-2 space-y-2">
               {attachments.map((file, index) => (

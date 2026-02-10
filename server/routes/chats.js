@@ -167,6 +167,7 @@ router.post("/threads/:id/messages", authMiddleware, blockBanned, async (req, re
   try {
     const {
       body,
+      replyTo,
       attachments,
       attachmentUrl,
       attachmentContentType,
@@ -212,6 +213,13 @@ router.post("/threads/:id/messages", authMiddleware, blockBanned, async (req, re
       threadId: req.params.id,
       senderId: req.user._id,
       body,
+      replyTo: replyTo
+        ? {
+            messageId: replyTo.messageId,
+            body: replyTo.body,
+            senderId: replyTo.senderId
+          }
+        : undefined,
       attachments: normalizedAttachments,
       attachmentUrl: resolvedAttachmentUrl,
       attachmentContentType: resolvedAttachmentContentType,
@@ -285,6 +293,49 @@ router.post("/threads/:id/read", authMiddleware, blockBanned, async (req, res) =
     res.json({ ok: true, threadId: thread._id, lastReadAt: now });
   } catch (error) {
     res.status(500).json({ message: "Failed to mark thread as read" });
+  }
+});
+
+router.post("/messages/:id/react", authMiddleware, blockBanned, async (req, res) => {
+  try {
+    const emoji =
+      typeof req.body?.emoji === "string" ? req.body.emoji.trim() : "";
+    if (!emoji) {
+      return res.status(400).json({ message: "emoji is required" });
+    }
+
+    const message = await ChatMessage.findById(req.params.id);
+    if (!message) {
+      return res.status(404).json({ message: "Message not found" });
+    }
+
+    const thread = await ChatThread.findOne({
+      _id: message.threadId,
+      participants: req.user._id
+    }).select("_id");
+    if (!thread) {
+      return res.status(404).json({ message: "Thread not found" });
+    }
+
+    const existing = Array.isArray(message.reactions?.get?.(emoji))
+      ? message.reactions.get(emoji).map((id) => String(id))
+      : [];
+    const myId = String(req.user._id);
+    const next = existing.includes(myId)
+      ? existing.filter((id) => id !== myId)
+      : [...existing, myId];
+
+    if (next.length) {
+      message.reactions.set(emoji, next);
+    } else {
+      message.reactions.delete(emoji);
+    }
+    message.markModified("reactions");
+    await message.save();
+
+    res.json(message);
+  } catch (error) {
+    res.status(500).json({ message: "Failed to toggle reaction" });
   }
 });
 

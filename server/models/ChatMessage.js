@@ -10,11 +10,26 @@ const attachmentSchema = new mongoose.Schema(
   { _id: false }
 );
 
+const replyToSchema = new mongoose.Schema(
+  {
+    messageId: { type: mongoose.Schema.Types.ObjectId },
+    body: String,
+    senderId: { type: mongoose.Schema.Types.ObjectId, ref: "User" }
+  },
+  { _id: false }
+);
+
 const chatMessageSchema = new mongoose.Schema(
   {
     threadId: { type: mongoose.Schema.Types.ObjectId, ref: "ChatThread", required: true, index: true },
     senderId: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
     body: { type: String },
+    replyTo: replyToSchema,
+    reactions: {
+      type: Map,
+      of: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
+      default: {}
+    },
     attachments: { type: [attachmentSchema], default: [] },
     attachmentUrl: String,
     attachmentContentType: String,
