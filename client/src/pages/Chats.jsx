@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation } from "react-router-dom";
 import { apiClient, uploadViaPresign } from "../api/client";
 import { useAuth } from "../utils/auth";
@@ -38,6 +38,10 @@ export default function Chats() {
   const [openMenuMessageId, setOpenMenuMessageId] = useState("");
   const [isCoarsePointer, setIsCoarsePointer] = useState(false);
   const [error, setError] = useState("");
+  const messagesScrollRef = useRef(null);
+  const isNearBottomRef = useRef(true);
+  const previousMessageCountRef = useRef(0);
+  const forceScrollToBottomRef = useRef(false);
   const requestedThreadId = useMemo(() => {
     const params = new URLSearchParams(location.search);
     return params.get("thread");
@@ -327,6 +331,7 @@ export default function Chats() {
 
   useEffect(() => {
     if (activeThread?._id) {
+      forceScrollToBottomRef.current = true;
       (async () => {
         await loadMessages(activeThread._id);
         await markThreadRead(activeThread._id);
@@ -338,6 +343,7 @@ export default function Chats() {
     setReplyingTo(null);
     setActiveReactionMessageId("");
     setOpenMenuMessageId("");
+    previousMessageCountRef.current = 0;
   }, [activeThread?._id]);
 
   useEffect(() => {
@@ -382,12 +388,20 @@ export default function Chats() {
     if (!openMenuMessageId) return undefined;
     const onPointerDown = (event) => {
       const target = event.target;
-      if (target instanceof Element && target.closest("[data-chat-menu-root='true']")) return;
+      if (
+        target instanceof Element &&
+        (target.closest("[data-chat-menu-root='true']") ||
+          target.closest("[data-chat-reaction-root='true']"))
+      ) {
+        return;
+      }
       setOpenMenuMessageId("");
+      setActiveReactionMessageId("");
     };
     const onKeyDown = (event) => {
       if (event.key === "Escape") {
         setOpenMenuMessageId("");
+        setActiveReactionMessageId("");
       }
     };
     window.addEventListener("mousedown", onPointerDown);
@@ -397,6 +411,52 @@ export default function Chats() {
       window.removeEventListener("keydown", onKeyDown);
     };
   }, [openMenuMessageId]);
+
+  useEffect(() => {
+    if (!activeReactionMessageId) return undefined;
+    const onPointerDown = (event) => {
+      const target = event.target;
+      if (target instanceof Element && target.closest("[data-chat-reaction-root='true']")) {
+        return;
+      }
+      setActiveReactionMessageId("");
+    };
+    const onKeyDown = (event) => {
+      if (event.key === "Escape") {
+        setActiveReactionMessageId("");
+      }
+    };
+    window.addEventListener("mousedown", onPointerDown);
+    window.addEventListener("keydown", onKeyDown);
+    return () => {
+      window.removeEventListener("mousedown", onPointerDown);
+      window.removeEventListener("keydown", onKeyDown);
+    };
+  }, [activeReactionMessageId]);
+
+  useEffect(() => {
+    const currentCount = messages.length;
+    const previousCount = previousMessageCountRef.current;
+    if (!currentCount) {
+      previousMessageCountRef.current = 0;
+      return;
+    }
+
+    const lastMessage = messages[currentCount - 1];
+    const shouldAutoScroll =
+      forceScrollToBottomRef.current ||
+      (currentCount > previousCount &&
+        (isNearBottomRef.current || String(lastMessage?.senderId) === String(user?._id)));
+
+    if (shouldAutoScroll) {
+      requestAnimationFrame(() => {
+        scrollMessagesToBottom(forceScrollToBottomRef.current ? "auto" : "smooth");
+      });
+      forceScrollToBottomRef.current = false;
+    }
+
+    previousMessageCountRef.current = currentCount;
+  }, [messages, user?._id]);
 
   const handleSend = async (event) => {
     event.preventDefault();
@@ -537,6 +597,7 @@ export default function Chats() {
       return { ...message, reactions: nextReactions };
     });
     setMessages(optimisticMessages);
+    setActiveReactionMessageId("");
 
     try {
       const updated = await apiClient.post(`/chats/messages/${messageId}/react`, { emoji }, token);
@@ -547,6 +608,20 @@ export default function Chats() {
       setMessages(previousMessages);
       setError(reactionError.message || "Failed to react");
     }
+  };
+
+  const updateNearBottomFlag = () => {
+    const node = messagesScrollRef.current;
+    if (!node) return;
+    const distance = node.scrollHeight - node.scrollTop - node.clientHeight;
+    isNearBottomRef.current = distance <= 120;
+  };
+
+  const scrollMessagesToBottom = (behavior = "auto") => {
+    const node = messagesScrollRef.current;
+    if (!node) return;
+    node.scrollTo({ top: node.scrollHeight, behavior });
+    isNearBottomRef.current = true;
   };
 
   return (
@@ -657,7 +732,11 @@ export default function Chats() {
             )}
           </div>
         )}
-        <div className="mt-4 min-h-[200px] space-y-2 md:min-h-0 md:flex-1 md:overflow-y-auto md:pr-1">
+        <div
+          ref={messagesScrollRef}
+          onScroll={updateNearBottomFlag}
+          className="mt-4 min-h-[200px] space-y-2 md:min-h-0 md:flex-1 md:overflow-y-auto md:pr-1"
+        >
           {messages.length === 0 ? (
             <p className="text-sm text-mist">Select a thread to view messages.</p>
           ) : (
@@ -714,17 +793,6 @@ export default function Chats() {
                           >
                             Reply
                           </button>
-                          <button
-                            type="button"
-                            onClick={() =>
-                              setActiveReactionMessageId((prev) =>
-                                prev === message._id ? "" : message._id
-                              )
-                            }
-                            className="text-[10px] uppercase tracking-wide text-mist hover:text-sand"
-                          >
-                            React
-                          </button>
                         </>
                       )}
                     </div>
@@ -737,7 +805,9 @@ export default function Chats() {
                       className={`absolute right-2 top-2 rounded-full border border-white/10 px-1.5 py-0 text-xs text-mist transition ${
                         isMenuOpen
                           ? "opacity-100"
-                          : "opacity-0 group-hover:opacity-100"
+                          : isCoarsePointer
+                            ? "opacity-100"
+                            : "opacity-0 group-hover:opacity-100"
                       }`}
                       aria-label="Message options"
                     >
@@ -777,10 +847,9 @@ export default function Chats() {
                       </div>
                     )}
                     <div
+                      data-chat-reaction-root="true"
                       className={`mt-1 flex-wrap gap-1 ${
-                        activeReactionMessageId === message._id
-                          ? "flex"
-                          : "hidden group-hover:flex"
+                        activeReactionMessageId === message._id ? "flex" : "hidden"
                       }`}
                     >
                         {quickReactions.map((emoji) => (
