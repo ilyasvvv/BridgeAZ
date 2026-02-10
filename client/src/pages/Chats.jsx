@@ -278,7 +278,7 @@ export default function Chats() {
               href={toHref(cleanUrl)}
               className="text-teal underline"
               target="_blank"
-              rel="noreferrer"
+              rel="noopener noreferrer"
             >
               {parsed[1]}
             </a>
@@ -295,7 +295,7 @@ export default function Chats() {
             href={toHref(cleanUrl)}
             className="text-teal underline"
             target="_blank"
-            rel="noreferrer"
+            rel="noopener noreferrer"
           >
             {cleanUrl}
           </a>
@@ -439,16 +439,25 @@ export default function Chats() {
                 />
               </button>
             ) : (
-              <button
-                type="button"
-                onClick={() => openViewer(item)}
-                className="flex w-full items-center justify-between rounded-lg border border-white/10 px-2 py-1 text-[11px] hover:border-teal"
-              >
-                <span className="truncate">
-                  {item.kind === "pdf" ? "PDF" : "File"}: {item.name}
-                </span>
-                <span className="text-teal underline">Open</span>
-              </button>
+              <div className="flex w-full items-center justify-between rounded-lg border border-white/10 px-2 py-1 text-[11px] hover:border-teal">
+                <button
+                  type="button"
+                  onClick={() => openViewer(item)}
+                  className="min-w-0 flex-1 truncate text-left"
+                >
+                  <span className="truncate">
+                    {item.kind === "pdf" ? "PDF" : "File"}: {item.name}
+                  </span>
+                </button>
+                <a
+                  href={item.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="ml-2 shrink-0 text-teal underline"
+                >
+                  Open
+                </a>
+              </div>
             )}
           </div>
         ))}
@@ -1011,7 +1020,7 @@ export default function Chats() {
                   className={`group flex ${message.senderId === user?._id ? "justify-end" : "justify-start"}`}
                 >
                   <div
-                    className={`relative max-w-[70%] rounded-xl px-3 py-2 text-sm ${
+                    className={`relative max-w-[70%] rounded-xl px-3 pr-10 py-2 text-sm ${
                       message.senderId === user?._id
                         ? "bg-teal/20 text-sand"
                         : "border border-white/10 text-sand"
@@ -1037,6 +1046,8 @@ export default function Chats() {
                     {previewUrl && (
                       <a
                         href={toHref(previewUrl)}
+                        target="_blank"
+                        rel="noopener noreferrer"
                         className="mt-2 block rounded-lg border border-white/10 bg-white/5 px-2 py-2 text-xs text-mist hover:border-teal"
                       >
                         {previewData?.status === "loading" ? (
@@ -1279,17 +1290,17 @@ export default function Chats() {
               Link
             </button>
           </div>
-          <form onSubmit={handleSend} className="flex gap-2">
+          <form onSubmit={handleSend} className="flex items-center gap-2">
             <textarea
               ref={composerRef}
               value={body}
               onChange={(event) => setBody(event.target.value)}
               rows={2}
-              className="flex-1 resize-none rounded-xl border border-white/10 bg-slate/40 px-4 py-2 text-sm text-sand"
+              className="h-11 flex-1 resize-none rounded-xl border border-white/10 bg-slate/40 px-4 py-2 text-sm leading-tight text-sand"
               placeholder="Type a message..."
               disabled={!activeThread || activeStatus !== "active"}
             />
-            <label className="rounded-full border border-white/10 px-3 py-2 text-xs uppercase tracking-wide text-mist hover:border-teal cursor-pointer">
+            <label className="inline-flex h-11 cursor-pointer items-center rounded-full border border-white/10 px-3 text-xs uppercase tracking-wide text-mist hover:border-teal">
               Attach
               <input
                 type="file"
@@ -1305,7 +1316,7 @@ export default function Chats() {
             </label>
             <button
               type="submit"
-              className="rounded-full bg-teal px-4 py-2 text-xs font-semibold uppercase tracking-wide text-charcoal disabled:opacity-60"
+              className="inline-flex h-11 items-center rounded-full bg-teal px-4 text-xs font-semibold uppercase tracking-wide text-charcoal disabled:opacity-60"
               disabled={!activeThread || activeStatus !== "active"}
             >
               Send
