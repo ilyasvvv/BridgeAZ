@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useLocation } from "react-router-dom";
 import { apiClient, uploadViaPresign } from "../api/client";
 import { useAuth } from "../utils/auth";
+import UserChip from "../components/UserChip";
 
 export default function Chats() {
   const { token, user } = useAuth();
@@ -234,9 +235,17 @@ export default function Chats() {
           <p className="text-sm text-mist">No conversations yet.</p>
         ) : (
           threads.map((thread) => (
-            <button
+            <div
               key={thread._id}
               onClick={() => setActiveThread(thread)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" || event.key === " ") {
+                  event.preventDefault();
+                  setActiveThread(thread);
+                }
+              }}
+              role="button"
+              tabIndex={0}
               className={`w-full rounded-xl border px-3 py-2 text-left text-sm ${
                 activeThread?._id === thread._id
                   ? "border-teal bg-teal/10 text-teal"
@@ -244,9 +253,12 @@ export default function Chats() {
               }`}
             >
               <div className="flex items-center justify-between gap-2">
-                <span className="truncate">
-                  {thread.otherParticipant?.name || "Conversation"}
-                </span>
+                <UserChip
+                  user={thread.otherParticipant}
+                  size={24}
+                  showRole={false}
+                  onClick={(event) => event.stopPropagation()}
+                />
                 <div className="flex items-center gap-2">
                   {normalizeThreadStatus(thread) === "pending" && (
                     <span className="rounded-full border border-amber/40 px-2 py-0.5 text-[10px] uppercase tracking-wide text-amber">
@@ -263,19 +275,25 @@ export default function Chats() {
                       new Date(thread.myLastReadAt) < new Date(thread.lastMessageAt)) && (
                       <span className="h-2 w-2 rounded-full bg-teal" aria-label="Unread" />
                     )}
-                  {thread.otherParticipant?.userType && (
-                    <span className="rounded-full border border-white/10 px-2 py-0.5 text-[10px] uppercase tracking-wide">
-                      {thread.otherParticipant.userType}
-                    </span>
-                  )}
                 </div>
               </div>
-            </button>
+            </div>
           ))
         )}
       </section>
       <section className="glass rounded-2xl p-4 space-y-4">
-        <h2 className="font-display text-xl">Messages</h2>
+        <div className="flex items-center justify-between gap-3">
+          {activeThread ? (
+            <UserChip
+              user={activeThread.otherParticipant}
+              size={36}
+              showRole={!!activeThread.otherParticipant?.userType}
+              nameClassName="font-display text-xl text-sand"
+            />
+          ) : (
+            <h2 className="font-display text-xl">Messages</h2>
+          )}
+        </div>
         {error && <p className="text-sm text-coral">{error}</p>}
         {activeThread && activeStatus !== "active" && (
           <div className="rounded-2xl border border-white/10 bg-white/5 p-4 text-sm text-mist">

@@ -4,6 +4,7 @@ import { apiClient } from "../api/client";
 import { useAuth } from "../utils/auth";
 import RegionPill from "../components/RegionPill";
 import StatusBadge from "../components/StatusBadge";
+import UserChip from "../components/UserChip";
 
 export default function PublicProfile() {
   const { id } = useParams();
@@ -76,16 +77,9 @@ export default function PublicProfile() {
         Back
       </button>
       <div className="glass rounded-3xl p-6 space-y-4">
-        <div className="flex flex-wrap items-center gap-4">
-          {(profile.avatarUrl || profile.profilePhotoUrl) && (
-            <img
-              src={profile.avatarUrl || profile.profilePhotoUrl}
-              alt={`${profile.name} avatar`}
-              className="h-20 w-20 rounded-full object-cover"
-            />
-          )}
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div className="min-w-0">
-            <h1 className="text-2xl text-sand">{profile.name}</h1>
+            <UserChip user={profile} size={48} nameClassName="text-2xl text-sand" />
             <div className="mt-2 flex flex-wrap items-center gap-2">
               <RegionPill region={profile.currentRegion} />
               <StatusBadge label={profile.userType || "member"} tone="slate" />
@@ -95,7 +89,7 @@ export default function PublicProfile() {
             <button
               onClick={handleMessage}
               disabled={messageLoading}
-              className="rounded-full bg-teal px-4 py-2 text-xs font-semibold uppercase tracking-wide text-charcoal disabled:opacity-60"
+              className="self-start rounded-full bg-teal px-4 py-2 text-xs font-semibold uppercase tracking-wide text-charcoal disabled:opacity-60"
             >
               {messageLoading ? "Messaging..." : "Message"}
             </button>

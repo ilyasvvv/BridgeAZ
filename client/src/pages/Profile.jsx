@@ -4,6 +4,7 @@ import { apiClient, uploadViaPresign } from "../api/client";
 import { useAuth } from "../utils/auth";
 import StatusBadge from "../components/StatusBadge";
 import RegionPill from "../components/RegionPill";
+import UserChip from "../components/UserChip";
 
 const tabs = ["Overview", "Experience", "Education", "Projects", "Activity"];
 
@@ -234,8 +235,13 @@ export default function Profile() {
     <div className="mx-auto max-w-5xl space-y-8">
       <div className="glass rounded-3xl p-6">
         <div className="flex flex-wrap items-center justify-between gap-4">
-          <div>
-            <p className="text-2xl text-sand">{profile.name}</p>
+          <div className="min-w-0">
+            <UserChip
+              user={profile}
+              size={48}
+              to={profile?._id ? `/profile/${profile._id}` : undefined}
+              nameClassName="text-2xl text-sand"
+            />
             <p className="text-sm text-mist">{profile.headline || "BridgeAZ member"}</p>
             <div className="mt-3 flex flex-wrap items-center gap-2">
               <RegionPill region={profile.currentRegion} />
@@ -468,13 +474,6 @@ export default function Profile() {
       <div className="glass rounded-2xl p-6">
         {activeTab === "Overview" && (
           <div className="space-y-4">
-            {(profile.avatarUrl || profile.profilePhotoUrl) && (
-              <img
-                src={profile.avatarUrl || profile.profilePhotoUrl}
-                alt={`${profile.name} avatar`}
-                className="h-20 w-20 rounded-full object-cover"
-              />
-            )}
             <p className="text-sm text-mist">{profile.bio || "No bio yet."}</p>
             {profile.locationNow?.country && (
               <p className="text-xs text-mist">

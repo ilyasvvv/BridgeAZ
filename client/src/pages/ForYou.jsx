@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { apiClient } from "../api/client";
 import { useAuth } from "../utils/auth";
 import CommunityPostCard from "../components/CommunityPostCard";
+import UserChip from "../components/UserChip";
 import { regionLabel } from "../utils/format";
 
 const progressKeywords = [
@@ -338,16 +339,7 @@ export default function ForYou() {
                 <div className="space-y-2">
                   {threadComments.map((comment) => (
                     <div key={comment._id} className="rounded-xl border border-white/10 p-3 text-sm text-sand">
-                      {comment.author?._id ? (
-                        <Link
-                          to={`/profile/${comment.author._id}`}
-                          className="text-xs text-mist hover:text-sand hover:underline"
-                        >
-                          {comment.author?.name || "Member"}
-                        </Link>
-                      ) : (
-                        <p className="text-xs text-mist">{comment.author?.name || "Member"}</p>
-                      )}
+                      <UserChip user={comment.author} size={24} nameClassName="text-xs" />
                       <p>{comment.content}</p>
                     </div>
                   ))}
@@ -407,7 +399,7 @@ export default function ForYou() {
                       key={mentor._id}
                       className="rounded-xl border border-white/10 bg-slate/40 p-3"
                     >
-                      <p className="text-sm text-sand">{mentor.name}</p>
+                      <UserChip user={mentor} size={24} nameClassName="text-sm text-sand" />
                       <p className="text-xs text-mist">{mentor.headline || "Mentor"}</p>
                     </div>
                   ))}
@@ -429,9 +421,11 @@ export default function ForYou() {
                       key={request._id}
                       className="rounded-xl border border-white/10 bg-slate/40 p-3"
                     >
-                      <p className="text-sm text-sand">
-                        {request.fromStudent?.name || "Student"}
-                      </p>
+                      <UserChip
+                        user={request.fromStudent}
+                        size={24}
+                        nameClassName="text-sm text-sand"
+                      />
                       <p className="text-xs text-mist">{request.message}</p>
                     </div>
                   ))}

@@ -1,7 +1,7 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
 import RegionPill from "./RegionPill";
 import StatusBadge from "./StatusBadge";
+import UserChip from "./UserChip";
 import { formatRelativeTime } from "../utils/format";
 
 export default function CommunityPostCard({
@@ -66,12 +66,7 @@ export default function CommunityPostCard({
     <div className="glass gradient-border relative rounded-2xl p-5 min-w-0">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <Link
-            to={post.author?._id ? `/profile/${post.author._id}` : "#"}
-            className="text-sm text-mist hover:text-sand hover:underline"
-          >
-            {post.author?.name || "Member"}
-          </Link>
+          <UserChip user={post.author} size={24} />
           <div className="mt-2 flex items-center gap-2">
             <RegionPill region={post.author?.currentRegion} />
             <span className="text-xs text-mist">{formatRelativeTime(post.createdAt)}</span>
@@ -175,16 +170,7 @@ export default function CommunityPostCard({
         <div className="mt-4 space-y-2 rounded-xl border border-white/10 bg-white/5 p-3 text-xs text-mist">
           {comments.map((comment) => (
             <div key={comment._id} className="space-y-1">
-              {comment.author?._id ? (
-                <Link
-                  to={`/profile/${comment.author._id}`}
-                  className="text-xs text-mist hover:text-sand hover:underline"
-                >
-                  {comment.author?.name || "Member"}
-                </Link>
-              ) : (
-                <p className="text-xs text-mist">{comment.author?.name || "Member"}</p>
-              )}
+              <UserChip user={comment.author} size={24} nameClassName="text-xs" />
               <p>{comment.content}</p>
             </div>
           ))}

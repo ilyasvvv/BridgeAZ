@@ -1,7 +1,7 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
 import StatusBadge from "./StatusBadge";
 import RegionPill from "./RegionPill";
+import UserChip from "./UserChip";
 import { formatRelativeTime } from "../utils/format";
 
 export default function PostCard({ post, onLike }) {
@@ -51,12 +51,7 @@ export default function PostCard({ post, onLike }) {
     <div className="glass gradient-border relative rounded-2xl p-5 min-w-0">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <Link
-            to={post.author?._id ? `/profile/${post.author._id}` : "#"}
-            className="text-sm text-mist hover:text-sand hover:underline"
-          >
-            {post.author?.name || "Member"}
-          </Link>
+          <UserChip user={post.author} size={24} />
           <div className="mt-2 flex items-center gap-2">
             <RegionPill region={post.author?.currentRegion} />
             <span className="text-xs text-mist">{formatRelativeTime(post.createdAt)}</span>
