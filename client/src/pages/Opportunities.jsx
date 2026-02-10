@@ -738,14 +738,6 @@ export default function Opportunities() {
                 >
                   View details
                 </Link>
-                <a
-                  href={`/opportunities/${selectedOpportunityForPane._id}`}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="rounded-full border border-white/10 px-4 py-2 text-xs uppercase tracking-wide text-sand hover:border-teal"
-                >
-                  Open in new tab
-                </a>
                 {selectedOpportunityForPane.postedBy === user?._id && (
                   <>
                     <button
