@@ -35,6 +35,8 @@ export default function Chats() {
   const [viewerZoom, setViewerZoom] = useState(1);
   const [replyingTo, setReplyingTo] = useState(null);
   const [activeReactionMessageId, setActiveReactionMessageId] = useState("");
+  const [openMenuMessageId, setOpenMenuMessageId] = useState("");
+  const [isCoarsePointer, setIsCoarsePointer] = useState(false);
   const [error, setError] = useState("");
   const requestedThreadId = useMemo(() => {
     const params = new URLSearchParams(location.search);
@@ -325,14 +327,18 @@ export default function Chats() {
 
   useEffect(() => {
     if (activeThread?._id) {
-      setReplyingTo(null);
-      setActiveReactionMessageId("");
       (async () => {
         await loadMessages(activeThread._id);
         await markThreadRead(activeThread._id);
       })();
     }
-  }, [activeThread]);
+  }, [activeThread?._id]);
+
+  useEffect(() => {
+    setReplyingTo(null);
+    setActiveReactionMessageId("");
+    setOpenMenuMessageId("");
+  }, [activeThread?._id]);
 
   useEffect(() => {
     if (!attachments.length) {
@@ -362,6 +368,35 @@ export default function Chats() {
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [viewerAttachment]);
+
+  useEffect(() => {
+    if (typeof window === "undefined" || typeof window.matchMedia !== "function") return;
+    const media = window.matchMedia("(pointer: coarse)");
+    const sync = () => setIsCoarsePointer(!!media.matches);
+    sync();
+    media.addEventListener("change", sync);
+    return () => media.removeEventListener("change", sync);
+  }, []);
+
+  useEffect(() => {
+    if (!openMenuMessageId) return undefined;
+    const onPointerDown = (event) => {
+      const target = event.target;
+      if (target instanceof Element && target.closest("[data-chat-menu-root='true']")) return;
+      setOpenMenuMessageId("");
+    };
+    const onKeyDown = (event) => {
+      if (event.key === "Escape") {
+        setOpenMenuMessageId("");
+      }
+    };
+    window.addEventListener("mousedown", onPointerDown);
+    window.addEventListener("keydown", onKeyDown);
+    return () => {
+      window.removeEventListener("mousedown", onPointerDown);
+      window.removeEventListener("keydown", onKeyDown);
+    };
+  }, [openMenuMessageId]);
 
   const handleSend = async (event) => {
     event.preventDefault();
@@ -515,8 +550,8 @@ export default function Chats() {
   };
 
   return (
-    <div className="mx-auto grid max-w-6xl gap-6 md:grid-cols-[1fr_2fr]">
-      <section className="glass rounded-2xl p-4 space-y-3">
+    <div className="mx-auto grid max-w-6xl gap-4 md:grid-cols-[minmax(280px,360px)_minmax(0,1fr)]">
+      <section className="glass rounded-2xl p-3 space-y-2">
         <h2 className="font-display text-xl">Threads</h2>
         {threads.length === 0 ? (
           <p className="text-sm text-mist">No conversations yet.</p>
@@ -533,7 +568,7 @@ export default function Chats() {
               }}
               role="button"
               tabIndex={0}
-              className={`w-full rounded-xl border px-3 py-2 text-left text-sm ${
+              className={`w-full rounded-xl border px-2.5 py-1.5 text-left text-sm ${
                 activeThread?._id === thread._id
                   ? "border-teal bg-teal/10 text-teal"
                   : "border-white/10 text-mist hover:border-teal"
@@ -631,6 +666,7 @@ export default function Chats() {
               );
               const myId = String(user?._id || "");
               const quote = message.replyTo;
+              const isMenuOpen = openMenuMessageId === message._id;
 
               return (
                 <div
@@ -638,11 +674,12 @@ export default function Chats() {
                   className={`group flex ${message.senderId === user?._id ? "justify-end" : "justify-start"}`}
                 >
                   <div
-                    className={`max-w-[70%] rounded-xl px-3 py-2 text-sm ${
+                    className={`relative max-w-[70%] rounded-xl px-3 py-2 text-sm ${
                       message.senderId === user?._id
                         ? "bg-teal/20 text-sand"
                         : "border border-white/10 text-sand"
                     }`}
+                    data-chat-menu-root="true"
                   >
                     {quote?.messageId && (
                       <div className="mb-2 rounded-lg border border-white/10 bg-white/5 px-2 py-1">
@@ -660,31 +697,83 @@ export default function Chats() {
                       <p className="text-[10px] text-mist">
                         {formatTime(message.createdAt)}
                       </p>
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setReplyingTo({
-                            messageId: message._id,
-                            body: getReplySnippet(message),
-                            senderId: message.senderId
-                          })
-                        }
-                        className="text-[10px] uppercase tracking-wide text-mist hover:text-sand"
-                      >
-                        Reply
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setActiveReactionMessageId((prev) =>
-                            prev === message._id ? "" : message._id
-                          )
-                        }
-                        className="text-[10px] uppercase tracking-wide text-mist hover:text-sand"
-                      >
-                        React
-                      </button>
+                      {isCoarsePointer && (
+                        <>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setReplyingTo({
+                                messageId: message._id,
+                                body: getReplySnippet(message),
+                                senderId: message.senderId
+                              })
+                            }
+                            className="text-[10px] uppercase tracking-wide text-mist hover:text-sand"
+                          >
+                            Reply
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setActiveReactionMessageId((prev) =>
+                                prev === message._id ? "" : message._id
+                              )
+                            }
+                            className="text-[10px] uppercase tracking-wide text-mist hover:text-sand"
+                          >
+                            React
+                          </button>
+                        </>
+                      )}
                     </div>
+                    <button
+                      type="button"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        setOpenMenuMessageId((prev) => (prev === message._id ? "" : message._id));
+                      }}
+                      className={`absolute right-2 top-2 rounded-full border border-white/10 px-1.5 py-0 text-xs text-mist transition ${
+                        isMenuOpen
+                          ? "opacity-100"
+                          : "opacity-0 group-hover:opacity-100"
+                      }`}
+                      aria-label="Message options"
+                    >
+                      ⋯
+                    </button>
+                    {isMenuOpen && (
+                      <div className="absolute right-2 top-8 z-20 min-w-[140px] rounded-xl border border-white/10 bg-charcoal/95 p-1 shadow-xl">
+                        <button
+                          type="button"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            setActiveReactionMessageId(message._id);
+                            setOpenMenuMessageId("");
+                          }}
+                          className="block w-full rounded-lg px-3 py-1.5 text-left text-xs text-mist hover:bg-white/10"
+                        >
+                          React
+                        </button>
+                        <button
+                          type="button"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            setReplyingTo({
+                              messageId: message._id,
+                              body: getReplySnippet(message),
+                              senderId: message.senderId
+                            });
+                            setOpenMenuMessageId("");
+                          }}
+                          className="block w-full rounded-lg px-3 py-1.5 text-left text-xs text-mist hover:bg-white/10"
+                        >
+                          Reply
+                        </button>
+                        <p className="block rounded-lg px-3 py-1.5 text-left text-[11px] text-mist/80">
+                          Sent {formatTime(message.createdAt)}
+                        </p>
+                      </div>
+                    )}
                     <div
                       className={`mt-1 flex-wrap gap-1 ${
                         activeReactionMessageId === message._id
