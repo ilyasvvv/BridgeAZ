@@ -10,6 +10,9 @@ export default function Chats() {
   const [threads, setThreads] = useState([]);
   const [activeThread, setActiveThread] = useState(null);
   const [messages, setMessages] = useState([]);
+  const [threadPreviews, setThreadPreviews] = useState({});
+  const [connectionIds, setConnectionIds] = useState(new Set());
+  const [mentorshipIds, setMentorshipIds] = useState(new Set());
   const [body, setBody] = useState("");
   const [attachment, setAttachment] = useState(null);
   const [error, setError] = useState("");
@@ -36,6 +39,70 @@ export default function Chats() {
     } catch (err) {
       setError(err.message || "Failed to load threads");
     }
+  };
+
+  const loadRelationshipData = async () => {
+    try {
+      const [connectionsData, mentorshipData] = await Promise.all([
+        apiClient.get("/me/connections", token),
+        apiClient.get("/me/mentorships", token)
+      ]);
+
+      const nextConnectionIds = new Set();
+      for (const connection of connectionsData || []) {
+        if (connection?.status !== "accepted") continue;
+        const requesterId = connection?.requesterId?._id;
+        const addresseeId = connection?.addresseeId?._id;
+        const otherId = String(requesterId) === String(user?._id) ? addresseeId : requesterId;
+        if (otherId) {
+          nextConnectionIds.add(String(otherId));
+        }
+      }
+
+      const nextMentorshipIds = new Set();
+      for (const mentorship of mentorshipData || []) {
+        const mentorId = mentorship?.mentorId?._id;
+        const menteeId = mentorship?.menteeId?._id;
+        const otherId = String(mentorId) === String(user?._id) ? menteeId : mentorId;
+        if (otherId) {
+          nextMentorshipIds.add(String(otherId));
+        }
+      }
+
+      setConnectionIds(nextConnectionIds);
+      setMentorshipIds(nextMentorshipIds);
+    } catch (relationshipError) {
+      // Keep default relationship labels if network metadata fails.
+    }
+  };
+
+  const toPreviewText = (message) => {
+    if (!message) return "No messages yet.";
+    const base = (message.body || "").trim();
+    const fallback = message.attachmentUrl ? "Attachment" : "No messages yet.";
+    const text = base || fallback;
+    const prefix = message.senderId === user?._id ? "You: " : "";
+    const combined = `${prefix}${text}`;
+    return combined.length > 80 ? `${combined.slice(0, 79)}…` : combined;
+  };
+
+  const loadThreadPreviews = async (threadsData) => {
+    if (!threadsData?.length) {
+      setThreadPreviews({});
+      return;
+    }
+    const previewEntries = await Promise.all(
+      threadsData.map(async (thread) => {
+        try {
+          const threadMessages = await apiClient.get(`/chats/threads/${thread._id}/messages`, token);
+          const lastMessage = threadMessages[threadMessages.length - 1];
+          return [thread._id, toPreviewText(lastMessage)];
+        } catch (previewError) {
+          return [thread._id, "Tap to open conversation"];
+        }
+      })
+    );
+    setThreadPreviews(Object.fromEntries(previewEntries));
   };
 
   const loadMessages = async (threadId) => {
@@ -122,8 +189,15 @@ export default function Chats() {
   useEffect(() => {
     if (token) {
       loadThreads();
+      loadRelationshipData();
     }
   }, [token, requestedThreadId]);
+
+  useEffect(() => {
+    if (token && threads.length) {
+      loadThreadPreviews(threads);
+    }
+  }, [threads, token]);
 
   useEffect(() => {
     if (activeThread?._id) {
@@ -191,6 +265,7 @@ export default function Chats() {
         token
       );
       setMessages((prev) => [...prev, message]);
+      setThreadPreviews((prev) => ({ ...prev, [activeThread._id]: toPreviewText(message) }));
       setBody("");
       setAttachment(null);
     } catch (err) {
@@ -226,6 +301,20 @@ export default function Chats() {
   };
 
   const activeStatus = normalizeThreadStatus(activeThread);
+  const lastOutgoingMessage = [...messages].reverse().find((message) => message.senderId === user?._id);
+  const seenMessageId =
+    lastOutgoingMessage &&
+    activeThread?.otherLastReadAt &&
+    new Date(activeThread.otherLastReadAt) >= new Date(lastOutgoingMessage.createdAt)
+      ? lastOutgoingMessage._id
+      : null;
+
+  const getRelationshipLabel = (thread) => {
+    const otherId = thread?.otherParticipant?._id ? String(thread.otherParticipant._id) : "";
+    if (otherId && mentorshipIds.has(otherId)) return "Mentor";
+    if (otherId && connectionIds.has(otherId)) return "Link";
+    return "Reach";
+  };
 
   return (
     <div className="mx-auto grid max-w-6xl gap-6 md:grid-cols-[1fr_2fr]">
@@ -252,14 +341,22 @@ export default function Chats() {
                   : "border-white/10 text-mist hover:border-teal"
               }`}
             >
-              <div className="flex items-center justify-between gap-2">
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0 flex-1">
                 <UserChip
                   user={thread.otherParticipant}
                   size={USER_CHIP_SIZES.THREAD_LIST}
                   showRole={false}
                   onClick={(event) => event.stopPropagation()}
                 />
+                  <p className="mt-1 truncate text-xs text-mist">
+                    {threadPreviews[thread._id] || "Loading preview..."}
+                  </p>
+                </div>
                 <div className="flex items-center gap-2">
+                  <span className="rounded-full border border-white/10 px-2 py-0.5 text-[10px] uppercase tracking-wide text-mist">
+                    {getRelationshipLabel(thread)}
+                  </span>
                   {normalizeThreadStatus(thread) === "pending" && (
                     <span className="rounded-full border border-amber/40 px-2 py-0.5 text-[10px] uppercase tracking-wide text-amber">
                       {thread.requestedBy === user?._id ? "Pending" : "Incoming"}
@@ -287,7 +384,7 @@ export default function Chats() {
             <UserChip
               user={activeThread.otherParticipant}
               size={USER_CHIP_SIZES.CHAT_HEADER}
-              showRole={!!activeThread.otherParticipant?.userType}
+              showRole={false}
               nameClassName="font-display text-xl text-sand"
             />
           ) : (
@@ -346,11 +443,7 @@ export default function Chats() {
                   <p className="mt-1 text-[10px] text-mist">
                     {formatTime(message.createdAt)}
                   </p>
-                  {message.senderId === user?._id &&
-                    activeThread?.otherLastReadAt &&
-                    new Date(activeThread.otherLastReadAt) >= new Date(message.createdAt) && (
-                      <p className="text-[10px] text-mist">Seen</p>
-                    )}
+                  {message._id === seenMessageId && <p className="text-[10px] text-mist">Seen</p>}
                 </div>
               </div>
             ))
