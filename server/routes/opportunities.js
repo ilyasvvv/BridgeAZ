@@ -1,5 +1,7 @@
 const express = require("express");
 const Opportunity = require("../models/Opportunity");
+const Notification = require("../models/Notification");
+const OpportunityNotifyPref = require("../models/OpportunityNotifyPref");
 const { authMiddleware, blockBanned } = require("../middleware/auth");
 
 const router = express.Router();
@@ -12,6 +14,147 @@ const normalizeArray = (value) =>
         .map((item) => item.trim())
         .filter(Boolean)
     : [];
+
+const allowedNotifyTypes = new Set(["internship", "full-time", "contract", "collaboration", "other"]);
+const allowedNotifyLocationModes = new Set(["remote", "hybrid", "onsite"]);
+
+const normalizeNotifyType = (value) => {
+  const token = normalizeToken(value).toLowerCase();
+  if (!token) return "";
+  if (token === "job" || token === "full time") return "full-time";
+  if (token === "on-site") return "onsite";
+  return token;
+};
+
+const normalizeNotifyLocationMode = (value) => {
+  const token = normalizeToken(value).toLowerCase();
+  if (!token) return "";
+  if (token === "on-site") return "onsite";
+  return token;
+};
+
+const normalizeNotifyTypes = (value) => {
+  const values = normalizeArray(value).map((item) => normalizeNotifyType(item));
+  const deduped = [...new Set(values.filter(Boolean))];
+  if (deduped.some((item) => !allowedNotifyTypes.has(item))) {
+    return null;
+  }
+  return deduped;
+};
+
+const normalizeNotifyLocationModes = (value) => {
+  const values = normalizeArray(value).map((item) => normalizeNotifyLocationMode(item));
+  const deduped = [...new Set(values.filter(Boolean))];
+  if (deduped.some((item) => !allowedNotifyLocationModes.has(item))) {
+    return null;
+  }
+  return deduped;
+};
+
+const matchesNotifyPrefs = (prefs, opportunity) => {
+  const prefTypes = normalizeNotifyTypes(prefs.types || []) || [];
+  const prefLocationModes = normalizeNotifyLocationModes(prefs.locationModes || []) || [];
+  const prefCountry = normalizeToken(prefs.country).toLowerCase();
+  const prefKeywords = normalizeToken(prefs.keywords).toLowerCase();
+  const opportunityType = normalizeNotifyType(opportunity.type);
+  const opportunityLocationMode = normalizeNotifyLocationMode(opportunity.locationMode);
+  const opportunityCountry = normalizeToken(opportunity.country).toLowerCase();
+
+  if (prefTypes.length && !prefTypes.includes(opportunityType)) {
+    return false;
+  }
+  if (prefLocationModes.length && !prefLocationModes.includes(opportunityLocationMode)) {
+    return false;
+  }
+  if (prefCountry && prefCountry !== opportunityCountry) {
+    return false;
+  }
+  if (prefKeywords) {
+    const haystack = [
+      opportunity.title,
+      opportunity.description,
+      opportunity.orgName,
+      opportunity.company
+    ]
+      .filter(Boolean)
+      .join(" ")
+      .toLowerCase();
+    if (!haystack.includes(prefKeywords)) {
+      return false;
+    }
+  }
+  return true;
+};
+
+const notifyMatchingUsers = async (opportunity, actorUserId) => {
+  const prefs = await OpportunityNotifyPref.find({
+    userId: { $ne: actorUserId }
+  }).select("userId types locationModes country keywords");
+
+  const toCreate = prefs
+    .filter((pref) => matchesNotifyPrefs(pref, opportunity))
+    .map((pref) => ({
+      type: "opportunity",
+      userId: pref.userId,
+      actorId: actorUserId,
+      title: `New opportunity posted: ${opportunity.title}`,
+      body: (opportunity.description || "").slice(0, 140) || "A new opportunity matches your preferences.",
+      link: `/opportunities/${opportunity._id}`,
+      metadata: { opportunityId: opportunity._id },
+      read: false
+    }));
+
+  if (!toCreate.length) return;
+  await Notification.insertMany(toCreate, { ordered: false });
+};
+
+router.get("/notify-prefs", authMiddleware, blockBanned, async (req, res) => {
+  try {
+    const prefs = await OpportunityNotifyPref.findOne({ userId: req.user._id });
+    if (!prefs) {
+      return res.json({
+        userId: req.user._id,
+        types: [],
+        locationModes: [],
+        country: "",
+        keywords: ""
+      });
+    }
+    return res.json(prefs);
+  } catch (error) {
+    return res.status(500).json({ message: "Failed to load notification preferences" });
+  }
+});
+
+router.put("/notify-prefs", authMiddleware, blockBanned, async (req, res) => {
+  try {
+    const types = normalizeNotifyTypes(req.body?.types || []);
+    const locationModes = normalizeNotifyLocationModes(req.body?.locationModes || []);
+    if (!types) {
+      return res.status(400).json({ message: "Invalid opportunity types" });
+    }
+    if (!locationModes) {
+      return res.status(400).json({ message: "Invalid location modes" });
+    }
+
+    const payload = {
+      userId: req.user._id,
+      types,
+      locationModes,
+      country: normalizeToken(req.body?.country),
+      keywords: normalizeToken(req.body?.keywords)
+    };
+
+    const prefs = await OpportunityNotifyPref.findOneAndUpdate(
+      { userId: req.user._id },
+      payload,
+      { new: true, upsert: true, setDefaultsOnInsert: true }
+    );
+    return res.json(prefs);
+  } catch (error) {
+    return res.status(500).json({ message: "Failed to save notification preferences" });
+  }
+});
 
 router.get("/", authMiddleware, blockBanned, async (req, res) => {
   try {
@@ -120,6 +263,17 @@ router.post("/", authMiddleware, blockBanned, async (req, res) => {
       status,
       postedBy: req.user._id
     });
+
+    try {
+      await notifyMatchingUsers(opportunity, req.user._id);
+    } catch (notifyError) {
+      if (process.env.NODE_ENV !== "production") {
+        console.warn(
+          "Opportunity notification fanout failed:",
+          notifyError.message || notifyError
+        );
+      }
+    }
 
     res.status(201).json(opportunity);
   } catch (error) {

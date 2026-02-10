@@ -27,7 +27,7 @@ const defaultNotifyPrefs = {
   types: [],
   locationModes: [],
   country: "",
-  keyword: ""
+  keywords: ""
 };
 
 const getInitialViewMode = () => {
@@ -44,7 +44,12 @@ const getInitialNotifyPrefs = () => {
       types: Array.isArray(parsed.types) ? parsed.types : [],
       locationModes: Array.isArray(parsed.locationModes) ? parsed.locationModes : [],
       country: typeof parsed.country === "string" ? parsed.country : "",
-      keyword: typeof parsed.keyword === "string" ? parsed.keyword : ""
+      keywords:
+        typeof parsed.keywords === "string"
+          ? parsed.keywords
+          : typeof parsed.keyword === "string"
+            ? parsed.keyword
+            : ""
     };
   } catch (error) {
     return defaultNotifyPrefs;
@@ -120,6 +125,40 @@ export default function Opportunities() {
       setSelectedOpportunityId(opportunities[0]?._id || null);
     }
   }, [opportunities, selectedOpportunityId]);
+
+  useEffect(() => {
+    if (!token) return;
+    let cancelled = false;
+
+    const loadNotifyPrefs = async () => {
+      try {
+        const data = await apiClient.get("/opportunities/notify-prefs", token);
+        if (cancelled) return;
+        const normalized = {
+          types: Array.isArray(data?.types) ? data.types : [],
+          locationModes: Array.isArray(data?.locationModes) ? data.locationModes : [],
+          country: typeof data?.country === "string" ? data.country : "",
+          keywords:
+            typeof data?.keywords === "string"
+              ? data.keywords
+              : typeof data?.keyword === "string"
+                ? data.keyword
+                : ""
+        };
+        setNotifyPrefs(normalized);
+        if (typeof window !== "undefined") {
+          window.localStorage.setItem(OPP_NOTIFY_PREFS_KEY, JSON.stringify(normalized));
+        }
+      } catch (loadError) {
+        // Keep local fallback prefs on network/API failure.
+      }
+    };
+
+    loadNotifyPrefs();
+    return () => {
+      cancelled = true;
+    };
+  }, [token]);
 
   const loadOpportunities = async () => {
     setLoading(true);
@@ -236,11 +275,36 @@ export default function Opportunities() {
     }
   };
 
-  const handleNotifySave = () => {
-    if (typeof window !== "undefined") {
-      window.localStorage.setItem(OPP_NOTIFY_PREFS_KEY, JSON.stringify(notifyPrefs));
+  const handleNotifySave = async () => {
+    const payload = {
+      types: notifyPrefs.types,
+      locationModes: notifyPrefs.locationModes,
+      country: notifyPrefs.country,
+      keywords: notifyPrefs.keywords
+    };
+
+    try {
+      const saved = await apiClient.put("/opportunities/notify-prefs", payload, token);
+      const normalized = {
+        types: Array.isArray(saved?.types) ? saved.types : payload.types,
+        locationModes: Array.isArray(saved?.locationModes)
+          ? saved.locationModes
+          : payload.locationModes,
+        country: typeof saved?.country === "string" ? saved.country : payload.country,
+        keywords: typeof saved?.keywords === "string" ? saved.keywords : payload.keywords
+      };
+      setNotifyPrefs(normalized);
+      if (typeof window !== "undefined") {
+        window.localStorage.setItem(OPP_NOTIFY_PREFS_KEY, JSON.stringify(normalized));
+      }
+      setNotifyFeedback("Saved");
+    } catch (saveError) {
+      if (typeof window !== "undefined") {
+        window.localStorage.setItem(OPP_NOTIFY_PREFS_KEY, JSON.stringify(payload));
+      }
+      setNotifyFeedback("Saved locally");
     }
-    setNotifyFeedback("Saved");
+
     setShowNotifyModal(false);
     setTimeout(() => setNotifyFeedback(""), 1600);
   };
@@ -615,7 +679,7 @@ export default function Opportunities() {
         <div className="fixed inset-0 z-40 flex items-center justify-center bg-charcoal/60 px-4">
           <div className="glass w-full max-w-lg rounded-2xl p-6 space-y-4">
             <div>
-              <h3 className="font-display text-xl text-sand">Get notified Modal</h3>
+              <h3 className="font-display text-xl text-sand">Get notified</h3>
               <p className="text-sm text-mist">Choose your opportunity notification preferences.</p>
             </div>
 
@@ -677,9 +741,9 @@ export default function Opportunities() {
             </select>
 
             <input
-              value={notifyPrefs.keyword}
+              value={notifyPrefs.keywords}
               onChange={(event) =>
-                setNotifyPrefs((prev) => ({ ...prev, keyword: event.target.value }))
+                setNotifyPrefs((prev) => ({ ...prev, keywords: event.target.value }))
               }
               className="w-full rounded-xl border border-white/10 bg-slate/40 px-3 py-2 text-sm text-sand"
               placeholder="Keyword include (optional)"
