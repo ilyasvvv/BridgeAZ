@@ -550,68 +550,70 @@ export default function Chats() {
   };
 
   return (
-    <div className="mx-auto grid max-w-6xl gap-4 md:grid-cols-[minmax(280px,360px)_minmax(0,1fr)]">
-      <section className="glass rounded-2xl p-3 space-y-2">
+    <div className="mx-auto grid max-w-6xl gap-4 md:h-[calc(100vh-72px)] md:grid-cols-[minmax(280px,360px)_minmax(0,1fr)] md:overflow-hidden">
+      <section className="glass rounded-2xl p-3 md:flex md:min-h-0 md:flex-col">
         <h2 className="font-display text-xl">Threads</h2>
-        {threads.length === 0 ? (
-          <p className="text-sm text-mist">No conversations yet.</p>
-        ) : (
-          threads.map((thread) => (
-            <div
-              key={thread._id}
-              onClick={() => setActiveThread(thread)}
-              onKeyDown={(event) => {
-                if (event.key === "Enter" || event.key === " ") {
-                  event.preventDefault();
-                  setActiveThread(thread);
-                }
-              }}
-              role="button"
-              tabIndex={0}
-              className={`w-full rounded-xl border px-2.5 py-1.5 text-left text-sm ${
-                activeThread?._id === thread._id
-                  ? "border-teal bg-teal/10 text-teal"
-                  : "border-white/10 text-mist hover:border-teal"
-              }`}
-            >
-              <div className="flex items-start justify-between gap-2">
-                <div className="min-w-0 flex-1">
-                  <UserChip
-                    user={thread.otherParticipant}
-                    size={USER_CHIP_SIZES.THREAD_LIST}
-                    showRole={false}
-                    onClick={(event) => event.stopPropagation()}
-                  />
-                  <p className="mt-1 truncate text-xs text-mist">
-                    {threadPreviews[thread._id] || "Loading preview..."}
-                  </p>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="rounded-full border border-white/10 px-2 py-0.5 text-[10px] uppercase tracking-wide text-mist">
-                    {getRelationshipLabel(thread)}
-                  </span>
-                  {normalizeThreadStatus(thread) === "pending" && (
-                    <span className="rounded-full border border-amber/40 px-2 py-0.5 text-[10px] uppercase tracking-wide text-amber">
-                      {thread.requestedBy === user?._id ? "Pending" : "Incoming"}
+        <div className="mt-2 space-y-2 md:min-h-0 md:flex-1 md:overflow-y-auto md:pr-1">
+          {threads.length === 0 ? (
+            <p className="text-sm text-mist">No conversations yet.</p>
+          ) : (
+            threads.map((thread) => (
+              <div
+                key={thread._id}
+                onClick={() => setActiveThread(thread)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" || event.key === " ") {
+                    event.preventDefault();
+                    setActiveThread(thread);
+                  }
+                }}
+                role="button"
+                tabIndex={0}
+                className={`w-full rounded-xl border px-2.5 py-1.5 text-left text-sm ${
+                  activeThread?._id === thread._id
+                    ? "border-teal bg-teal/10 text-teal"
+                    : "border-white/10 text-mist hover:border-teal"
+                }`}
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0 flex-1">
+                    <UserChip
+                      user={thread.otherParticipant}
+                      size={USER_CHIP_SIZES.THREAD_LIST}
+                      showRole={false}
+                      onClick={(event) => event.stopPropagation()}
+                    />
+                    <p className="mt-1 truncate text-xs text-mist">
+                      {threadPreviews[thread._id] || "Loading preview..."}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="rounded-full border border-white/10 px-2 py-0.5 text-[10px] uppercase tracking-wide text-mist">
+                      {getRelationshipLabel(thread)}
                     </span>
-                  )}
-                  {normalizeThreadStatus(thread) === "rejected" && (
-                    <span className="rounded-full border border-coral/40 px-2 py-0.5 text-[10px] uppercase tracking-wide text-coral">
-                      Declined
-                    </span>
-                  )}
-                  {thread.lastMessageAt &&
-                    (!thread.myLastReadAt ||
-                      new Date(thread.myLastReadAt) < new Date(thread.lastMessageAt)) && (
-                      <span className="h-2 w-2 rounded-full bg-teal" aria-label="Unread" />
+                    {normalizeThreadStatus(thread) === "pending" && (
+                      <span className="rounded-full border border-amber/40 px-2 py-0.5 text-[10px] uppercase tracking-wide text-amber">
+                        {thread.requestedBy === user?._id ? "Pending" : "Incoming"}
+                      </span>
                     )}
+                    {normalizeThreadStatus(thread) === "rejected" && (
+                      <span className="rounded-full border border-coral/40 px-2 py-0.5 text-[10px] uppercase tracking-wide text-coral">
+                        Declined
+                      </span>
+                    )}
+                    {thread.lastMessageAt &&
+                      (!thread.myLastReadAt ||
+                        new Date(thread.myLastReadAt) < new Date(thread.lastMessageAt)) && (
+                        <span className="h-2 w-2 rounded-full bg-teal" aria-label="Unread" />
+                      )}
+                  </div>
                 </div>
               </div>
-            </div>
-          ))
-        )}
+            ))
+          )}
+        </div>
       </section>
-      <section className="glass rounded-2xl p-4 space-y-4">
+      <section className="glass rounded-2xl p-4 md:flex md:min-h-0 md:flex-col">
         <div className="flex items-center justify-between gap-3">
           {activeThread ? (
             <UserChip
@@ -655,7 +657,7 @@ export default function Chats() {
             )}
           </div>
         )}
-        <div className="min-h-[200px] space-y-2">
+        <div className="mt-4 min-h-[200px] space-y-2 md:min-h-0 md:flex-1 md:overflow-y-auto md:pr-1">
           {messages.length === 0 ? (
             <p className="text-sm text-mist">Select a thread to view messages.</p>
           ) : (
