@@ -4,7 +4,7 @@ import { apiClient, uploadViaPresign } from "../api/client";
 import { useAuth } from "../utils/auth";
 import StatusBadge from "../components/StatusBadge";
 import RegionPill from "../components/RegionPill";
-import UserChip from "../components/UserChip";
+import UserChip, { USER_CHIP_SIZES } from "../components/UserChip";
 
 const tabs = ["Overview", "Experience", "Education", "Projects", "Activity"];
 
@@ -238,7 +238,7 @@ export default function Profile() {
           <div className="min-w-0">
             <UserChip
               user={profile}
-              size={48}
+              size={USER_CHIP_SIZES.PROFILE_HEADER}
               to={profile?._id ? `/profile/${profile._id}` : undefined}
               nameClassName="text-2xl text-sand"
             />

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import StatusBadge from "./StatusBadge";
 import RegionPill from "./RegionPill";
-import UserChip from "./UserChip";
+import UserChip, { USER_CHIP_SIZES } from "./UserChip";
 import { formatRelativeTime } from "../utils/format";
 
 export default function PostCard({ post, onLike }) {
@@ -51,7 +51,7 @@ export default function PostCard({ post, onLike }) {
     <div className="glass gradient-border relative rounded-2xl p-5 min-w-0">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <UserChip user={post.author} size={24} />
+          <UserChip user={post.author} size={USER_CHIP_SIZES.FEED} />
           <div className="mt-2 flex items-center gap-2">
             <RegionPill region={post.author?.currentRegion} />
             <span className="text-xs text-mist">{formatRelativeTime(post.createdAt)}</span>

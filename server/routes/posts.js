@@ -7,6 +7,10 @@ const { authMiddleware, blockBanned } = require("../middleware/auth");
 
 const router = express.Router();
 const normalizeToken = (value) => (typeof value === "string" ? value.trim() : "");
+const authorSelect =
+  "name avatarUrl photoUrl profilePhoto profilePhotoUrl profilePictureUrl currentRegion userType role";
+const commentAuthorSelect =
+  "name avatarUrl photoUrl profilePhoto profilePhotoUrl profilePictureUrl";
 
 router.get("/", authMiddleware, blockBanned, async (req, res) => {
   try {
@@ -14,12 +18,12 @@ router.get("/", authMiddleware, blockBanned, async (req, res) => {
     const visibility = region && region.toUpperCase() !== "ALL" ? ["ALL", region] : ["ALL"];
 
     const posts = await Post.find({ visibilityRegion: { $in: visibility } })
-      .populate("author", "name profilePhotoUrl currentRegion userType")
+      .populate("author", authorSelect)
       .populate({
         path: "comments",
         select: "author content createdAt",
         options: { sort: { createdAt: -1 }, limit: 5 },
-        populate: { path: "author", select: "name profilePhotoUrl" }
+        populate: { path: "author", select: commentAuthorSelect }
       })
       .sort({ createdAt: -1 })
       .limit(50);
@@ -75,7 +79,7 @@ router.post("/", authMiddleware, blockBanned, async (req, res) => {
       visibilityRegion: normalizeToken(visibilityRegion) || "ALL"
     });
 
-    const populated = await post.populate("author", "name profilePhotoUrl currentRegion userType");
+    const populated = await post.populate("author", authorSelect);
     res.status(201).json(populated);
   } catch (error) {
     res.status(500).json({ message: "Failed to create post" });
@@ -134,12 +138,12 @@ router.get("/:id", authMiddleware, blockBanned, async (req, res) => {
     }
 
     const post = await Post.findById(req.params.id)
-      .populate("author", "name profilePhotoUrl currentRegion userType")
+      .populate("author", authorSelect)
       .populate({
         path: "comments",
         select: "author content createdAt",
         options: { sort: { createdAt: -1 }, limit: 5 },
-        populate: { path: "author", select: "name profilePhotoUrl" }
+        populate: { path: "author", select: commentAuthorSelect }
       });
 
     if (!post) {
@@ -179,15 +183,15 @@ const handleCreateComment = async (req, res) => {
     }
 
     const populated = await Post.findById(req.params.id)
-      .populate("author", "name profilePhotoUrl currentRegion userType")
+      .populate("author", authorSelect)
       .populate({
         path: "comments",
         select: "author content createdAt",
         options: { sort: { createdAt: -1 }, limit: 5 },
-        populate: { path: "author", select: "name profilePhotoUrl" }
+        populate: { path: "author", select: commentAuthorSelect }
       });
 
-    const populatedComment = await comment.populate("author", "name profilePhotoUrl");
+    const populatedComment = await comment.populate("author", commentAuthorSelect);
     res.status(201).json({ ...populated.toObject(), createdComment: populatedComment });
   } catch (error) {
     res.status(500).json({ message: "Failed to add comment" });
@@ -205,7 +209,7 @@ router.get("/:id/comments", authMiddleware, blockBanned, async (req, res) => {
     }
 
     const comments = await Comment.find({ post: req.params.id })
-      .populate("author", "name profilePhotoUrl")
+      .populate("author", commentAuthorSelect)
       .sort({ createdAt: -1 });
 
     res.json(comments);
@@ -231,7 +235,7 @@ router.patch("/:id", authMiddleware, blockBanned, async (req, res) => {
 
     post.content = content;
     await post.save();
-    const populated = await post.populate("author", "name profilePhotoUrl currentRegion userType");
+    const populated = await post.populate("author", authorSelect);
     res.json(populated);
   } catch (error) {
     res.status(500).json({ message: "Failed to update post" });

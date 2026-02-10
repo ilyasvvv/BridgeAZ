@@ -4,7 +4,7 @@ import { apiClient } from "../api/client";
 import { useAuth } from "../utils/auth";
 import RegionPill from "../components/RegionPill";
 import StatusBadge from "../components/StatusBadge";
-import UserChip from "../components/UserChip";
+import UserChip, { USER_CHIP_SIZES } from "../components/UserChip";
 
 export default function PublicProfile() {
   const { id } = useParams();
@@ -79,7 +79,11 @@ export default function PublicProfile() {
       <div className="glass rounded-3xl p-6 space-y-4">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div className="min-w-0">
-            <UserChip user={profile} size={48} nameClassName="text-2xl text-sand" />
+            <UserChip
+              user={profile}
+              size={USER_CHIP_SIZES.PROFILE_HEADER}
+              nameClassName="text-2xl text-sand"
+            />
             <div className="mt-2 flex flex-wrap items-center gap-2">
               <RegionPill region={profile.currentRegion} />
               <StatusBadge label={profile.userType || "member"} tone="slate" />

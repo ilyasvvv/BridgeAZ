@@ -1,14 +1,18 @@
 import { Link } from "react-router-dom";
 import RegionPill from "./RegionPill";
 import StatusBadge from "./StatusBadge";
-import UserChip from "./UserChip";
+import UserChip, { USER_CHIP_SIZES } from "./UserChip";
 
 export default function ProfileCard({ user }) {
   return (
     <div className="glass rounded-2xl p-5">
       <div className="flex items-center justify-between gap-2">
         <div className="min-w-0">
-          <UserChip user={user} size={24} nameClassName="text-lg text-sand" />
+          <UserChip
+            user={user}
+            size={USER_CHIP_SIZES.FEED}
+            nameClassName="text-lg text-sand"
+          />
           <p className="text-sm text-mist">{user.headline || "BridgeAZ member"}</p>
         </div>
         <RegionPill region={user.currentRegion} />

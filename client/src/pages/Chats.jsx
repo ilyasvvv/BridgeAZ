@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useLocation } from "react-router-dom";
 import { apiClient, uploadViaPresign } from "../api/client";
 import { useAuth } from "../utils/auth";
-import UserChip from "../components/UserChip";
+import UserChip, { USER_CHIP_SIZES } from "../components/UserChip";
 
 export default function Chats() {
   const { token, user } = useAuth();
@@ -255,7 +255,7 @@ export default function Chats() {
               <div className="flex items-center justify-between gap-2">
                 <UserChip
                   user={thread.otherParticipant}
-                  size={24}
+                  size={USER_CHIP_SIZES.THREAD_LIST}
                   showRole={false}
                   onClick={(event) => event.stopPropagation()}
                 />
@@ -286,7 +286,7 @@ export default function Chats() {
           {activeThread ? (
             <UserChip
               user={activeThread.otherParticipant}
-              size={36}
+              size={USER_CHIP_SIZES.CHAT_HEADER}
               showRole={!!activeThread.otherParticipant?.userType}
               nameClassName="font-display text-xl text-sand"
             />

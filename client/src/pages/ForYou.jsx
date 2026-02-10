@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { apiClient } from "../api/client";
 import { useAuth } from "../utils/auth";
 import CommunityPostCard from "../components/CommunityPostCard";
-import UserChip from "../components/UserChip";
+import UserChip, { USER_CHIP_SIZES } from "../components/UserChip";
 import { regionLabel } from "../utils/format";
 
 const progressKeywords = [
@@ -339,7 +339,11 @@ export default function ForYou() {
                 <div className="space-y-2">
                   {threadComments.map((comment) => (
                     <div key={comment._id} className="rounded-xl border border-white/10 p-3 text-sm text-sand">
-                      <UserChip user={comment.author} size={24} nameClassName="text-xs" />
+                      <UserChip
+                        user={comment.author}
+                        size={USER_CHIP_SIZES.FEED}
+                        nameClassName="text-xs"
+                      />
                       <p>{comment.content}</p>
                     </div>
                   ))}
@@ -399,7 +403,11 @@ export default function ForYou() {
                       key={mentor._id}
                       className="rounded-xl border border-white/10 bg-slate/40 p-3"
                     >
-                      <UserChip user={mentor} size={24} nameClassName="text-sm text-sand" />
+                      <UserChip
+                        user={mentor}
+                        size={USER_CHIP_SIZES.FEED}
+                        nameClassName="text-sm text-sand"
+                      />
                       <p className="text-xs text-mist">{mentor.headline || "Mentor"}</p>
                     </div>
                   ))}
@@ -423,7 +431,7 @@ export default function ForYou() {
                     >
                       <UserChip
                         user={request.fromStudent}
-                        size={24}
+                        size={USER_CHIP_SIZES.FEED}
                         nameClassName="text-sm text-sand"
                       />
                       <p className="text-xs text-mist">{request.message}</p>

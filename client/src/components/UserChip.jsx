@@ -2,11 +2,23 @@ import { Link } from "react-router-dom";
 import Avatar from "./Avatar";
 
 const resolveAvatarUrl = (user) =>
-  user?.avatarUrl || user?.profilePhotoUrl || user?.profilePictureUrl || null;
+  user?.avatarUrl ||
+  user?.photoUrl ||
+  user?.profilePhoto ||
+  user?.profilePhotoUrl ||
+  user?.profilePictureUrl ||
+  null;
+
+export const USER_CHIP_SIZES = Object.freeze({
+  CHAT_HEADER: 36,
+  FEED: 36,
+  THREAD_LIST: 36,
+  PROFILE_HEADER: 48
+});
 
 export default function UserChip({
   user,
-  size = 24,
+  size = USER_CHIP_SIZES.FEED,
   to,
   onClick,
   showRole = false,
