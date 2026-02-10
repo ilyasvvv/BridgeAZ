@@ -17,6 +17,10 @@ const allowedAttachmentTypes = new Set([
 ]);
 const maxAttachmentBytes = 5 * 1024 * 1024;
 const quickReactions = ["👍", "❤️", "😂", "😮", "👎"];
+const inlineTokenRegex =
+  /(\*\*[^*]+\*\*|\*[^*]+\*|`[^`]+`|\[[^\]]+\]\((?:https?:\/\/|www\.)[^\s)]+\)|(?:https?:\/\/|www\.)[^\s<>"']+)/g;
+const markdownLinkRegex = /\[([^\]]+)\]\(((?:https?:\/\/|www\.)[^\s)]+)\)/g;
+const plainUrlRegex = /(?:https?:\/\/|www\.)[^\s<>"']+/g;
 
 export default function Chats() {
   const { token, user } = useAuth();
@@ -37,8 +41,10 @@ export default function Chats() {
   const [activeReactionMessageId, setActiveReactionMessageId] = useState("");
   const [openMenuMessageId, setOpenMenuMessageId] = useState("");
   const [isCoarsePointer, setIsCoarsePointer] = useState(false);
+  const [linkPreviews, setLinkPreviews] = useState({});
   const [error, setError] = useState("");
   const messagesScrollRef = useRef(null);
+  const composerRef = useRef(null);
   const isNearBottomRef = useRef(true);
   const previousMessageCountRef = useRef(0);
   const forceScrollToBottomRef = useRef(false);
@@ -170,6 +176,140 @@ export default function Chats() {
     const fallback = normalizeMessageAttachments(message).length ? "Attachment" : "";
     const text = base || fallback || "Message";
     return text.length > 80 ? `${text.slice(0, 79)}…` : text;
+  };
+
+  const toHref = (rawUrl) => (rawUrl.startsWith("www.") ? `https://${rawUrl}` : rawUrl);
+
+  const trimTrailingUrlPunctuation = (rawUrl) => {
+    let value = rawUrl;
+    let suffix = "";
+
+    while (/[.,!?;:]$/.test(value)) {
+      suffix = value.slice(-1) + suffix;
+      value = value.slice(0, -1);
+    }
+    while (value.endsWith(")")) {
+      const opens = (value.match(/\(/g) || []).length;
+      const closes = (value.match(/\)/g) || []).length;
+      if (closes <= opens) break;
+      suffix = ")" + suffix;
+      value = value.slice(0, -1);
+    }
+
+    return { cleanUrl: value, trailing: suffix };
+  };
+
+  const isPrivateOrLocalHostname = (hostname) => {
+    const host = (hostname || "").toLowerCase();
+    if (!host) return true;
+    if (host === "localhost" || host === "::1" || host.endsWith(".local")) return true;
+    if (host.startsWith("127.") || host.startsWith("10.") || host.startsWith("192.168.")) return true;
+    const match172 = host.match(/^172\.(\d+)\./);
+    if (match172) {
+      const octet = Number(match172[1]);
+      if (octet >= 16 && octet <= 31) return true;
+    }
+    return false;
+  };
+
+  const extractUrlsFromText = (text) => {
+    const input = text || "";
+    const markdownMatches = [];
+    let mdMatch;
+    while ((mdMatch = markdownLinkRegex.exec(input)) !== null) {
+      const { cleanUrl } = trimTrailingUrlPunctuation(mdMatch[2]);
+      markdownMatches.push({
+        index: mdMatch.index,
+        end: mdMatch.index + mdMatch[0].length,
+        url: cleanUrl
+      });
+    }
+    markdownLinkRegex.lastIndex = 0;
+
+    const plainMatches = [];
+    let plainMatch;
+    while ((plainMatch = plainUrlRegex.exec(input)) !== null) {
+      const insideMarkdown = markdownMatches.some(
+        (item) => plainMatch.index >= item.index && plainMatch.index < item.end
+      );
+      if (insideMarkdown) continue;
+      const { cleanUrl } = trimTrailingUrlPunctuation(plainMatch[0]);
+      plainMatches.push({ index: plainMatch.index, url: cleanUrl });
+    }
+    plainUrlRegex.lastIndex = 0;
+
+    return [...markdownMatches, ...plainMatches]
+      .filter((item) => !!item.url)
+      .sort((a, b) => a.index - b.index)
+      .map((item) => item.url);
+  };
+
+  const renderFormattedBody = (text, keyPrefix) => {
+    const input = text || "";
+    const parts = [];
+    let cursor = 0;
+    let match;
+    let tokenIndex = 0;
+
+    while ((match = inlineTokenRegex.exec(input)) !== null) {
+      if (match.index > cursor) {
+        parts.push(input.slice(cursor, match.index));
+      }
+      const token = match[0];
+      const tokenKey = `${keyPrefix}-${tokenIndex++}`;
+
+      if (token.startsWith("**") && token.endsWith("**")) {
+        parts.push(<strong key={tokenKey}>{token.slice(2, -2)}</strong>);
+      } else if (token.startsWith("*") && token.endsWith("*")) {
+        parts.push(<em key={tokenKey}>{token.slice(1, -1)}</em>);
+      } else if (token.startsWith("`") && token.endsWith("`")) {
+        parts.push(
+          <code key={tokenKey} className="rounded bg-white/10 px-1 py-0.5 text-[0.92em]">
+            {token.slice(1, -1)}
+          </code>
+        );
+      } else if (token.startsWith("[")) {
+        const parsed = token.match(/^\[([^\]]+)\]\(((?:https?:\/\/|www\.)[^\s)]+)\)$/);
+        if (parsed) {
+          const { cleanUrl, trailing } = trimTrailingUrlPunctuation(parsed[2]);
+          parts.push(
+            <a
+              key={tokenKey}
+              href={toHref(cleanUrl)}
+              className="text-teal underline"
+              target="_blank"
+              rel="noreferrer"
+            >
+              {parsed[1]}
+            </a>
+          );
+          if (trailing) parts.push(trailing);
+        } else {
+          parts.push(token);
+        }
+      } else {
+        const { cleanUrl, trailing } = trimTrailingUrlPunctuation(token);
+        parts.push(
+          <a
+            key={tokenKey}
+            href={toHref(cleanUrl)}
+            className="text-teal underline"
+            target="_blank"
+            rel="noreferrer"
+          >
+            {cleanUrl}
+          </a>
+        );
+        if (trailing) parts.push(trailing);
+      }
+      cursor = match.index + token.length;
+    }
+    inlineTokenRegex.lastIndex = 0;
+
+    if (cursor < input.length) {
+      parts.push(input.slice(cursor));
+    }
+    return parts;
   };
 
   const openViewer = (attachment) => {
@@ -376,6 +516,76 @@ export default function Chats() {
   }, [viewerAttachment]);
 
   useEffect(() => {
+    const firstUrls = messages
+      .map((message) => extractUrlsFromText(message.body || "")[0])
+      .filter(Boolean);
+    const uniqueUrls = [...new Set(firstUrls)];
+    uniqueUrls.forEach((url) => {
+      if (linkPreviews[url]) return;
+      let parsed;
+      try {
+        parsed = new URL(toHref(url));
+      } catch (urlError) {
+        setLinkPreviews((prev) => ({
+          ...prev,
+          [url]: { status: "ready", url: toHref(url), hostname: url, title: url }
+        }));
+        return;
+      }
+
+      const hostname = parsed.hostname;
+      if (isPrivateOrLocalHostname(hostname)) {
+        setLinkPreviews((prev) => ({
+          ...prev,
+          [url]: { status: "ready", url: parsed.toString(), hostname, title: hostname }
+        }));
+        return;
+      }
+
+      setLinkPreviews((prev) => ({
+        ...prev,
+        [url]: { status: "loading", url: parsed.toString(), hostname, title: hostname }
+      }));
+
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 4500);
+      fetch(parsed.toString(), { signal: controller.signal })
+        .then((response) => response.text())
+        .then((html) => {
+          const doc = new DOMParser().parseFromString(html, "text/html");
+          const title =
+            doc.querySelector("meta[property='og:title']")?.getAttribute("content") ||
+            doc.querySelector("title")?.textContent ||
+            hostname;
+          const description =
+            doc.querySelector("meta[property='og:description']")?.getAttribute("content") || "";
+          const image =
+            doc.querySelector("meta[property='og:image']")?.getAttribute("content") || "";
+          setLinkPreviews((prev) => ({
+            ...prev,
+            [url]: {
+              status: "ready",
+              url: parsed.toString(),
+              hostname,
+              title: title.trim() || hostname,
+              description: description.trim(),
+              image: image.trim()
+            }
+          }));
+        })
+        .catch(() => {
+          setLinkPreviews((prev) => ({
+            ...prev,
+            [url]: { status: "ready", url: parsed.toString(), hostname, title: hostname }
+          }));
+        })
+        .finally(() => {
+          clearTimeout(timeoutId);
+        });
+    });
+  }, [messages, linkPreviews]);
+
+  useEffect(() => {
     if (typeof window === "undefined" || typeof window.matchMedia !== "function") return;
     const media = window.matchMedia("(pointer: coarse)");
     const sync = () => setIsCoarsePointer(!!media.matches);
@@ -523,6 +733,50 @@ export default function Chats() {
     } catch (err) {
       setError(err.message || "Failed to send message");
     }
+  };
+
+  const applyFormatting = (mode) => {
+    const textarea = composerRef.current;
+    if (!textarea) return;
+    const start = textarea.selectionStart ?? body.length;
+    const end = textarea.selectionEnd ?? body.length;
+    const selected = body.slice(start, end);
+    const prefix = body.slice(0, start);
+    const suffix = body.slice(end);
+    let insertValue = "";
+    let selectStart = start;
+    let selectEnd = end;
+
+    if (mode === "bold") {
+      const content = selected || "bold text";
+      insertValue = `**${content}**`;
+      selectStart = start + 2;
+      selectEnd = start + 2 + content.length;
+    } else if (mode === "italic") {
+      const content = selected || "italic text";
+      insertValue = `*${content}*`;
+      selectStart = start + 1;
+      selectEnd = start + 1 + content.length;
+    } else if (mode === "code") {
+      const content = selected || "code";
+      insertValue = `\`${content}\``;
+      selectStart = start + 1;
+      selectEnd = start + 1 + content.length;
+    } else if (mode === "link") {
+      const label = selected || "text";
+      const urlPlaceholder = "https://";
+      insertValue = `[${label}](${urlPlaceholder})`;
+      selectStart = start + label.length + 3;
+      selectEnd = selectStart + urlPlaceholder.length;
+    }
+
+    const next = `${prefix}${insertValue}${suffix}`;
+    setBody(next);
+    requestAnimationFrame(() => {
+      if (!composerRef.current) return;
+      composerRef.current.focus();
+      composerRef.current.setSelectionRange(selectStart, selectEnd);
+    });
   };
 
   const handleAccept = async () => {
@@ -748,6 +1002,8 @@ export default function Chats() {
               const myId = String(user?._id || "");
               const quote = message.replyTo;
               const isMenuOpen = openMenuMessageId === message._id;
+              const previewUrl = extractUrlsFromText(message.body || "")[0];
+              const previewData = previewUrl ? linkPreviews[previewUrl] : null;
 
               return (
                 <div
@@ -772,8 +1028,44 @@ export default function Chats() {
                         </p>
                       </div>
                     )}
-                    {message.body && <p>{message.body}</p>}
+                    {message.body && (
+                      <p className="whitespace-pre-wrap break-words">
+                        {renderFormattedBody(message.body, message._id)}
+                      </p>
+                    )}
                     {renderAttachmentBlock(message)}
+                    {previewUrl && (
+                      <a
+                        href={toHref(previewUrl)}
+                        className="mt-2 block rounded-lg border border-white/10 bg-white/5 px-2 py-2 text-xs text-mist hover:border-teal"
+                      >
+                        {previewData?.status === "loading" ? (
+                          <p>Loading preview...</p>
+                        ) : (
+                          <div className="space-y-1">
+                            <p className="text-[10px] uppercase tracking-wide text-mist/80">
+                              {previewData?.hostname || previewUrl}
+                            </p>
+                            <p className="text-xs text-sand">
+                              {previewData?.title || previewData?.hostname || previewUrl}
+                            </p>
+                            {previewData?.description && (
+                              <p
+                                className="text-[11px] text-mist"
+                                style={{
+                                  display: "-webkit-box",
+                                  WebkitLineClamp: 2,
+                                  WebkitBoxOrient: "vertical",
+                                  overflow: "hidden"
+                                }}
+                              >
+                                {previewData.description}
+                              </p>
+                            )}
+                          </div>
+                        )}
+                      </a>
+                    )}
                     <div className="mt-1 flex items-center gap-2">
                       <p className="text-[10px] text-mist">
                         {formatTime(message.createdAt)}
@@ -957,11 +1249,43 @@ export default function Chats() {
               </button>
             </div>
           )}
+          <div className="mb-2 flex flex-wrap items-center gap-2 text-[11px] uppercase tracking-wide text-mist">
+            <button
+              type="button"
+              onClick={() => applyFormatting("bold")}
+              className="rounded-full border border-white/10 px-2 py-1 hover:border-teal"
+            >
+              Bold
+            </button>
+            <button
+              type="button"
+              onClick={() => applyFormatting("italic")}
+              className="rounded-full border border-white/10 px-2 py-1 hover:border-teal"
+            >
+              Italic
+            </button>
+            <button
+              type="button"
+              onClick={() => applyFormatting("code")}
+              className="rounded-full border border-white/10 px-2 py-1 hover:border-teal"
+            >
+              Code
+            </button>
+            <button
+              type="button"
+              onClick={() => applyFormatting("link")}
+              className="rounded-full border border-white/10 px-2 py-1 hover:border-teal"
+            >
+              Link
+            </button>
+          </div>
           <form onSubmit={handleSend} className="flex gap-2">
-            <input
+            <textarea
+              ref={composerRef}
               value={body}
               onChange={(event) => setBody(event.target.value)}
-              className="flex-1 rounded-xl border border-white/10 bg-slate/40 px-4 py-2 text-sm text-sand"
+              rows={2}
+              className="flex-1 resize-none rounded-xl border border-white/10 bg-slate/40 px-4 py-2 text-sm text-sand"
               placeholder="Type a message..."
               disabled={!activeThread || activeStatus !== "active"}
             />
