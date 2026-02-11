@@ -5,6 +5,8 @@ import { useAuth } from "../utils/auth";
 import CommunityPostCard from "../components/CommunityPostCard";
 import UserChip, { USER_CHIP_SIZES } from "../components/UserChip";
 import { regionLabel } from "../utils/format";
+import ShareSheet from "../components/ShareSheet";
+import { buildSharePayload } from "../utils/share";
 
 const progressKeywords = [
   "applied",
@@ -33,6 +35,7 @@ export default function ForYou() {
   const [editDraft, setEditDraft] = useState("");
   const [threadPostId, setThreadPostId] = useState(null);
   const [threadComments, setThreadComments] = useState([]);
+  const [shareInput, setShareInput] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -181,6 +184,7 @@ export default function ForYou() {
 
   const headerRegion = regionLabel(user?.currentRegion) || "—";
   const opportunityPreview = opportunities.slice(0, 5);
+  const activeThreadPost = threadPostId ? posts.find((item) => item._id === threadPostId) : null;
 
   return (
     <div className="mx-auto max-w-6xl space-y-8">
@@ -339,11 +343,36 @@ export default function ForYou() {
                 <div className="space-y-2">
                   {threadComments.map((comment) => (
                     <div key={comment._id} className="rounded-xl border border-white/10 p-3 text-sm text-sand">
-                      <UserChip
-                        user={comment.author}
-                        size={USER_CHIP_SIZES.FEED}
-                        nameClassName="text-xs"
-                      />
+                      <div className="flex items-center justify-between gap-2">
+                        <UserChip
+                          user={comment.author}
+                          size={USER_CHIP_SIZES.FEED}
+                          nameClassName="text-xs"
+                        />
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setShareInput(
+                              buildSharePayload({
+                                entityType: "comment",
+                                entityId: comment._id,
+                                url: `/post/${threadPostId}?comment=${comment._id}`,
+                                title: (comment.content || "Comment").slice(0, 90),
+                                subtitle: comment.author?.name
+                                  ? `Comment by ${comment.author.name}`
+                                  : "Comment",
+                                meta: {
+                                  postId: activeThreadPost?._id || threadPostId,
+                                  commentId: comment._id
+                                }
+                              })
+                            )
+                          }
+                          className="rounded-full border border-white/10 px-2 py-0.5 text-[10px] uppercase tracking-wide text-mist hover:border-teal"
+                        >
+                          Share
+                        </button>
+                      </div>
                       <p>{comment.content}</p>
                     </div>
                   ))}
@@ -476,6 +505,7 @@ export default function ForYou() {
           </section>
         </aside>
       </div>
+      <ShareSheet open={!!shareInput} onClose={() => setShareInput(null)} shareInput={shareInput} />
     </div>
   );
 }

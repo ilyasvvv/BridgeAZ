@@ -27,7 +27,7 @@ const toThreadPayload = (thread, userId) => {
 router.get("/threads", authMiddleware, blockBanned, async (req, res) => {
   try {
     const threads = await ChatThread.find({ participants: req.user._id })
-      .populate("participants", "name profilePhotoUrl userType")
+      .populate("participants", "name userType avatarUrl profilePhotoUrl profilePictureUrl")
       .sort({ lastMessageAt: -1, updatedAt: -1 })
       .limit(100);
     const mapped = threads.map((thread) => toThreadPayload(thread, req.user._id));
@@ -61,7 +61,10 @@ router.post("/threads", authMiddleware, blockBanned, async (req, res) => {
       } else {
         return res.json(existing);
       }
-      const populated = await existing.populate("participants", "name profilePhotoUrl userType");
+      const populated = await existing.populate(
+        "participants",
+        "name userType avatarUrl profilePhotoUrl profilePictureUrl"
+      );
       const payload = toThreadPayload(populated, req.user._id);
       try {
         const recipient = (populated.participants || []).find(
@@ -104,7 +107,10 @@ router.post("/threads", authMiddleware, blockBanned, async (req, res) => {
       requestedBy: req.user._id,
       lastMessageAt: new Date()
     });
-    const populated = await thread.populate("participants", "name profilePhotoUrl userType");
+    const populated = await thread.populate(
+      "participants",
+      "name userType avatarUrl profilePhotoUrl profilePictureUrl"
+    );
     const payload = toThreadPayload(populated, req.user._id);
     try {
       const recipient = (populated.participants || []).find(
@@ -167,6 +173,7 @@ router.post("/threads/:id/messages", authMiddleware, blockBanned, async (req, re
   try {
     const {
       body,
+      share,
       replyTo,
       attachments,
       attachmentUrl,
@@ -189,8 +196,29 @@ router.post("/threads/:id/messages", authMiddleware, blockBanned, async (req, re
     const resolvedAttachmentContentType = attachmentContentType || primaryAttachment?.contentType;
     const resolvedAttachmentKind = attachmentKind || primaryAttachment?.kind;
     const resolvedAttachmentName = attachmentName || primaryAttachment?.name;
+    const normalizedShare =
+      share &&
+      typeof share === "object" &&
+      typeof share.entityType === "string" &&
+      typeof share.entityId !== "undefined" &&
+      typeof share.url === "string"
+        ? {
+            entityType: share.entityType,
+            entityId: String(share.entityId),
+            url: share.url,
+            title: typeof share.title === "string" ? share.title : "",
+            subtitle: typeof share.subtitle === "string" ? share.subtitle : "",
+            imageUrl: typeof share.imageUrl === "string" ? share.imageUrl : "",
+            meta: share.meta && typeof share.meta === "object" ? share.meta : undefined
+          }
+        : undefined;
 
-    if (!resolvedAttachmentUrl && normalizedAttachments.length === 0 && (!body || !body.trim())) {
+    if (
+      !resolvedAttachmentUrl &&
+      normalizedAttachments.length === 0 &&
+      (!body || !body.trim()) &&
+      !normalizedShare
+    ) {
       return res.status(400).json({ message: "Message body or attachment is required" });
     }
 
@@ -203,7 +231,15 @@ router.post("/threads/:id/messages", authMiddleware, blockBanned, async (req, re
     }
     const status = thread.status || "active";
     if (status === "pending") {
-      return res.status(403).json({ message: "Thread is pending approval" });
+      const isRequester =
+        thread.requestedBy && String(thread.requestedBy) === String(req.user._id);
+      if (!isRequester) {
+        return res.status(403).json({ message: "Thread is pending approval" });
+      }
+      const hasAnyMessage = await ChatMessage.exists({ threadId: thread._id });
+      if (hasAnyMessage) {
+        return res.status(403).json({ message: "Thread is pending approval" });
+      }
     }
     if (status === "rejected") {
       return res.status(403).json({ message: "Thread was rejected" });
@@ -213,6 +249,7 @@ router.post("/threads/:id/messages", authMiddleware, blockBanned, async (req, re
       threadId: req.params.id,
       senderId: req.user._id,
       body,
+      share: normalizedShare,
       replyTo: replyTo
         ? {
             messageId: replyTo.messageId,
@@ -235,6 +272,10 @@ router.post("/threads/:id/messages", authMiddleware, blockBanned, async (req, re
         (participant) => !participant.equals(req.user._id)
       );
       if (recipient && !recipient.equals(req.user._id)) {
+        const notificationBody =
+          (message.body || "").trim() ||
+          (message.share?.title ? `Shared: ${message.share.title}` : "") ||
+          "Sent an attachment";
         await Notification.findOneAndUpdate(
           {
             type: "chat_message",
@@ -248,7 +289,7 @@ router.post("/threads/:id/messages", authMiddleware, blockBanned, async (req, re
               userId: recipient,
               actorId: req.user._id,
               title: `${req.user.name} messaged you`,
-              body: (message.body || "Sent an attachment").slice(0, 140),
+              body: notificationBody.slice(0, 140),
               link: `/chats?thread=${thread._id}`,
               read: false,
               metadata: { threadId: thread._id, actorName: req.user.name }
@@ -344,7 +385,7 @@ router.post("/threads/:id/accept", authMiddleware, blockBanned, async (req, res)
     const thread = await ChatThread.findOne({
       _id: req.params.id,
       participants: req.user._id
-    }).populate("participants", "name profilePhotoUrl userType");
+    }).populate("participants", "name userType avatarUrl profilePhotoUrl profilePictureUrl");
     if (!thread) {
       return res.status(404).json({ message: "Thread not found" });
     }
@@ -371,7 +412,7 @@ router.post("/threads/:id/reject", authMiddleware, blockBanned, async (req, res)
     const thread = await ChatThread.findOne({
       _id: req.params.id,
       participants: req.user._id
-    }).populate("participants", "name profilePhotoUrl userType");
+    }).populate("participants", "name userType avatarUrl profilePhotoUrl profilePictureUrl");
     if (!thread) {
       return res.status(404).json({ message: "Thread not found" });
     }

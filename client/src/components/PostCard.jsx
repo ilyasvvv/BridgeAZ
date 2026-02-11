@@ -3,9 +3,11 @@ import StatusBadge from "./StatusBadge";
 import RegionPill from "./RegionPill";
 import UserChip, { USER_CHIP_SIZES } from "./UserChip";
 import { formatRelativeTime } from "../utils/format";
+import ShareSheet from "./ShareSheet";
+import { buildSharePayload } from "../utils/share";
 
 export default function PostCard({ post, onLike }) {
-  const [shareStatus, setShareStatus] = useState("");
+  const [showShareSheet, setShowShareSheet] = useState(false);
   const attachmentUrl = post.attachmentUrl;
   const attachmentContentType = post.attachmentContentType || "";
   const lowerUrl = (attachmentUrl || "").toLowerCase();
@@ -18,34 +20,15 @@ export default function PostCard({ post, onLike }) {
   const liked = !!post.likedByMe;
   const likesCount = post.likesCount ?? post.likes?.length ?? 0;
 
-  const handleShare = async () => {
-    const url = `${window.location.origin}/post/${post._id}`;
-    const text = (post.content || "").slice(0, 80);
-
-    const setTempStatus = (value) => {
-      setShareStatus(value);
-      setTimeout(() => setShareStatus(""), 1500);
-    };
-
-    if (navigator.share) {
-      try {
-        await navigator.share({ title: "BridgeAZ", text, url });
-        setTempStatus("Shared");
-        return;
-      } catch (error) {
-        // Fall back to clipboard on failure or cancel.
-      }
-    }
-
-    if (navigator.clipboard?.writeText) {
-      await navigator.clipboard.writeText(url);
-      setTempStatus("Copied");
-      return;
-    }
-
-    window.prompt("Copy link:", url);
-    setTempStatus("Copied");
-  };
+  const postSharePayload = buildSharePayload({
+    entityType: "post",
+    entityId: post._id,
+    url: `/post/${post._id}`,
+    title: post.content ? post.content.slice(0, 90) : "Post",
+    subtitle: post.author?.name ? `From ${post.author.name}` : "Community post",
+    imageUrl: isImage ? attachmentUrl : "",
+    meta: { postId: post._id }
+  });
 
   return (
     <div className="glass gradient-border relative rounded-2xl p-5 min-w-0">
@@ -107,13 +90,18 @@ export default function PostCard({ post, onLike }) {
             {liked ? "Liked" : "Like"}
           </button>
           <button
-            onClick={handleShare}
+            onClick={() => setShowShareSheet(true)}
             className="rounded-full border border-white/10 px-3 py-1 uppercase tracking-wide hover:border-teal"
           >
-            {shareStatus || "Share"}
+            Share
           </button>
         </div>
       </div>
+      <ShareSheet
+        open={showShareSheet}
+        onClose={() => setShowShareSheet(false)}
+        shareInput={postSharePayload}
+      />
     </div>
   );
 }

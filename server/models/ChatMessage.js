@@ -19,11 +19,28 @@ const replyToSchema = new mongoose.Schema(
   { _id: false }
 );
 
+const shareSchema = new mongoose.Schema(
+  {
+    entityType: {
+      type: String,
+      enum: ["post", "opportunity", "profile", "comment"]
+    },
+    entityId: String,
+    url: String,
+    title: String,
+    subtitle: String,
+    imageUrl: String,
+    meta: { type: mongoose.Schema.Types.Mixed }
+  },
+  { _id: false }
+);
+
 const chatMessageSchema = new mongoose.Schema(
   {
     threadId: { type: mongoose.Schema.Types.ObjectId, ref: "ChatThread", required: true, index: true },
     senderId: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
     body: { type: String },
+    share: shareSchema,
     replyTo: replyToSchema,
     reactions: {
       type: Map,
@@ -43,7 +60,8 @@ chatMessageSchema.pre("validate", function (next) {
   const hasBody = typeof this.body === "string" && this.body.trim().length > 0;
   const hasAttachment = typeof this.attachmentUrl === "string" && this.attachmentUrl.length > 0;
   const hasAttachments = Array.isArray(this.attachments) && this.attachments.length > 0;
-  if (!hasBody && !hasAttachment && !hasAttachments) {
+  const hasShare = !!(this.share && this.share.entityType && this.share.entityId && this.share.url);
+  if (!hasBody && !hasAttachment && !hasAttachments && !hasShare) {
     return next(new Error("Message body or attachment is required"));
   }
   return next();

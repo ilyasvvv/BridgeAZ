@@ -5,6 +5,8 @@ import { useAuth } from "../utils/auth";
 import RegionPill from "../components/RegionPill";
 import StatusBadge from "../components/StatusBadge";
 import UserChip, { USER_CHIP_SIZES } from "../components/UserChip";
+import ShareSheet from "../components/ShareSheet";
+import { buildSharePayload } from "../utils/share";
 
 export default function PublicProfile() {
   const { id } = useParams();
@@ -13,6 +15,7 @@ export default function PublicProfile() {
   const [profile, setProfile] = useState(null);
   const [error, setError] = useState("");
   const [messageLoading, setMessageLoading] = useState(false);
+  const [showShareSheet, setShowShareSheet] = useState(false);
 
   useEffect(() => {
     const loadProfile = async () => {
@@ -90,12 +93,30 @@ export default function PublicProfile() {
             </div>
           </div>
           {!isOwnProfile && (
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                onClick={handleMessage}
+                disabled={messageLoading}
+                className="self-start rounded-full bg-teal px-4 py-2 text-xs font-semibold uppercase tracking-wide text-charcoal disabled:opacity-60"
+              >
+                {messageLoading ? "Messaging..." : "Message"}
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowShareSheet(true)}
+                className="self-start rounded-full border border-white/10 px-4 py-2 text-xs uppercase tracking-wide text-sand hover:border-teal"
+              >
+                Share
+              </button>
+            </div>
+          )}
+          {isOwnProfile && (
             <button
-              onClick={handleMessage}
-              disabled={messageLoading}
-              className="self-start rounded-full bg-teal px-4 py-2 text-xs font-semibold uppercase tracking-wide text-charcoal disabled:opacity-60"
+              type="button"
+              onClick={() => setShowShareSheet(true)}
+              className="self-start rounded-full border border-white/10 px-4 py-2 text-xs uppercase tracking-wide text-sand hover:border-teal"
             >
-              {messageLoading ? "Messaging..." : "Message"}
+              Share
             </button>
           )}
         </div>
@@ -135,6 +156,20 @@ export default function PublicProfile() {
       <Link to="/fyp" className="text-xs text-teal underline">
         Back to feed
       </Link>
+      <ShareSheet
+        open={showShareSheet}
+        onClose={() => setShowShareSheet(false)}
+        shareInput={buildSharePayload({
+          entityType: "profile",
+          entityId: profile._id,
+          url: `/profile/${profile._id}`,
+          title: profile.name || "Profile",
+          subtitle: profile.headline || "BridgeAZ member",
+          imageUrl:
+            profile.avatarUrl || profile.profilePhotoUrl || profile.profilePictureUrl || "",
+          meta: { profileId: profile._id }
+        })}
+      />
     </div>
   );
 }

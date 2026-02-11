@@ -3,7 +3,14 @@ import RegionPill from "./RegionPill";
 import StatusBadge from "./StatusBadge";
 import { countryLabel, formatRelativeTime } from "../utils/format";
 
-export default function OpportunityCard({ opportunity, isOwner, onEdit, onClose, onDelete }) {
+export default function OpportunityCard({
+  opportunity,
+  isOwner,
+  onEdit,
+  onClose,
+  onDelete,
+  onShare
+}) {
   const clampStyle = {
     display: "-webkit-box",
     WebkitLineClamp: 3,
@@ -46,6 +53,12 @@ export default function OpportunityCard({ opportunity, isOwner, onEdit, onClose,
       <div className="mt-3 flex items-center justify-between text-xs text-mist">
         <span className="uppercase tracking-wide">{opportunity.status}</span>
         <div className="flex items-center gap-2">
+          <button
+            onClick={onShare}
+            className="rounded-full border border-white/10 px-3 py-1 uppercase tracking-wide hover:border-teal"
+          >
+            Share
+          </button>
           {isOwner && (
             <>
               <button

@@ -4,8 +4,10 @@ import { apiClient } from "../api/client";
 import { useAuth } from "../utils/auth";
 import OpportunityCard from "../components/OpportunityCard";
 import StatusBadge from "../components/StatusBadge";
+import ShareSheet from "../components/ShareSheet";
 import { countries } from "../utils/countries";
 import { countryLabel, formatRelativeTime } from "../utils/format";
+import { buildSharePayload } from "../utils/share";
 
 const typeOptions = [
   "Internship",
@@ -85,6 +87,7 @@ export default function Opportunities() {
   const [opportunityDetailCache, setOpportunityDetailCache] = useState({});
   const [detailLoadingId, setDetailLoadingId] = useState("");
   const [detailError, setDetailError] = useState("");
+  const [shareInput, setShareInput] = useState(null);
   const [form, setForm] = useState({
     title: "",
     orgName: "",
@@ -352,6 +355,18 @@ export default function Opportunities() {
     setSelectedOpportunityId(opportunityId);
   };
 
+  const buildOpportunityShareInput = (opportunity) =>
+    buildSharePayload({
+      entityType: "opportunity",
+      entityId: opportunity?._id,
+      url: `/opportunities/${opportunity?._id}`,
+      title: opportunity?.title || "Opportunity",
+      subtitle: opportunity?.orgName
+        ? `${opportunity.orgName} · ${opportunity.locationMode || "Opportunity"}`
+        : "Opportunity",
+      meta: { opportunityId: opportunity?._id }
+    });
+
   return (
     <div className="mx-auto max-w-6xl space-y-6">
       <div className="glass rounded-2xl p-6">
@@ -607,6 +622,7 @@ export default function Opportunities() {
               onEdit={() => startEdit(opportunity)}
               onClose={() => closeOpportunity(opportunity._id)}
               onDelete={() => deleteOpportunity(opportunity._id)}
+              onShare={() => setShareInput(buildOpportunityShareInput(opportunity))}
             />
           ))}
         </div>
@@ -691,6 +707,13 @@ export default function Opportunities() {
                 </div>
               ) : null}
               <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShareInput(buildOpportunityShareInput(selectedOpportunityForPane))}
+                  className="rounded-full border border-white/10 px-4 py-2 text-xs uppercase tracking-wide text-sand hover:border-teal"
+                >
+                  Share
+                </button>
                 {selectedOpportunityForPane.applyUrl ? (
                   <a
                     href={selectedOpportunityForPane.applyUrl}
@@ -857,6 +880,7 @@ export default function Opportunities() {
           </div>
         </div>
       )}
+      <ShareSheet open={!!shareInput} onClose={() => setShareInput(null)} shareInput={shareInput} />
     </div>
   );
 }

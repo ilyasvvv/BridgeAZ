@@ -5,6 +5,8 @@ import { useAuth } from "../utils/auth";
 import StatusBadge from "../components/StatusBadge";
 import RegionPill from "../components/RegionPill";
 import UserChip, { USER_CHIP_SIZES } from "../components/UserChip";
+import ShareSheet from "../components/ShareSheet";
+import { buildSharePayload } from "../utils/share";
 
 const tabs = ["Overview", "Experience", "Education", "Projects", "Activity"];
 
@@ -22,6 +24,7 @@ export default function Profile() {
   const [resumeFile, setResumeFile] = useState(null);
   const [mentorInfo, setMentorInfo] = useState({ universityEmail: "", linkedinUrl: "", note: "" });
   const [message, setMessage] = useState("");
+  const [showShareSheet, setShowShareSheet] = useState(false);
   const allowedTypes = ["application/pdf", "image/png", "image/jpeg"];
   const maxSizeBytes = 5 * 1024 * 1024;
 
@@ -252,14 +255,23 @@ export default function Profile() {
               )}
             </div>
           </div>
-          {isOwner && (
+          <div className="flex flex-wrap items-center gap-2">
             <button
-              onClick={() => setEditMode((prev) => !prev)}
+              type="button"
+              onClick={() => setShowShareSheet(true)}
               className="rounded-full border border-white/10 px-4 py-2 text-xs uppercase tracking-wide text-sand hover:border-teal"
             >
-              {editMode ? "Cancel" : "Edit Profile"}
+              Share
             </button>
-          )}
+            {isOwner && (
+              <button
+                onClick={() => setEditMode((prev) => !prev)}
+                className="rounded-full border border-white/10 px-4 py-2 text-xs uppercase tracking-wide text-sand hover:border-teal"
+              >
+                {editMode ? "Cancel" : "Edit Profile"}
+              </button>
+            )}
+          </div>
         </div>
 
         {editMode && (
@@ -456,6 +468,20 @@ export default function Profile() {
           </div>
         )}
       </div>
+      <ShareSheet
+        open={showShareSheet}
+        onClose={() => setShowShareSheet(false)}
+        shareInput={buildSharePayload({
+          entityType: "profile",
+          entityId: profile._id,
+          url: `/profile/${profile._id}`,
+          title: profile.name || "Profile",
+          subtitle: profile.headline || "BridgeAZ member",
+          imageUrl:
+            profile.avatarUrl || profile.profilePhotoUrl || profile.profilePictureUrl || "",
+          meta: { profileId: profile._id }
+        })}
+      />
 
       <div className="flex flex-wrap gap-3">
         {tabs.map((tab) => (

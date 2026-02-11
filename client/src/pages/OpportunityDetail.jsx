@@ -5,12 +5,15 @@ import { useAuth } from "../utils/auth";
 import RegionPill from "../components/RegionPill";
 import StatusBadge from "../components/StatusBadge";
 import { countryLabel, formatRelativeTime } from "../utils/format";
+import ShareSheet from "../components/ShareSheet";
+import { buildSharePayload } from "../utils/share";
 
 export default function OpportunityDetail() {
   const { id } = useParams();
   const { token } = useAuth();
   const [opportunity, setOpportunity] = useState(null);
   const [error, setError] = useState("");
+  const [showShareSheet, setShowShareSheet] = useState(false);
 
   useEffect(() => {
     const loadOpportunity = async () => {
@@ -87,6 +90,13 @@ export default function OpportunityDetail() {
         ) : null}
 
         <div className="grid gap-4 md:grid-cols-2">
+          <button
+            type="button"
+            onClick={() => setShowShareSheet(true)}
+            className="rounded-full border border-white/10 px-4 py-2 text-center text-xs uppercase tracking-wide text-sand hover:border-teal"
+          >
+            Share
+          </button>
           {opportunity.applyUrl && (
             <a
               href={opportunity.applyUrl}
@@ -107,6 +117,18 @@ export default function OpportunityDetail() {
           )}
         </div>
       </div>
+      <ShareSheet
+        open={showShareSheet}
+        onClose={() => setShowShareSheet(false)}
+        shareInput={buildSharePayload({
+          entityType: "opportunity",
+          entityId: opportunity._id,
+          url: `/opportunities/${opportunity._id}`,
+          title: opportunity.title || "Opportunity",
+          subtitle: opportunity.orgName || "Opportunity",
+          meta: { opportunityId: opportunity._id }
+        })}
+      />
     </div>
   );
 }

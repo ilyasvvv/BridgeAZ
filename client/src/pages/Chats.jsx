@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useLocation } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { apiClient, uploadViaPresign } from "../api/client";
 import { useAuth } from "../utils/auth";
 import UserChip, { USER_CHIP_SIZES } from "../components/UserChip";
@@ -173,7 +173,11 @@ export default function Chats() {
 
   const getReplySnippet = (message) => {
     const base = (message?.body || "").trim();
-    const fallback = normalizeMessageAttachments(message).length ? "Attachment" : "";
+    const fallback = message?.share?.title
+      ? `Shared: ${message.share.title}`
+      : normalizeMessageAttachments(message).length
+        ? "Attachment"
+        : "";
     const text = base || fallback || "Message";
     return text.length > 80 ? `${text.slice(0, 79)}…` : text;
   };
@@ -320,8 +324,9 @@ export default function Chats() {
   const toPreviewText = (message) => {
     if (!message) return "No messages yet.";
     const base = (message.body || "").trim();
+    const shareText = message.share?.title ? `Shared: ${message.share.title}` : "";
     const hasAttachment = normalizeMessageAttachments(message).length > 0;
-    const fallback = hasAttachment ? "Attachment" : "No messages yet.";
+    const fallback = shareText || (hasAttachment ? "Attachment" : "No messages yet.");
     const text = base || fallback;
     const prefix = message.senderId === user?._id ? "You: " : "";
     const combined = `${prefix}${text}`;
@@ -1041,6 +1046,22 @@ export default function Chats() {
                       <p className="whitespace-pre-wrap break-words">
                         {renderFormattedBody(message.body, message._id)}
                       </p>
+                    )}
+                    {message.share?.entityType && message.share?.entityId && message.share?.url && (
+                      <Link
+                        to={message.share.url}
+                        className="mt-2 block rounded-lg border border-white/10 bg-white/5 px-2 py-2 hover:border-teal"
+                      >
+                        <p className="text-[10px] uppercase tracking-wide text-mist">
+                          Shared {message.share.entityType}
+                        </p>
+                        <p className="text-xs text-sand">
+                          {message.share.title || "Shared item"}
+                        </p>
+                        {message.share.subtitle ? (
+                          <p className="text-[11px] text-mist">{message.share.subtitle}</p>
+                        ) : null}
+                      </Link>
                     )}
                     {renderAttachmentBlock(message)}
                     {previewUrl && (

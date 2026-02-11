@@ -3,6 +3,8 @@ import RegionPill from "./RegionPill";
 import StatusBadge from "./StatusBadge";
 import UserChip, { USER_CHIP_SIZES } from "./UserChip";
 import { formatRelativeTime } from "../utils/format";
+import ShareSheet from "./ShareSheet";
+import { buildSharePayload } from "../utils/share";
 
 export default function CommunityPostCard({
   post,
@@ -20,7 +22,7 @@ export default function CommunityPostCard({
   onReplyChange,
   onReplySubmit
 }) {
-  const [shareStatus, setShareStatus] = useState("");
+  const [shareTarget, setShareTarget] = useState(null);
   const comments = post.comments || [];
   const attachmentUrl = post.attachmentUrl;
   const attachmentContentType = post.attachmentContentType || "";
@@ -34,34 +36,15 @@ export default function CommunityPostCard({
   const liked = !!post.likedByMe;
   const likesCount = post.likesCount ?? post.likes?.length ?? 0;
 
-  const handleShare = async () => {
-    const url = `${window.location.origin}/post/${post._id}`;
-    const text = (post.content || "").slice(0, 80);
-
-    const setTempStatus = (value) => {
-      setShareStatus(value);
-      setTimeout(() => setShareStatus(""), 1500);
-    };
-
-    if (navigator.share) {
-      try {
-        await navigator.share({ title: "BridgeAZ", text, url });
-        setTempStatus("Shared");
-        return;
-      } catch (error) {
-        // Fall back to clipboard on failure or cancel.
-      }
-    }
-
-    if (navigator.clipboard?.writeText) {
-      await navigator.clipboard.writeText(url);
-      setTempStatus("Copied");
-      return;
-    }
-
-    window.prompt("Copy link:", url);
-    setTempStatus("Copied");
-  };
+  const postSharePayload = buildSharePayload({
+    entityType: "post",
+    entityId: post._id,
+    url: `/post/${post._id}`,
+    title: post.content ? post.content.slice(0, 90) : "Post",
+    subtitle: post.author?.name ? `From ${post.author.name}` : "Community post",
+    imageUrl: isImage ? attachmentUrl : "",
+    meta: { postId: post._id }
+  });
   return (
     <div className="glass gradient-border relative rounded-2xl p-5 min-w-0">
       <div className="flex flex-wrap items-start justify-between gap-4">
@@ -124,10 +107,10 @@ export default function CommunityPostCard({
           {liked ? "Liked" : "Like"}
         </button>
         <button
-          onClick={handleShare}
+          onClick={() => setShareTarget(postSharePayload)}
           className="rounded-full border border-white/10 px-3 py-1 uppercase tracking-wide hover:border-teal"
         >
-          {shareStatus || "Share"}
+          Share
         </button>
         <button
           onClick={onRespond}
@@ -170,11 +153,31 @@ export default function CommunityPostCard({
         <div className="mt-4 space-y-2 rounded-xl border border-white/10 bg-white/5 p-3 text-xs text-mist">
           {comments.map((comment) => (
             <div key={comment._id} className="space-y-1">
-              <UserChip
-                user={comment.author}
-                size={USER_CHIP_SIZES.FEED}
-                nameClassName="text-xs"
-              />
+              <div className="flex items-center justify-between gap-2">
+                <UserChip
+                  user={comment.author}
+                  size={USER_CHIP_SIZES.FEED}
+                  nameClassName="text-xs"
+                />
+                <button
+                  type="button"
+                  onClick={() =>
+                    setShareTarget(
+                      buildSharePayload({
+                        entityType: "comment",
+                        entityId: comment._id,
+                        url: `/post/${post._id}?comment=${comment._id}`,
+                        title: (comment.content || "Comment").slice(0, 90),
+                        subtitle: comment.author?.name ? `Comment by ${comment.author.name}` : "Comment",
+                        meta: { postId: post._id, commentId: comment._id }
+                      })
+                    )
+                  }
+                  className="rounded-full border border-white/10 px-2 py-0.5 text-[10px] uppercase tracking-wide text-mist hover:border-teal"
+                >
+                  Share
+                </button>
+              </div>
               <p>{comment.content}</p>
             </div>
           ))}
@@ -206,6 +209,7 @@ export default function CommunityPostCard({
           </button>
         </form>
       )}
+      <ShareSheet open={!!shareTarget} onClose={() => setShareTarget(null)} shareInput={shareTarget} />
     </div>
   );
 }
