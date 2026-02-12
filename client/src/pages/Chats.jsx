@@ -3,6 +3,7 @@ import { Link, useLocation } from "react-router-dom";
 import { apiClient, uploadViaPresign } from "../api/client";
 import { useAuth } from "../utils/auth";
 import UserChip, { USER_CHIP_SIZES } from "../components/UserChip";
+import Avatar from "../components/Avatar";
 
 const allowedAttachmentTypes = new Set([
   "image/png",
@@ -42,12 +43,14 @@ export default function Chats() {
   const [openMenuMessageId, setOpenMenuMessageId] = useState("");
   const [isCoarsePointer, setIsCoarsePointer] = useState(false);
   const [linkPreviews, setLinkPreviews] = useState({});
+  const [sharePostPreviews, setSharePostPreviews] = useState({});
   const [error, setError] = useState("");
   const messagesScrollRef = useRef(null);
   const composerRef = useRef(null);
   const isNearBottomRef = useRef(true);
   const previousMessageCountRef = useRef(0);
   const forceScrollToBottomRef = useRef(false);
+  const fetchedSharePostIdsRef = useRef(new Set());
   const requestedThreadId = useMemo(() => {
     const params = new URLSearchParams(location.search);
     return params.get("thread");
@@ -181,6 +184,25 @@ export default function Chats() {
     const text = base || fallback || "Message";
     return text.length > 80 ? `${text.slice(0, 79)}…` : text;
   };
+
+  const resolveShareEntityId = (share) => {
+    if (!share) return "";
+    if (share.meta?.postId && share.entityType === "post") return String(share.meta.postId);
+    if (share.meta?.opportunityId && share.entityType === "opportunity") {
+      return String(share.meta.opportunityId);
+    }
+    if (share.meta?.profileId && share.entityType === "profile") return String(share.meta.profileId);
+    if (share.meta?.commentId && share.entityType === "comment") return String(share.meta.commentId);
+    return share.entityId ? String(share.entityId) : "";
+  };
+
+  const resolveAvatarUrl = (value) =>
+    value?.avatarUrl ||
+    value?.photoUrl ||
+    value?.profilePhoto ||
+    value?.profilePhotoUrl ||
+    value?.profilePictureUrl ||
+    "";
 
   const toHref = (rawUrl) => (rawUrl.startsWith("www.") ? `https://${rawUrl}` : rawUrl);
 
@@ -600,6 +622,39 @@ export default function Chats() {
   }, [messages, linkPreviews]);
 
   useEffect(() => {
+    if (!token) return;
+    const postIds = [...new Set(
+      messages
+        .filter((message) => message?.share?.entityType === "post")
+        .map((message) => resolveShareEntityId(message.share))
+        .filter(Boolean)
+    )];
+
+    postIds.forEach((postId) => {
+      if (fetchedSharePostIdsRef.current.has(postId)) return;
+      fetchedSharePostIdsRef.current.add(postId);
+      setSharePostPreviews((prev) =>
+        prev[postId] ? prev : { ...prev, [postId]: { status: "loading", data: null } }
+      );
+
+      apiClient
+        .get(`/posts/${postId}`, token)
+        .then((postData) => {
+          setSharePostPreviews((prev) => ({
+            ...prev,
+            [postId]: { status: "ready", data: postData || null }
+          }));
+        })
+        .catch(() => {
+          setSharePostPreviews((prev) => ({
+            ...prev,
+            [postId]: { status: "error", data: null }
+          }));
+        });
+    });
+  }, [messages, token]);
+
+  useEffect(() => {
     if (typeof window === "undefined" || typeof window.matchMedia !== "function") return;
     const media = window.matchMedia("(pointer: coarse)");
     const sync = () => setIsCoarsePointer(!!media.matches);
@@ -892,6 +947,165 @@ export default function Chats() {
     isNearBottomRef.current = true;
   };
 
+  const renderShareCard = (message) => {
+    const share = message?.share;
+    if (!share?.entityType || !share?.url) return null;
+    const entityId = resolveShareEntityId(share);
+
+    if (share.entityType === "post") {
+      const preview = sharePostPreviews[entityId];
+      const post = preview?.data || null;
+      const postAttachmentUrl = post?.attachmentUrl || "";
+      const postAttachmentType = post?.attachmentContentType || "";
+      const isImage = postAttachmentType.startsWith("image/");
+      const attachmentKind = post?.attachmentKind || (isImage ? "image" : postAttachmentUrl ? "file" : "");
+
+      return (
+        <Link
+          to={share.url}
+          className="mt-2 block rounded-lg border border-white/10 bg-white/5 px-2 py-2 hover:border-teal"
+        >
+          {preview?.status === "loading" || !preview ? (
+            <p className="text-xs text-mist">Loading preview...</p>
+          ) : post ? (
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <Avatar
+                  url={resolveAvatarUrl(post.author)}
+                  alt={`${post.author?.name || "Member"} avatar`}
+                  size={20}
+                />
+                <p className="text-xs text-sand">{post.author?.name || share.subtitle || "Member"}</p>
+              </div>
+              {post.content ? (
+                <p
+                  className="text-xs text-mist"
+                  style={{
+                    display: "-webkit-box",
+                    WebkitLineClamp: 4,
+                    WebkitBoxOrient: "vertical",
+                    overflow: "hidden"
+                  }}
+                >
+                  {post.content}
+                </p>
+              ) : null}
+              {postAttachmentUrl && isImage ? (
+                <img
+                  src={postAttachmentUrl}
+                  alt="Shared post media"
+                  className="max-h-36 w-full rounded-lg object-cover"
+                />
+              ) : postAttachmentUrl ? (
+                <div className="rounded-md border border-white/10 px-2 py-1 text-[11px] text-mist">
+                  {attachmentKind === "pdf" ? "PDF attachment" : "File attachment"}
+                </div>
+              ) : null}
+              <span className="inline-flex rounded-full border border-white/10 px-2 py-0.5 text-[10px] uppercase tracking-wide text-teal">
+                Open post
+              </span>
+            </div>
+          ) : (
+            <div className="space-y-1">
+              <p className="text-[10px] uppercase tracking-wide text-mist">Shared post</p>
+              <p className="text-xs text-sand">{share.title || "Post"}</p>
+              <span className="inline-flex rounded-full border border-white/10 px-2 py-0.5 text-[10px] uppercase tracking-wide text-teal">
+                Open post
+              </span>
+            </div>
+          )}
+        </Link>
+      );
+    }
+
+    if (share.entityType === "opportunity") {
+      return (
+        <Link
+          to={share.url}
+          className="mt-2 block rounded-lg border border-white/10 bg-white/5 px-2 py-2 hover:border-teal"
+        >
+          <p className="text-[10px] uppercase tracking-wide text-mist">Shared opportunity</p>
+          <p className="text-xs text-sand">{share.title || "Opportunity"}</p>
+          {share.subtitle ? <p className="text-[11px] text-mist">{share.subtitle}</p> : null}
+          <span className="mt-1 inline-flex rounded-full border border-white/10 px-2 py-0.5 text-[10px] uppercase tracking-wide text-teal">
+            Open opportunity
+          </span>
+        </Link>
+      );
+    }
+
+    if (share.entityType === "profile") {
+      const tags = (share.subtitle || "")
+        .split("·")
+        .map((item) => item.trim())
+        .filter(Boolean)
+        .slice(0, 3);
+      return (
+        <Link
+          to={share.url}
+          className="mt-2 block rounded-lg border border-white/10 bg-white/5 px-2 py-2 hover:border-teal"
+        >
+          <div className="flex items-center gap-2">
+            <Avatar url={share.imageUrl} alt={`${share.title || "Profile"} avatar`} size={24} />
+            <div className="min-w-0">
+              <p className="truncate text-xs text-sand">{share.title || "Profile"}</p>
+              <p className="text-[10px] uppercase tracking-wide text-mist">Shared profile</p>
+            </div>
+          </div>
+          {tags.length ? (
+            <div className="mt-1 flex flex-wrap gap-1">
+              {tags.map((tag) => (
+                <span
+                  key={tag}
+                  className="rounded-full border border-white/10 px-2 py-0.5 text-[10px] text-mist"
+                >
+                  {tag}
+                </span>
+              ))}
+            </div>
+          ) : null}
+        </Link>
+      );
+    }
+
+    if (share.entityType === "comment") {
+      return (
+        <Link
+          to={share.url}
+          className="mt-2 block rounded-lg border border-white/10 bg-white/5 px-2 py-2 hover:border-teal"
+        >
+          <p className="text-[10px] uppercase tracking-wide text-mist">Shared comment</p>
+          <p
+            className="text-xs text-sand"
+            style={{
+              display: "-webkit-box",
+              WebkitLineClamp: 3,
+              WebkitBoxOrient: "vertical",
+              overflow: "hidden"
+            }}
+          >
+            {share.title || "Comment"}
+          </p>
+          <span className="mt-1 inline-flex rounded-full border border-white/10 px-2 py-0.5 text-[10px] uppercase tracking-wide text-teal">
+            View in post
+          </span>
+        </Link>
+      );
+    }
+
+    return (
+      <Link
+        to={share.url}
+        className="mt-2 block rounded-lg border border-white/10 bg-white/5 px-2 py-2 hover:border-teal"
+      >
+        <p className="text-[10px] uppercase tracking-wide text-mist">
+          Shared {share.entityType}
+        </p>
+        <p className="text-xs text-sand">{share.title || "Shared item"}</p>
+      </Link>
+    );
+  };
+
   return (
     <div className="mx-auto grid max-w-6xl gap-4 md:h-[calc(100vh-72px)] md:grid-cols-[minmax(280px,360px)_minmax(0,1fr)] md:overflow-hidden">
       <section className="glass rounded-2xl p-3 md:flex md:min-h-0 md:flex-col">
@@ -1047,22 +1261,7 @@ export default function Chats() {
                         {renderFormattedBody(message.body, message._id)}
                       </p>
                     )}
-                    {message.share?.entityType && message.share?.entityId && message.share?.url && (
-                      <Link
-                        to={message.share.url}
-                        className="mt-2 block rounded-lg border border-white/10 bg-white/5 px-2 py-2 hover:border-teal"
-                      >
-                        <p className="text-[10px] uppercase tracking-wide text-mist">
-                          Shared {message.share.entityType}
-                        </p>
-                        <p className="text-xs text-sand">
-                          {message.share.title || "Shared item"}
-                        </p>
-                        {message.share.subtitle ? (
-                          <p className="text-[11px] text-mist">{message.share.subtitle}</p>
-                        ) : null}
-                      </Link>
-                    )}
+                    {renderShareCard(message)}
                     {renderAttachmentBlock(message)}
                     {previewUrl && (
                       <a

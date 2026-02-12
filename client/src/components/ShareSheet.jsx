@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import { apiClient } from "../api/client";
 import { useAuth } from "../utils/auth";
 import UserChip, { USER_CHIP_SIZES } from "./UserChip";
@@ -27,6 +28,11 @@ export default function ShareSheet({ open, onClose, shareInput }) {
   const [note, setNote] = useState("");
   const [error, setError] = useState(defaultError);
   const [sending, setSending] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     if (!open || !token) return;
@@ -116,6 +122,15 @@ export default function ShareSheet({ open, onClose, shareInput }) {
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [open, onClose, sending]);
 
+  useEffect(() => {
+    if (!open || !mounted) return undefined;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [open, mounted]);
+
   const rankedUsers = useMemo(
     () =>
       rankUsers({
@@ -187,7 +202,7 @@ export default function ShareSheet({ open, onClose, shareInput }) {
     }
   };
 
-  if (!open) return null;
+  if (!open || !mounted) return null;
 
   const previewSubtitle = [
     shareInput?.subtitle,
@@ -198,12 +213,14 @@ export default function ShareSheet({ open, onClose, shareInput }) {
     .filter(Boolean)
     .join(" · ");
 
-  return (
-    <div className="fixed inset-0 z-40 flex items-center justify-center bg-charcoal/70 px-4" onClick={onClose}>
-      <div
-        className="glass w-full max-w-2xl rounded-2xl p-5"
-        onClick={(event) => event.stopPropagation()}
-      >
+  return createPortal(
+    <div className="fixed inset-0 z-[9999]">
+      <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onClose} />
+      <div className="relative z-10 flex min-h-full items-center justify-center px-4 py-6">
+        <div
+          className="w-full max-w-2xl rounded-2xl border border-white/10 bg-slate-900/95 p-5 shadow-2xl"
+          onClick={(event) => event.stopPropagation()}
+        >
         <div className="flex items-center justify-between gap-3">
           <h3 className="font-display text-xl text-sand">Share Sheet</h3>
           <button
@@ -302,5 +319,7 @@ export default function ShareSheet({ open, onClose, shareInput }) {
         </div>
       </div>
     </div>
+    </div>,
+    document.body
   );
 }
