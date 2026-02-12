@@ -257,12 +257,12 @@ export default function ForYou() {
         <form onSubmit={handleCreatePost} className="glass rounded-2xl p-5">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <h2 className="font-display text-xl">Share an update</h2>
-            <label className="flex items-center gap-3">
-              <span className="text-xs text-white/60 whitespace-nowrap">Visibility</span>
+            <label className="flex items-center gap-2">
+              <span className="text-xs text-white/50 whitespace-nowrap">Visibility</span>
               <select
                 value={newPostVisibility}
                 onChange={(event) => setNewPostVisibility(event.target.value)}
-                className="rounded-xl bg-slate-900/60 border border-white/10 px-4 py-2 text-sm text-sand min-w-[220px]"
+                className="h-9 w-auto rounded-lg border border-white/10 bg-slate-900/50 px-3 text-sm text-sand focus:outline-none focus:ring-1 focus:ring-teal-500"
               >
                 <option value="public">Everyone</option>
                 <option value="connections">My connections</option>
