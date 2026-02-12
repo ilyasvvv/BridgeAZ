@@ -255,14 +255,14 @@ export default function ForYou() {
     <div className="mx-auto max-w-6xl space-y-8">
       {user && (
         <form onSubmit={handleCreatePost} className="glass rounded-2xl p-5">
-          <div className="flex flex-wrap items-end justify-between gap-3">
+          <div className="flex flex-wrap items-center justify-between gap-3">
             <h2 className="font-display text-xl">Share an update</h2>
-            <label className="space-y-1 text-xs uppercase tracking-wide text-mist">
-              <span>Who can see this?</span>
+            <label className="flex items-center gap-3">
+              <span className="text-xs text-white/60 whitespace-nowrap">Visibility</span>
               <select
                 value={newPostVisibility}
                 onChange={(event) => setNewPostVisibility(event.target.value)}
-                className="rounded-xl border border-white/10 bg-slate-900/60 px-4 py-2 text-sm text-sand"
+                className="rounded-xl bg-slate-900/60 border border-white/10 px-4 py-2 text-sm text-sand min-w-[220px]"
               >
                 <option value="public">Everyone</option>
                 <option value="connections">My connections</option>
