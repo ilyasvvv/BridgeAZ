@@ -262,7 +262,7 @@ export default function ForYou() {
               <select
                 value={newPostVisibility}
                 onChange={(event) => setNewPostVisibility(event.target.value)}
-                className="h-9 w-auto rounded-lg border border-white/10 bg-slate-900/50 px-3 text-sm text-sand focus:outline-none focus:ring-1 focus:ring-teal-500"
+                className="h-7 w-auto rounded-md border border-white/10 bg-white/5 px-2 py-0 text-xs text-sand focus:outline-none focus:ring-0 focus:border-white/20"
               >
                 <option value="public">Everyone</option>
                 <option value="connections">My connections</option>
