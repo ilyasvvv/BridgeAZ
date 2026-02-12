@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { apiClient, uploadViaPresign } from "../api/client";
+import { apiClient } from "../api/client";
 import { useAuth } from "../utils/auth";
 import PostCard from "../components/PostCard";
 import StatusBadge from "../components/StatusBadge";
@@ -7,19 +7,13 @@ import StatusBadge from "../components/StatusBadge";
 export default function Dashboard() {
   const { user, token, setUser } = useAuth();
   const [posts, setPosts] = useState([]);
-  const [region, setRegion] = useState("");
-  const [content, setContent] = useState("");
-  const [attachment, setAttachment] = useState(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
-  const allowedTypes = ["application/pdf", "image/png", "image/jpeg"];
-  const maxSizeBytes = 5 * 1024 * 1024;
 
-  const loadPosts = async (regionFilter) => {
+  const loadPosts = async () => {
     setLoading(true);
     try {
-      const query = regionFilter ? `?region=${encodeURIComponent(regionFilter)}` : "";
-      const data = await apiClient.get(`/posts${query}`, token);
+      const data = await apiClient.get("/posts", token);
       setPosts(data);
     } catch (err) {
       setError(err.message || "Failed to load feed");
@@ -29,46 +23,8 @@ export default function Dashboard() {
   };
 
   useEffect(() => {
-    loadPosts(region);
-  }, [region]);
-
-  const handlePost = async (event) => {
-    event.preventDefault();
-    setError("");
-    try {
-      let attachmentUrl;
-      let attachmentContentType;
-      if (attachment) {
-        if (!allowedTypes.includes(attachment.type)) {
-          setError("Unsupported file type");
-          return;
-        }
-        if (attachment.size > maxSizeBytes) {
-          setError("File must be 5MB or less");
-          return;
-        }
-
-        const upload = await uploadViaPresign({ file: attachment, purpose: "attachment" }, token);
-        attachmentUrl = upload.documentUrl;
-        attachmentContentType = attachment.type || "application/octet-stream";
-      }
-      const created = await apiClient.post(
-        "/posts",
-        {
-          content,
-          attachmentUrl,
-          attachmentContentType,
-          visibilityRegion: region || "ALL"
-        },
-        token
-      );
-      setPosts((prev) => [created, ...prev]);
-      setContent("");
-      setAttachment(null);
-    } catch (err) {
-      setError(err.message || "Failed to create post");
-    }
-  };
+    loadPosts();
+  }, []);
 
   const handleLike = async (postId) => {
     try {
@@ -105,39 +61,6 @@ export default function Dashboard() {
   return (
     <div className="mx-auto grid max-w-6xl gap-8 md:grid-cols-[2fr_1fr]">
       <section className="space-y-6">
-        <form onSubmit={handlePost} className="glass rounded-2xl p-5">
-          <div className="flex items-center justify-between">
-            <h2 className="font-display text-xl">Share an update</h2>
-            <input
-              value={region}
-              onChange={(event) => setRegion(event.target.value)}
-              className="rounded-full border border-white/10 bg-slate/40 px-4 py-2 text-xs tracking-wide text-sand"
-              placeholder="Visibility (leave empty for all)"
-            />
-          </div>
-          <textarea
-            value={content}
-            onChange={(event) => setContent(event.target.value)}
-            rows={3}
-            className="mt-4 w-full rounded-xl border border-white/10 bg-slate/40 px-4 py-3 text-sm text-sand"
-            placeholder="Share what you're working on..."
-            required
-          />
-          <div className="mt-4 flex flex-wrap items-center gap-3">
-            <input
-              type="file"
-              onChange={(event) => setAttachment(event.target.files?.[0] || null)}
-              className="text-xs text-mist"
-            />
-            <button
-              type="submit"
-              className="rounded-full bg-teal px-5 py-2 text-xs font-semibold uppercase tracking-wide text-charcoal"
-            >
-              Post update
-            </button>
-          </div>
-        </form>
-
         {error && <p className="text-sm text-coral">{error}</p>}
 
         <div className="space-y-4">

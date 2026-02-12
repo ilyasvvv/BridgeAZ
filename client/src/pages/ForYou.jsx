@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { apiClient } from "../api/client";
+import { apiClient, uploadViaPresign } from "../api/client";
 import { useAuth } from "../utils/auth";
 import CommunityPostCard from "../components/CommunityPostCard";
 import UserChip, { USER_CHIP_SIZES } from "../components/UserChip";
@@ -36,8 +36,14 @@ export default function ForYou() {
   const [threadPostId, setThreadPostId] = useState(null);
   const [threadComments, setThreadComments] = useState([]);
   const [shareInput, setShareInput] = useState(null);
+  const [showCreatePostModal, setShowCreatePostModal] = useState(false);
+  const [newPostContent, setNewPostContent] = useState("");
+  const [newPostAttachment, setNewPostAttachment] = useState(null);
+  const [newPostRegion, setNewPostRegion] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const allowedTypes = ["application/pdf", "image/png", "image/jpeg"];
+  const maxSizeBytes = 5 * 1024 * 1024;
 
   const loadData = async () => {
     setLoading(true);
@@ -182,6 +188,51 @@ export default function ForYou() {
     }
   };
 
+  const handleCreatePost = async (event) => {
+    event.preventDefault();
+    setError("");
+    try {
+      let attachmentUrl;
+      let attachmentContentType;
+      if (newPostAttachment) {
+        if (!allowedTypes.includes(newPostAttachment.type)) {
+          setError("Unsupported file type");
+          return;
+        }
+        if (newPostAttachment.size > maxSizeBytes) {
+          setError("File must be 5MB or less");
+          return;
+        }
+
+        const upload = await uploadViaPresign(
+          { file: newPostAttachment, purpose: "attachment" },
+          token
+        );
+        attachmentUrl = upload.documentUrl;
+        attachmentContentType = newPostAttachment.type || "application/octet-stream";
+      }
+
+      await apiClient.post(
+        "/posts",
+        {
+          content: newPostContent,
+          attachmentUrl,
+          attachmentContentType,
+          visibilityRegion: newPostRegion || "ALL"
+        },
+        token
+      );
+
+      setShowCreatePostModal(false);
+      setNewPostContent("");
+      setNewPostAttachment(null);
+      setNewPostRegion("");
+      await loadData();
+    } catch (err) {
+      setError(err.message || "Failed to create post");
+    }
+  };
+
   const headerRegion = regionLabel(user?.currentRegion) || "—";
   const opportunityPreview = opportunities.slice(0, 5);
   const activeThreadPost = threadPostId ? posts.find((item) => item._id === threadPostId) : null;
@@ -202,9 +253,18 @@ export default function ForYou() {
           <section className="space-y-4">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <h2 className="font-display text-2xl">Community pulse</h2>
-              <span className="text-xs uppercase tracking-wide text-mist">
-                Calm updates, thoughtful replies
-              </span>
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-xs uppercase tracking-wide text-mist">
+                  Calm updates, thoughtful replies
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setShowCreatePostModal(true)}
+                  className="rounded-full bg-teal px-5 py-2 text-xs font-semibold uppercase tracking-wide text-charcoal"
+                >
+                  Create Post
+                </button>
+              </div>
             </div>
             {loading ? (
               <p className="text-sm text-mist">Loading community pulse...</p>
@@ -505,6 +565,58 @@ export default function ForYou() {
           </section>
         </aside>
       </div>
+      {showCreatePostModal && (
+        <div
+          className="fixed inset-0 z-40 flex items-center justify-center bg-charcoal/70 px-4"
+          onClick={() => setShowCreatePostModal(false)}
+        >
+          <form
+            onSubmit={handleCreatePost}
+            className="glass w-full max-w-2xl rounded-2xl p-5"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="flex items-center justify-between">
+              <h2 className="font-display text-xl">Share an update</h2>
+              <input
+                value={newPostRegion}
+                onChange={(event) => setNewPostRegion(event.target.value)}
+                className="rounded-full border border-white/10 bg-slate/40 px-4 py-2 text-xs tracking-wide text-sand"
+                placeholder="Visibility (leave empty for all)"
+              />
+            </div>
+            <textarea
+              value={newPostContent}
+              onChange={(event) => setNewPostContent(event.target.value)}
+              rows={3}
+              className="mt-4 w-full rounded-xl border border-white/10 bg-slate/40 px-4 py-3 text-sm text-sand"
+              placeholder="Share what you're working on..."
+              required
+            />
+            <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+              <input
+                type="file"
+                onChange={(event) => setNewPostAttachment(event.target.files?.[0] || null)}
+                className="text-xs text-mist"
+              />
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowCreatePostModal(false)}
+                  className="rounded-full border border-white/10 px-4 py-2 text-xs uppercase tracking-wide text-mist hover:border-teal"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="rounded-full bg-teal px-5 py-2 text-xs font-semibold uppercase tracking-wide text-charcoal"
+                >
+                  Post update
+                </button>
+              </div>
+            </div>
+          </form>
+        </div>
+      )}
       <ShareSheet open={!!shareInput} onClose={() => setShareInput(null)} shareInput={shareInput} />
     </div>
   );
