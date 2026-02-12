@@ -37,11 +37,29 @@ export default function ForYou() {
   const [shareInput, setShareInput] = useState(null);
   const [newPostContent, setNewPostContent] = useState("");
   const [newPostAttachment, setNewPostAttachment] = useState(null);
-  const [newPostRegion, setNewPostRegion] = useState("");
+  const [newPostAttachmentPreviewUrl, setNewPostAttachmentPreviewUrl] = useState("");
+  const [newPostVisibility, setNewPostVisibility] = useState("public");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const allowedTypes = ["application/pdf", "image/png", "image/jpeg"];
-  const maxSizeBytes = 5 * 1024 * 1024;
+  const allowedTypes = [
+    "application/pdf",
+    "image/png",
+    "image/jpeg",
+    "video/mp4",
+    "video/webm",
+    "video/quicktime"
+  ];
+  const maxSizeBytes = 100 * 1024 * 1024;
+
+  useEffect(() => {
+    if (!newPostAttachment || !newPostAttachment.type?.startsWith("video/")) {
+      setNewPostAttachmentPreviewUrl("");
+      return undefined;
+    }
+    const objectUrl = URL.createObjectURL(newPostAttachment);
+    setNewPostAttachmentPreviewUrl(objectUrl);
+    return () => URL.revokeObjectURL(objectUrl);
+  }, [newPostAttachment]);
 
   const loadData = async () => {
     setLoading(true);
@@ -198,7 +216,7 @@ export default function ForYou() {
           return;
         }
         if (newPostAttachment.size > maxSizeBytes) {
-          setError("File must be 5MB or less");
+          setError("File must be 100MB or less");
           return;
         }
 
@@ -216,14 +234,14 @@ export default function ForYou() {
           content: newPostContent,
           attachmentUrl,
           attachmentContentType,
-          visibilityRegion: newPostRegion || "ALL"
+          visibilityRegion: newPostVisibility
         },
         token
       );
 
       setNewPostContent("");
       setNewPostAttachment(null);
-      setNewPostRegion("");
+      setNewPostVisibility("public");
       await loadData();
     } catch (err) {
       setError(err.message || "Failed to create post");
@@ -237,14 +255,19 @@ export default function ForYou() {
     <div className="mx-auto max-w-6xl space-y-8">
       {user && (
         <form onSubmit={handleCreatePost} className="glass rounded-2xl p-5">
-          <div className="flex items-center justify-between gap-3">
+          <div className="flex flex-wrap items-end justify-between gap-3">
             <h2 className="font-display text-xl">Share an update</h2>
-            <input
-              value={newPostRegion}
-              onChange={(event) => setNewPostRegion(event.target.value)}
-              className="rounded-full border border-white/10 bg-slate/40 px-4 py-2 text-xs tracking-wide text-sand"
-              placeholder="Visibility (leave empty for all)"
-            />
+            <label className="space-y-1 text-xs uppercase tracking-wide text-mist">
+              <span>Who can see this?</span>
+              <select
+                value={newPostVisibility}
+                onChange={(event) => setNewPostVisibility(event.target.value)}
+                className="rounded-xl border border-white/10 bg-slate-900/60 px-4 py-2 text-sm text-sand"
+              >
+                <option value="public">Everyone</option>
+                <option value="connections">My connections</option>
+              </select>
+            </label>
           </div>
           <textarea
             value={newPostContent}
@@ -259,6 +282,7 @@ export default function ForYou() {
               type="file"
               onChange={(event) => setNewPostAttachment(event.target.files?.[0] || null)}
               className="text-xs text-mist"
+              accept="application/pdf,image/png,image/jpeg,video/mp4,video/webm,video/quicktime,.mov"
             />
             <div className="flex items-center gap-2">
               <button
@@ -266,7 +290,8 @@ export default function ForYou() {
                 onClick={() => {
                   setNewPostContent("");
                   setNewPostAttachment(null);
-                  setNewPostRegion("");
+                  setNewPostAttachmentPreviewUrl("");
+                  setNewPostVisibility("public");
                 }}
                 className="rounded-full border border-white/10 px-4 py-2 text-xs uppercase tracking-wide text-mist hover:border-teal"
               >
@@ -280,6 +305,22 @@ export default function ForYou() {
               </button>
             </div>
           </div>
+          {newPostAttachment && (
+            <div className="mt-3 rounded-xl border border-white/10 bg-white/5 p-3 text-xs text-mist">
+              <p className="truncate">
+                {newPostAttachment.name} · {newPostAttachment.type || "file"} ·{" "}
+                {(newPostAttachment.size / (1024 * 1024)).toFixed(1)} MB
+              </p>
+              {newPostAttachmentPreviewUrl ? (
+                <video
+                  controls
+                  preload="metadata"
+                  className="mt-2 w-full max-h-56 rounded-lg"
+                  src={newPostAttachmentPreviewUrl}
+                />
+              ) : null}
+            </div>
+          )}
         </form>
       )}
 
