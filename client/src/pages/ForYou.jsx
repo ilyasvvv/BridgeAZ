@@ -205,7 +205,7 @@ export default function ForYou() {
   };
 
   const handleCreatePost = async (event) => {
-    event.preventDefault();
+    if (event?.preventDefault) event.preventDefault();
     setError("");
     try {
       let attachmentUrl;
@@ -254,7 +254,13 @@ export default function ForYou() {
   return (
     <div className="mx-auto max-w-6xl space-y-8">
       {user && (
-        <form onSubmit={handleCreatePost} className="glass rounded-2xl p-5">
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            handleCreatePost(e);
+          }}
+          className="glass rounded-2xl p-5"
+        >
           <div className="flex flex-wrap items-center justify-between gap-3">
             <h2 className="font-display text-xl">Share an update</h2>
             <label className="flex items-center gap-2">
@@ -298,7 +304,8 @@ export default function ForYou() {
                 Clear
               </button>
               <button
-                type="submit"
+                type="button"
+                onClick={handleCreatePost}
                 className="rounded-full bg-teal px-5 py-2 text-xs font-semibold uppercase tracking-wide text-charcoal"
               >
                 Post update
