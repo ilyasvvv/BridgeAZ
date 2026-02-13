@@ -234,7 +234,7 @@ export default function ForYou() {
           content: newPostContent,
           attachmentUrl,
           attachmentContentType,
-          visibilityRegion: newPostVisibility
+          visibilityRegion: newPostVisibility === "public" ? "ALL" : newPostVisibility
         },
         token
       );
