@@ -20,13 +20,32 @@ const progressKeywords = [
   "internship"
 ];
 
+const REPLIES_INITIAL = 2;
+const REPLIES_STEP = 10;
+
 export default function ForYou() {
   const { user, token } = useAuth();
   const [posts, setPosts] = useState([]);
   const [opportunities, setOpportunities] = useState([]);
   const [mentors, setMentors] = useState([]);
   const [requests, setRequests] = useState([]);
-  const [regionFilter, setRegionFilter] = useState("LOCAL");
+  const [showFilters, setShowFilters] = useState(false);
+  const [filterDraft, setFilterDraft] = useState({
+    visibility: "all",
+    contentTextOnly: false,
+    contentImage: false,
+    contentVideo: false,
+    region: "all",
+    sort: "latest"
+  });
+  const [appliedFilters, setAppliedFilters] = useState({
+    visibility: "all",
+    contentTextOnly: false,
+    contentImage: false,
+    contentVideo: false,
+    region: "all",
+    sort: "latest"
+  });
   const [savedPosts, setSavedPosts] = useState(new Set());
   const [activePostId, setActivePostId] = useState(null);
   const [commentDrafts, setCommentDrafts] = useState({});
@@ -34,6 +53,7 @@ export default function ForYou() {
   const [editDraft, setEditDraft] = useState("");
   const [threadPostId, setThreadPostId] = useState(null);
   const [threadComments, setThreadComments] = useState([]);
+  const [replyVisibleByPost, setReplyVisibleByPost] = useState({});
   const [shareInput, setShareInput] = useState(null);
   const [newPostContent, setNewPostContent] = useState("");
   const [newPostAttachment, setNewPostAttachment] = useState(null);
@@ -112,11 +132,56 @@ export default function ForYou() {
   }, [posts]);
 
   const filteredRegionalPosts = useMemo(() => {
-    if (regionFilter === "ALL" || !user?.currentRegion) {
-      return posts;
+    const myRegion = (user?.currentRegion || "").trim();
+    let next = [...posts];
+
+    if (appliedFilters.visibility !== "all") {
+      next = next.filter((post) => {
+        const visibilityToken = String(post.visibilityRegion || "").toLowerCase();
+        if (appliedFilters.visibility === "public") {
+          return visibilityToken === "all" || visibilityToken === "public";
+        }
+        return visibilityToken === "connections";
+      });
     }
-    return posts.filter((post) => post.visibilityRegion === user?.currentRegion);
-  }, [posts, regionFilter, user]);
+
+    const hasContentFilter =
+      appliedFilters.contentTextOnly || appliedFilters.contentImage || appliedFilters.contentVideo;
+    if (hasContentFilter) {
+      next = next.filter((post) => {
+        const contentType = String(post.attachmentContentType || "").toLowerCase();
+        const hasAttachment = !!post.attachmentUrl;
+        const matchesText = appliedFilters.contentTextOnly && !hasAttachment;
+        const matchesImage = appliedFilters.contentImage && contentType.startsWith("image/");
+        const matchesVideo = appliedFilters.contentVideo && contentType.startsWith("video/");
+        return matchesText || matchesImage || matchesVideo;
+      });
+    }
+
+    if (appliedFilters.region === "my" && myRegion) {
+      next = next.filter((post) => String(post.visibilityRegion || "").trim() === myRegion);
+    } else if (appliedFilters.region === "global" && myRegion) {
+      next = next.filter((post) => String(post.visibilityRegion || "").trim() !== myRegion);
+    }
+
+    if (appliedFilters.sort === "most-liked") {
+      next.sort((a, b) => {
+        const likesA = a.likesCount ?? a.likes?.length ?? 0;
+        const likesB = b.likesCount ?? b.likes?.length ?? 0;
+        return likesB - likesA;
+      });
+    } else if (appliedFilters.sort === "most-replied") {
+      next.sort((a, b) => {
+        const repliesA = a.comments?.length ?? 0;
+        const repliesB = b.comments?.length ?? 0;
+        return repliesB - repliesA;
+      });
+    } else {
+      next.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    }
+
+    return next;
+  }, [posts, appliedFilters, user]);
 
   const handleToggleSave = (postId) => {
     setSavedPosts((prev) => {
@@ -177,6 +242,7 @@ export default function ForYou() {
 
   const handleViewReplies = async (postId) => {
     try {
+      resetReplyVisible(postId);
       const comments = await apiClient.get(`/posts/${postId}/comments`, token);
       setThreadPostId(postId);
       setThreadComments(comments);
@@ -184,6 +250,21 @@ export default function ForYou() {
       setError(err.message || "Failed to load replies");
     }
   };
+
+  function getReplyVisible(postId) {
+    return replyVisibleByPost[postId] ?? REPLIES_INITIAL;
+  }
+
+  function resetReplyVisible(postId) {
+    setReplyVisibleByPost((prev) => ({ ...prev, [postId]: REPLIES_INITIAL }));
+  }
+
+  function moreReplies(postId) {
+    setReplyVisibleByPost((prev) => ({
+      ...prev,
+      [postId]: (prev[postId] ?? REPLIES_INITIAL) + REPLIES_STEP
+    }));
+  }
 
   const handleReplySubmit = async (postId, event) => {
     event.preventDefault();
@@ -248,8 +329,29 @@ export default function ForYou() {
     }
   };
 
+  const handleApplyFilters = async () => {
+    setAppliedFilters(filterDraft);
+    await loadData();
+  };
+
+  const handleResetFilters = async () => {
+    const defaults = {
+      visibility: "all",
+      contentTextOnly: false,
+      contentImage: false,
+      contentVideo: false,
+      region: "all",
+      sort: "latest"
+    };
+    setFilterDraft(defaults);
+    setAppliedFilters(defaults);
+    await loadData();
+  };
+
   const opportunityPreview = opportunities.slice(0, 5);
   const activeThreadPost = threadPostId ? posts.find((item) => item._id === threadPostId) : null;
+  const visibleReplyCount = threadPostId ? getReplyVisible(threadPostId) : REPLIES_INITIAL;
+  const shownReplies = threadComments.slice(0, visibleReplyCount);
 
   return (
     <div className="mx-auto max-w-6xl space-y-8">
@@ -333,77 +435,140 @@ export default function ForYou() {
 
       {error && <p className="text-sm text-coral">{error}</p>}
 
+      <section className="glass rounded-2xl p-4">
+        <div className="flex items-center justify-between">
+          <button
+            type="button"
+            onClick={() => setShowFilters((prev) => !prev)}
+            className="rounded-full border border-white/10 px-3 py-1 text-xs uppercase tracking-wide text-sand hover:border-teal"
+          >
+            Filters
+          </button>
+        </div>
+        {showFilters && (
+          <div className="mt-3 rounded-xl border border-white/10 bg-white/5 p-3">
+            <h3 className="text-sm text-sand">Filters</h3>
+            <div className="mt-3 grid gap-3 md:grid-cols-2">
+              <label className="space-y-1">
+                <span className="text-xs text-mist">Visibility</span>
+                <select
+                  value={filterDraft.visibility}
+                  onChange={(event) =>
+                    setFilterDraft((prev) => ({ ...prev, visibility: event.target.value }))
+                  }
+                  className="h-9 rounded-lg border border-white/10 bg-slate-900/50 px-3 text-sm text-sand"
+                >
+                  <option value="all">All</option>
+                  <option value="public">Public</option>
+                  <option value="connections">Connections</option>
+                </select>
+              </label>
+
+              <label className="space-y-1">
+                <span className="text-xs text-mist">Region</span>
+                <select
+                  value={filterDraft.region}
+                  onChange={(event) =>
+                    setFilterDraft((prev) => ({ ...prev, region: event.target.value }))
+                  }
+                  className="h-9 rounded-lg border border-white/10 bg-slate-900/50 px-3 text-sm text-sand"
+                >
+                  <option value="all">All</option>
+                  <option value="my">My region</option>
+                  <option value="global">Global</option>
+                </select>
+              </label>
+
+              <div className="space-y-2">
+                <p className="text-xs text-mist">Content</p>
+                <div className="flex flex-wrap items-center gap-3 text-xs text-mist">
+                  <label className="flex items-center gap-1.5">
+                    <input
+                      type="checkbox"
+                      checked={filterDraft.contentTextOnly}
+                      onChange={(event) =>
+                        setFilterDraft((prev) => ({
+                          ...prev,
+                          contentTextOnly: event.target.checked
+                        }))
+                      }
+                    />
+                    Text only
+                  </label>
+                  <label className="flex items-center gap-1.5">
+                    <input
+                      type="checkbox"
+                      checked={filterDraft.contentImage}
+                      onChange={(event) =>
+                        setFilterDraft((prev) => ({
+                          ...prev,
+                          contentImage: event.target.checked
+                        }))
+                      }
+                    />
+                    Image
+                  </label>
+                  <label className="flex items-center gap-1.5">
+                    <input
+                      type="checkbox"
+                      checked={filterDraft.contentVideo}
+                      onChange={(event) =>
+                        setFilterDraft((prev) => ({
+                          ...prev,
+                          contentVideo: event.target.checked
+                        }))
+                      }
+                    />
+                    Video
+                  </label>
+                </div>
+              </div>
+
+              <label className="space-y-1">
+                <span className="text-xs text-mist">Sort</span>
+                <select
+                  value={filterDraft.sort}
+                  onChange={(event) =>
+                    setFilterDraft((prev) => ({ ...prev, sort: event.target.value }))
+                  }
+                  className="h-9 rounded-lg border border-white/10 bg-slate-900/50 px-3 text-sm text-sand"
+                >
+                  <option value="latest">Latest</option>
+                  <option value="most-liked">Most liked</option>
+                  <option value="most-replied">Most replied</option>
+                </select>
+              </label>
+            </div>
+            <div className="mt-3 flex items-center gap-2">
+              <button
+                type="button"
+                onClick={handleApplyFilters}
+                className="rounded-full bg-teal px-4 py-1.5 text-xs font-semibold uppercase tracking-wide text-charcoal"
+              >
+                Apply filters
+              </button>
+              <button
+                type="button"
+                onClick={handleResetFilters}
+                className="rounded-full border border-white/10 px-4 py-1.5 text-xs uppercase tracking-wide text-mist hover:border-teal"
+              >
+                Reset
+              </button>
+            </div>
+          </div>
+        )}
+      </section>
+
       <div className="grid gap-8 lg:grid-cols-[2fr_1fr]">
         <div className="space-y-8">
           <section className="space-y-4">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <h2 className="font-display text-2xl">Community pulse</h2>
-              <span className="text-xs uppercase tracking-wide text-mist">
-                Calm updates, thoughtful replies
-              </span>
             </div>
             {loading ? (
               <p className="text-sm text-mist">Loading community pulse...</p>
-            ) : posts.length === 0 ? (
+            ) : filteredRegionalPosts.length === 0 ? (
               <p className="text-sm text-mist">No posts yet. Start a steady conversation.</p>
-            ) : (
-              <div className="space-y-4">
-                {posts.map((post) => (
-                  <CommunityPostCard
-                    key={post._id}
-                    post={post}
-                    onRespond={() =>
-                      setActivePostId((prev) => (prev === post._id ? null : post._id))
-                    }
-                    onSave={() => handleToggleSave(post._id)}
-                    onFollow={() => handleFollow(post._id)}
-                    onLike={() => handleLike(post._id)}
-                    onEdit={() => handleEdit(post)}
-                    onDelete={() => handleDelete(post._id)}
-                    onViewReplies={() => handleViewReplies(post._id)}
-                    isOwner={post.author?._id === user?._id}
-                    isSaved={savedPosts.has(post._id)}
-                    showReply={activePostId === post._id}
-                    replyValue={commentDrafts[post._id] || ""}
-                    onReplyChange={(event) =>
-                      setCommentDrafts((prev) => ({
-                        ...prev,
-                        [post._id]: event.target.value
-                      }))
-                    }
-                    onReplySubmit={(event) => handleReplySubmit(post._id, event)}
-                  />
-                ))}
-              </div>
-            )}
-          </section>
-
-          <section className="glass rounded-2xl p-5 space-y-4">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <h3 className="font-display text-xl">From where you are</h3>
-              <div className="flex items-center gap-2 text-xs uppercase tracking-wide">
-                {[
-                  { value: "LOCAL", label: "Your region" },
-                  { value: "ALL", label: "All" }
-                ].map((option) => (
-                  <button
-                    key={option.value}
-                    onClick={() => setRegionFilter(option.value)}
-                    className={`rounded-full border px-3 py-1 ${
-                      regionFilter === option.value
-                        ? "border-teal bg-teal/10 text-teal"
-                        : "border-white/10 text-mist hover:border-teal"
-                    }`}
-                  >
-                    {option.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-            {filteredRegionalPosts.length === 0 ? (
-              <p className="text-sm text-mist">
-                No regional posts yet. Quiet spaces are normal too.
-              </p>
             ) : (
               <div className="space-y-4">
                 {filteredRegionalPosts.map((post) => (
@@ -477,7 +642,7 @@ export default function ForYou() {
                 <p className="text-sm text-mist">No replies yet.</p>
               ) : (
                 <div className="space-y-2">
-                  {threadComments.map((comment) => (
+                  {shownReplies.map((comment) => (
                     <div key={comment._id} className="rounded-xl border border-white/10 p-3 text-sm text-sand">
                       <div className="flex items-center justify-between gap-2">
                         <UserChip
@@ -512,6 +677,15 @@ export default function ForYou() {
                       <p>{comment.content}</p>
                     </div>
                   ))}
+                  {threadPostId && threadComments.length > visibleReplyCount && (
+                    <button
+                      type="button"
+                      onClick={() => moreReplies(threadPostId)}
+                      className="text-sm font-medium text-teal-400 hover:underline"
+                    >
+                      More replies (+{REPLIES_STEP})
+                    </button>
+                  )}
                 </div>
               )}
             </section>
