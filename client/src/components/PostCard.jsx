@@ -8,6 +8,7 @@ import { buildSharePayload } from "../utils/share";
 
 export default function PostCard({ post, onLike }) {
   const [showShareSheet, setShowShareSheet] = useState(false);
+  const [visibleReplies, setVisibleReplies] = useState(2);
   const videoRef = useRef(null);
   const attachmentUrl = post.attachmentUrl;
   const attachmentContentType = post.attachmentContentType || "";
@@ -21,6 +22,8 @@ export default function PostCard({ post, onLike }) {
   const isPdf =
     attachmentContentType === "application/pdf" || lowerUrl.endsWith(".pdf");
   const attachmentLabel = attachmentUrl ? attachmentUrl.split("/").pop() : "";
+  const comments = post.comments || [];
+  const shownReplies = comments.slice(0, visibleReplies);
   const liked = !!post.likedByMe;
   const likesCount = post.likesCount ?? post.likes?.length ?? 0;
 
@@ -114,6 +117,29 @@ export default function PostCard({ post, onLike }) {
             >
               {attachmentLabel || "View attachment"}
             </a>
+          )}
+        </div>
+      )}
+      {comments.length > 0 && (
+        <div className="mt-4 space-y-2 rounded-xl border border-white/10 bg-white/5 p-3 text-xs text-mist">
+          {shownReplies.map((comment) => (
+            <div key={comment._id} className="space-y-1">
+              <UserChip
+                user={comment.author}
+                size={USER_CHIP_SIZES.FEED}
+                nameClassName="text-xs"
+              />
+              <p>{comment.content}</p>
+            </div>
+          ))}
+          {comments.length > visibleReplies && (
+            <button
+              type="button"
+              onClick={() => setVisibleReplies((prev) => prev + 10)}
+              className="text-xs uppercase tracking-wide text-teal"
+            >
+              View more
+            </button>
           )}
         </div>
       )}

@@ -23,8 +23,11 @@ export default function CommunityPostCard({
   onReplySubmit
 }) {
   const [shareTarget, setShareTarget] = useState(null);
+  const [visibleReplies, setVisibleReplies] = useState(2);
+  const [allReplies, setAllReplies] = useState(null);
+  const [loadingReplies, setLoadingReplies] = useState(false);
   const videoRef = useRef(null);
-  const comments = post.comments || [];
+  const comments = allReplies || post.comments || [];
   const attachmentUrl = post.attachmentUrl;
   const attachmentContentType = post.attachmentContentType || "";
   const lowerUrl = (attachmentUrl || "").toLowerCase();
@@ -57,6 +60,23 @@ export default function CommunityPostCard({
     const nextTime = Math.max(0, Math.min(duration, (node.currentTime || 0) + delta));
     node.currentTime = nextTime;
   };
+
+  const handleMoreReplies = async () => {
+    if (onViewReplies && !allReplies && !loadingReplies) {
+      setLoadingReplies(true);
+      try {
+        const loaded = await onViewReplies();
+        if (Array.isArray(loaded)) {
+          setAllReplies(loaded);
+        }
+      } finally {
+        setLoadingReplies(false);
+      }
+    }
+    setVisibleReplies((prev) => prev + 10);
+  };
+
+  const shownReplies = comments.slice(0, visibleReplies);
   return (
     <div className="glass gradient-border relative rounded-2xl p-5 min-w-0">
       <div className="flex flex-wrap items-start justify-between gap-4">
@@ -190,7 +210,7 @@ export default function CommunityPostCard({
       </div>
       {comments.length > 0 && (
         <div className="mt-4 space-y-2 rounded-xl border border-white/10 bg-white/5 p-3 text-xs text-mist">
-          {comments.map((comment) => (
+          {shownReplies.map((comment) => (
             <div key={comment._id} className="space-y-1">
               <div className="flex items-center justify-between gap-2">
                 <UserChip
@@ -220,12 +240,13 @@ export default function CommunityPostCard({
               <p>{comment.content}</p>
             </div>
           ))}
-          {onViewReplies && (
+          {comments.length > visibleReplies && (
             <button
-              onClick={onViewReplies}
+              type="button"
+              onClick={handleMoreReplies}
               className="text-xs uppercase tracking-wide text-teal"
             >
-              View all replies
+              {loadingReplies ? "Loading..." : "View more"}
             </button>
           )}
         </div>
