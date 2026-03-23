@@ -10,15 +10,15 @@ const resolveAvatarUrl = (user) =>
   null;
 
 export const USER_CHIP_SIZES = Object.freeze({
-  CHAT_HEADER: 36,
-  FEED: 36,
-  THREAD_LIST: 36,
-  PROFILE_HEADER: 48
+  SM: 32,
+  MD: 40,
+  LG: 56,
+  XL: 96
 });
 
 export default function UserChip({
   user,
-  size = USER_CHIP_SIZES.FEED,
+  size = USER_CHIP_SIZES.MD,
   to,
   onClick,
   showRole = false,
@@ -33,23 +33,23 @@ export default function UserChip({
   const role = showRole ? user?.userType : null;
 
   const content = (
-    <span className={`inline-flex min-w-0 items-center gap-2 ${className}`}>
+    <span className={`inline-flex min-w-0 items-center gap-3 ${className}`}>
       <Avatar url={resolveAvatarUrl(user)} alt={`${name} avatar`} size={size} />
       <span className="min-w-0">
         <span
-          className={`block truncate text-sm text-mist transition-colors group-hover:text-sand ${nameClassName}`}
+          className={`block truncate text-[15px] font-semibold text-text-main transition-colors group-hover:text-brand-blue ${nameClassName}`}
         >
           {name}
         </span>
         {subtitle ? (
-          <span className={`block truncate text-xs text-mist ${subtitleClassName}`}>
+          <span className={`block truncate text-xs text-text-secondary ${subtitleClassName}`}>
             {subtitle}
           </span>
         ) : null}
       </span>
       {role ? (
         <span
-          className={`rounded-full border border-border px-2 py-0.5 text-[10px] uppercase tracking-wide text-mist ${roleClassName}`}
+          className={`rounded-full border border-black/[0.05] bg-bg-app px-2 py-0.5 text-[10px] font-bold uppercase tracking-tight text-text-secondary ${roleClassName}`}
         >
           {role}
         </span>

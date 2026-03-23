@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, Link } from "react-router-dom";
 import { apiClient, uploadViaPresign } from "../api/client";
 import { useAuth } from "../utils/auth";
 import StatusBadge from "../components/StatusBadge";
@@ -8,7 +8,7 @@ import UserChip, { USER_CHIP_SIZES } from "../components/UserChip";
 import ShareSheet from "../components/ShareSheet";
 import { buildSharePayload } from "../utils/share";
 
-const tabs = ["Overview", "Experience", "Education", "Projects", "Activity", "Settings"];
+const tabs = ["Overview", "Experience", "Education", "Projects", "Verification", "Settings"];
 
 export default function Profile() {
   const { id } = useParams();
@@ -25,26 +25,32 @@ export default function Profile() {
   const [mentorInfo, setMentorInfo] = useState({ universityEmail: "", linkedinUrl: "", note: "" });
   const [message, setMessage] = useState("");
   const [showShareSheet, setShowShareSheet] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  
   const allowedTypes = ["application/pdf", "image/png", "image/jpeg"];
   const maxSizeBytes = 5 * 1024 * 1024;
 
   const loadProfile = async () => {
-    const data = await apiClient.get("/users/me", token);
-    setProfile(data);
-    setForm({
-      name: data.name || "",
-      headline: data.headline || "",
-      bio: data.bio || "",
-      currentRegion: data.currentRegion || "",
-      skills: data.skills?.join(", ") || "",
-      links: data.links || [],
-      socialLinks: data.socialLinks || { linkedin: "", github: "", website: "" },
-      experience: data.experience || [],
-      locationNow: data.locationNow || { country: "", city: "" },
-      isPrivate: data.isPrivate || data.profileVisibility === "private",
-      avatarUrl: data.avatarUrl || data.profilePhotoUrl || data.profilePictureUrl || "",
-      resumeUrl: data.resumeUrl || ""
-    });
+    try {
+      const data = await apiClient.get("/users/me", token);
+      setProfile(data);
+      setForm({
+        name: data.name || "",
+        headline: data.headline || "",
+        bio: data.bio || "",
+        currentRegion: data.currentRegion || "",
+        skills: data.skills?.join(", ") || "",
+        links: data.links || [],
+        socialLinks: data.socialLinks || { linkedin: "", github: "", website: "" },
+        experience: data.experience || [],
+        locationNow: data.locationNow || { country: "", city: "" },
+        isPrivate: data.isPrivate || data.profileVisibility === "private",
+        avatarUrl: data.avatarUrl || data.profilePhotoUrl || data.profilePictureUrl || "",
+        resumeUrl: data.resumeUrl || ""
+      });
+    } catch (err) {
+      console.error("Failed to load profile", err);
+    }
   };
 
   useEffect(() => {
@@ -57,25 +63,34 @@ export default function Profile() {
   }, [id, token, user?._id]);
 
   const handleSave = async () => {
-    const payload = {
-      name: form.name,
-      headline: form.headline,
-      bio: form.bio,
-      currentRegion: form.currentRegion,
-      skills: form.skills.split(",").map((item) => item.trim()).filter(Boolean),
-      links: form.links,
-      socialLinks: form.socialLinks,
-      experience: form.experience,
-      locationNow: form.locationNow,
-      isPrivate: form.isPrivate,
-      avatarUrl: form.avatarUrl,
-      resumeUrl: form.resumeUrl
-    };
+    setIsSaving(true);
+    try {
+      const payload = {
+        name: form.name,
+        headline: form.headline,
+        bio: form.bio,
+        currentRegion: form.currentRegion,
+        skills: form.skills.split(",").map((item) => item.trim()).filter(Boolean),
+        links: form.links,
+        socialLinks: form.socialLinks,
+        experience: form.experience,
+        locationNow: form.locationNow,
+        isPrivate: form.isPrivate,
+        avatarUrl: form.avatarUrl,
+        resumeUrl: form.resumeUrl
+      };
 
-    const updated = await apiClient.put("/users/me", payload, token);
-    setProfile(updated);
-    setUser(updated);
-    setEditMode(false);
+      const updated = await apiClient.put("/users/me", payload, token);
+      setProfile(updated);
+      setUser(updated);
+      setEditMode(false);
+      setMessage("Profile updated successfully");
+      setTimeout(() => setMessage(""), 3000);
+    } catch (err) {
+      setMessage(err.message || "Failed to update profile");
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handlePresignUpload = async (file, purpose) => {
@@ -92,34 +107,30 @@ export default function Profile() {
     return presign.documentUrl;
   };
 
-  const handleAvatarUpload = async () => {
+  const handleAvatarUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
     setMessage("");
     try {
-      if (!(avatarFile instanceof File)) {
-        setMessage("Select an image to upload.");
-        return;
-      }
-      const url = await handlePresignUpload(avatarFile, "avatar");
+      const url = await handlePresignUpload(file, "avatar");
       if (url) {
         setForm((prev) => ({ ...prev, avatarUrl: url }));
-        setAvatarFile(null);
+        setMessage("Avatar ready to save.");
       }
     } catch (error) {
       setMessage(error.message || "Failed to upload avatar");
     }
   };
 
-  const handleResumeUpload = async () => {
+  const handleResumeUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
     setMessage("");
     try {
-      if (!(resumeFile instanceof File)) {
-        setMessage("Select a file to upload.");
-        return;
-      }
-      const url = await handlePresignUpload(resumeFile, "resume");
+      const url = await handlePresignUpload(file, "resume");
       if (url) {
         setForm((prev) => ({ ...prev, resumeUrl: url }));
-        setResumeFile(null);
+        setMessage("Resume uploaded and linked.");
       }
     } catch (error) {
       setMessage(error.message || "Failed to upload resume");
@@ -156,28 +167,17 @@ export default function Profile() {
     setMessage("");
     try {
       if (!(docFile instanceof File)) {
-        setMessage("File is required");
+        setMessage("Verification document is required");
         return;
       }
-
-      if (!allowedTypes.includes(docFile.type)) {
-        setMessage("Unsupported file type");
-        return;
-      }
-
-      if (docFile.size > maxSizeBytes) {
-        setMessage("File must be 5MB or less");
-        return;
-      }
-
       const presign = await uploadViaPresign({ file: docFile, purpose: "verification" }, token);
       await apiClient.post(
         "/verification/student",
         { documentUrl: presign.documentUrl, objectKey: presign.objectKey },
         token
       );
-
-      setMessage("Verification request submitted.");
+      setMessage("Student verification request submitted.");
+      loadProfile();
     } catch (error) {
       setMessage(error.message || "Failed to submit verification");
     }
@@ -187,25 +187,13 @@ export default function Profile() {
     setMessage("");
     try {
       if (!(docFile instanceof File)) {
-        setMessage("File is required");
+        setMessage("Verification document is required");
         return;
       }
-
       if (!mentorInfo.universityEmail && !mentorInfo.linkedinUrl && !mentorInfo.note) {
-        setMessage("Provide at least one mentor detail.");
+        setMessage("Provide at least one mentor detail (email, LinkedIn, or note).");
         return;
       }
-
-      if (!allowedTypes.includes(docFile.type)) {
-        setMessage("Unsupported file type");
-        return;
-      }
-
-      if (docFile.size > maxSizeBytes) {
-        setMessage("File must be 5MB or less");
-        return;
-      }
-
       const presign = await uploadViaPresign({ file: docFile, purpose: "verification" }, token);
       await apiClient.post(
         "/verification/mentor",
@@ -216,14 +204,14 @@ export default function Profile() {
         },
         token
       );
-
       setMessage("Mentor verification request submitted.");
+      loadProfile();
     } catch (error) {
       setMessage(error.message || "Failed to submit mentor verification");
     }
   };
 
-  const skills = useMemo(() => profile?.skills || [], [profile]);
+  const skillsList = useMemo(() => profile?.skills || [], [profile]);
   const studentStatus = profile?.studentVerificationStatus || "none";
   const mentorStatus = profile?.mentorVerificationStatus || "none";
   const isPendingVerification =
@@ -231,243 +219,454 @@ export default function Profile() {
     (profile?.userType === "professional" && mentorStatus === "pending");
 
   if (!profile) {
-    return <p className="text-sm text-mist">Loading profile...</p>;
+    return <div className="p-20 text-center text-text-secondary animate-pulse">Loading your profile...</div>;
   }
 
   return (
-    <div className="mx-auto max-w-5xl space-y-8">
-      <div className="glass rounded-3xl p-6">
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <div className="min-w-0">
-            <UserChip
-              user={profile}
-              size={USER_CHIP_SIZES.PROFILE_HEADER}
-              to={profile?._id ? `/profile/${profile._id}` : undefined}
-              nameClassName="text-2xl text-sand"
-            />
-            <p className="text-sm text-mist">{profile.headline || "BridgeAZ member"}</p>
-            <div className="mt-3 flex flex-wrap items-center gap-2">
-              <RegionPill region={profile.currentRegion} />
-              {profile.studentVerified && <StatusBadge label="Student Verified" tone="teal" />}
-              {profile.mentorVerified && <StatusBadge label="Mentor Verified" tone="coral" />}
-              {profile.isMentor && !profile.mentorVerified && (
-                <StatusBadge label="Mentor Pending" tone="ember" />
-              )}
+    <div className="mx-auto max-w-5xl space-y-8 py-6">
+      {/* Top Profile Card */}
+      <div className="apple-card overflow-hidden">
+        <div className="h-32 bg-gradient-to-r from-brand-blue/20 to-brand-blue/5 md:h-48" />
+        <div className="relative px-6 pb-8 md:px-10">
+          <div className="relative -mt-12 flex flex-col items-start justify-between gap-6 md:-mt-16 md:flex-row md:items-end">
+            <div className="flex flex-col items-start gap-4 md:flex-row md:items-end">
+              <div className="group relative">
+                <div className="rounded-full border-4 border-white shadow-apple overflow-hidden">
+                  <UserChip
+                    user={form.avatarUrl ? { ...profile, avatarUrl: form.avatarUrl } : profile}
+                    size={128}
+                    className="!gap-0"
+                    nameClassName="hidden"
+                  />
+                </div>
+                <label className="absolute inset-0 flex cursor-pointer items-center justify-center rounded-full bg-black/40 opacity-0 transition-opacity group-hover:opacity-100">
+                  <span className="text-white text-xs font-bold uppercase">Change</span>
+                  <input type="file" className="hidden" onChange={handleAvatarUpload} accept="image/*" />
+                </label>
+              </div>
+              <div className="mb-2">
+                <h1 className="text-3xl font-extrabold text-text-main">{profile.name}</h1>
+                <p className="text-lg font-medium text-text-secondary">{profile.headline || "BridgeAZ Member"}</p>
+                <div className="mt-3 flex flex-wrap items-center gap-2">
+                  <RegionPill region={profile.currentRegion} />
+                  <StatusBadge label={profile.userType} tone={profile.userType === "professional" ? "blue" : "slate"} />
+                  {profile.mentorVerified && <StatusBadge label="Verified Mentor" tone="success" />}
+                  {profile.studentVerified && <StatusBadge label="Verified Student" tone="success" />}
+                </div>
+              </div>
             </div>
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <button
-              type="button"
-              onClick={() => setShowShareSheet(true)}
-              className="rounded-full border border-border px-4 py-2 text-xs uppercase tracking-wide text-sand hover:border-teal"
-            >
-              Share
-            </button>
-            {isOwner && (
+            <div className="mb-2 flex gap-3">
+              <Link to={`/profile/${profile._id}`} className="apple-button-secondary">
+                View Public Profile
+              </Link>
               <button
-                onClick={() => setEditMode((prev) => !prev)}
-                className="rounded-full border border-border px-4 py-2 text-xs uppercase tracking-wide text-sand hover:border-teal"
+                onClick={() => setEditMode(true)}
+                className="apple-button-primary"
               >
-                {editMode ? "Cancel" : "Edit Profile"}
+                Edit Basic Info
               </button>
-            )}
+            </div>
           </div>
         </div>
+      </div>
 
-        {editMode && (
-          <div className="mt-6 grid gap-4 md:grid-cols-2">
-            <input
-              className="rounded-xl border border-border bg-white px-4 py-2 text-sand"
-              value={form.name}
-              onChange={(event) => setForm({ ...form, name: event.target.value })}
-              placeholder="Name"
-            />
-            <input
-              className="rounded-xl border border-border bg-white px-4 py-2 text-sand"
-              value={form.headline}
-              onChange={(event) => setForm({ ...form, headline: event.target.value })}
-              placeholder="Headline"
-            />
-            <textarea
-              className="rounded-xl border border-border bg-white px-4 py-2 text-sand md:col-span-2"
-              value={form.bio}
-              onChange={(event) => setForm({ ...form, bio: event.target.value })}
-              placeholder="Bio"
-              rows={3}
-            />
-            <input
-              className="rounded-xl border border-border bg-white px-4 py-2 text-sand"
-              value={form.currentRegion}
-              onChange={(event) => setForm({ ...form, currentRegion: event.target.value })}
-              placeholder="Current Region"
-            />
-            <input
-              className="rounded-xl border border-border bg-white px-4 py-2 text-sand"
-              value={form.skills}
-              onChange={(event) => setForm({ ...form, skills: event.target.value })}
-              placeholder="Skills (comma separated)"
-            />
+      {message && (
+        <div className="rounded-apple bg-brand-blue/10 p-4 text-center text-sm font-semibold text-brand-blue">
+          {message}
+        </div>
+      )}
 
-            <div className="md:col-span-2 space-y-2">
-              <p className="text-xs uppercase tracking-wide text-mist">Avatar</p>
-              <div className="flex flex-wrap items-center gap-3">
-                <input
-                  type="file"
-                  onChange={(event) => setAvatarFile(event.target.files?.[0] || null)}
-                  className="text-xs text-mist"
-                />
-                <button
-                  type="button"
-                  onClick={handleAvatarUpload}
-                  className="rounded-full border border-border px-3 py-1 text-xs uppercase tracking-wide text-sand hover:border-teal"
-                >
-                  Upload avatar
-                </button>
-                {form.avatarUrl && (
-                  <span className="text-xs text-mist">Saved</span>
-                )}
-              </div>
-            </div>
-
-            <div className="md:col-span-2 space-y-2">
-              <p className="text-xs uppercase tracking-wide text-mist">Resume</p>
-              <div className="flex flex-wrap items-center gap-3">
-                <input
-                  type="file"
-                  onChange={(event) => setResumeFile(event.target.files?.[0] || null)}
-                  className="text-xs text-mist"
-                />
-                <button
-                  type="button"
-                  onClick={handleResumeUpload}
-                  className="rounded-full border border-border px-3 py-1 text-xs uppercase tracking-wide text-sand hover:border-teal"
-                >
-                  Upload resume
-                </button>
-                {form.resumeUrl && (
-                  <span className="text-xs text-mist">Saved</span>
-                )}
-              </div>
-            </div>
-
-            <input
-              className="rounded-xl border border-border bg-white px-4 py-2 text-sand"
-              value={form.socialLinks?.linkedin || ""}
-              onChange={(event) =>
-                setForm((prev) => ({
-                  ...prev,
-                  socialLinks: { ...prev.socialLinks, linkedin: event.target.value }
-                }))
-              }
-              placeholder="LinkedIn URL"
-            />
-            <input
-              className="rounded-xl border border-border bg-white px-4 py-2 text-sand"
-              value={form.socialLinks?.github || ""}
-              onChange={(event) =>
-                setForm((prev) => ({
-                  ...prev,
-                  socialLinks: { ...prev.socialLinks, github: event.target.value }
-                }))
-              }
-              placeholder="GitHub URL"
-            />
-            <input
-              className="rounded-xl border border-border bg-white px-4 py-2 text-sand"
-              value={form.socialLinks?.website || ""}
-              onChange={(event) =>
-                setForm((prev) => ({
-                  ...prev,
-                  socialLinks: { ...prev.socialLinks, website: event.target.value }
-                }))
-              }
-              placeholder="Website URL"
-            />
-            <input
-              className="rounded-xl border border-border bg-white px-4 py-2 text-sand"
-              value={form.locationNow?.country || ""}
-              onChange={(event) =>
-                setForm((prev) => ({
-                  ...prev,
-                  locationNow: { ...prev.locationNow, country: event.target.value }
-                }))
-              }
-              placeholder="Country"
-            />
-            <input
-              className="rounded-xl border border-border bg-white px-4 py-2 text-sand"
-              value={form.locationNow?.city || ""}
-              onChange={(event) =>
-                setForm((prev) => ({
-                  ...prev,
-                  locationNow: { ...prev.locationNow, city: event.target.value }
-                }))
-              }
-              placeholder="City"
-            />
-            <label className="md:col-span-2 flex items-center gap-2 text-xs text-mist">
+      {/* Edit Mode Modal / Section */}
+      {editMode && (
+        <div className="apple-card p-8 animate-fade-in border-brand-blue/30 bg-white/50 backdrop-blur-sm">
+          <div className="flex items-center justify-between">
+            <h2 className="text-xl font-bold">Edit Basic Info</h2>
+            <button onClick={() => setEditMode(false)} className="text-text-muted hover:text-text-main text-sm font-medium">Cancel</button>
+          </div>
+          <div className="mt-6 grid gap-6 md:grid-cols-2">
+            <div className="space-y-1">
+              <label className="text-[11px] font-bold uppercase tracking-tight text-text-muted px-1">Full Name</label>
               <input
-                type="checkbox"
-                checked={!!form.isPrivate}
-                onChange={(event) =>
-                  setForm((prev) => ({ ...prev, isPrivate: event.target.checked }))
-                }
+                className="w-full rounded-apple border border-black/[0.08] bg-white px-4 py-2 text-text-main outline-none focus:border-brand-blue focus:ring-1 focus:ring-brand-blue"
+                value={form.name}
+                onChange={(e) => setForm({ ...form, name: e.target.value })}
+                placeholder="Name"
               />
-              Private profile
-            </label>
+            </div>
+            <div className="space-y-1">
+              <label className="text-[11px] font-bold uppercase tracking-tight text-text-muted px-1">Headline</label>
+              <input
+                className="w-full rounded-apple border border-black/[0.08] bg-white px-4 py-2 text-text-main outline-none focus:border-brand-blue focus:ring-1 focus:ring-brand-blue"
+                value={form.headline}
+                onChange={(e) => setForm({ ...form, headline: e.target.value })}
+                placeholder="Headline (e.g. Software Engineer at Google)"
+              />
+            </div>
+            <div className="space-y-1 md:col-span-2">
+              <label className="text-[11px] font-bold uppercase tracking-tight text-text-muted px-1">Bio</label>
+              <textarea
+                className="w-full rounded-apple border border-black/[0.08] bg-white px-4 py-2 text-text-main outline-none focus:border-brand-blue focus:ring-1 focus:ring-brand-blue"
+                value={form.bio}
+                onChange={(e) => setForm({ ...form, bio: e.target.value })}
+                placeholder="Tell the community about yourself..."
+                rows={3}
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="text-[11px] font-bold uppercase tracking-tight text-text-muted px-1">Current Region</label>
+              <input
+                className="w-full rounded-apple border border-black/[0.08] bg-white px-4 py-2 text-text-main outline-none focus:border-brand-blue focus:ring-1 focus:ring-brand-blue"
+                value={form.currentRegion}
+                onChange={(e) => setForm({ ...form, currentRegion: e.target.value })}
+                placeholder="e.g. Europe, North America"
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="text-[11px] font-bold uppercase tracking-tight text-text-muted px-1">Skills</label>
+              <input
+                className="w-full rounded-apple border border-black/[0.08] bg-white px-4 py-2 text-text-main outline-none focus:border-brand-blue focus:ring-1 focus:ring-brand-blue"
+                value={form.skills}
+                onChange={(e) => setForm({ ...form, skills: e.target.value })}
+                placeholder="React, Design, Python..."
+              />
+            </div>
+            <div className="flex items-center gap-3 pt-4 md:col-span-2">
+              <button
+                onClick={handleSave}
+                disabled={isSaving}
+                className="apple-button-primary px-10"
+              >
+                {isSaving ? "Saving..." : "Save Changes"}
+              </button>
+              <button
+                onClick={() => setEditMode(false)}
+                className="apple-button-secondary"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
-            <div className="md:col-span-2 space-y-2">
-              <div className="flex items-center justify-between">
-                <p className="text-xs uppercase tracking-wide text-mist">Experience</p>
-                <button
-                  type="button"
-                  onClick={addExperience}
-                  className="rounded-full border border-border px-3 py-1 text-xs uppercase tracking-wide text-mist hover:border-teal"
+      {/* Main Tabs Navigation */}
+      <div className="flex border-b border-black/[0.05] overflow-x-auto">
+        {tabs.map((tab) => (
+          <button
+            key={tab}
+            onClick={() => setActiveTab(tab)}
+            className={`whitespace-nowrap px-6 py-4 text-sm font-bold transition-colors ${
+              activeTab === tab 
+                ? "border-b-2 border-brand-blue text-brand-blue" 
+                : "text-text-muted hover:text-text-main"
+            }`}
+          >
+            {tab}
+          </button>
+        ))}
+      </div>
+
+      {/* Tab Content */}
+      <div className="animate-fade-in">
+        {activeTab === "Overview" && (
+          <div className="grid gap-8 md:grid-cols-[1fr_320px]">
+            <div className="space-y-8">
+              <section className="apple-card p-8">
+                <h3 className="text-xl font-bold">About</h3>
+                <p className="mt-4 text-[15px] leading-relaxed text-text-secondary">
+                  {profile.bio || "No bio yet. Add one to help others know you better."}
+                </p>
+                <div className="mt-8">
+                  <h4 className="text-[11px] font-bold uppercase tracking-tight text-text-muted">Current Location</h4>
+                  <div className="mt-2 flex gap-4">
+                    <input
+                      className="rounded-apple border border-black/[0.08] bg-white px-4 py-1.5 text-sm text-text-main outline-none focus:border-brand-blue"
+                      placeholder="Country"
+                      value={form.locationNow?.country || ""}
+                      onChange={(e) => setForm({...form, locationNow: {...form.locationNow, country: e.target.value}})}
+                    />
+                    <input
+                      className="rounded-apple border border-black/[0.08] bg-white px-4 py-1.5 text-sm text-text-main outline-none focus:border-brand-blue"
+                      placeholder="City"
+                      value={form.locationNow?.city || ""}
+                      onChange={(e) => setForm({...form, locationNow: {...form.locationNow, city: e.target.value}})}
+                    />
+                    <button onClick={handleSave} className="text-xs font-bold text-brand-blue hover:underline">Update</button>
+                  </div>
+                </div>
+              </section>
+
+              <section className="apple-card p-8">
+                <h3 className="text-xl font-bold">Social & Links</h3>
+                <div className="mt-6 grid gap-6 md:grid-cols-2">
+                  {Object.keys(form.socialLinks || {}).map((key) => (
+                    <div key={key} className="space-y-1">
+                      <label className="text-[11px] font-bold uppercase tracking-tight text-text-muted capitalize">{key}</label>
+                      <input
+                        className="w-full rounded-apple border border-black/[0.08] bg-white px-4 py-2 text-sm text-text-main outline-none focus:border-brand-blue"
+                        value={form.socialLinks?.[key] || ""}
+                        onChange={(e) => setForm({
+                          ...form, 
+                          socialLinks: { ...form.socialLinks, [key]: e.target.value }
+                        })}
+                        placeholder={`Your ${key} URL`}
+                      />
+                    </div>
+                  ))}
+                  <div className="md:col-span-2">
+                    <button onClick={handleSave} className="apple-button-primary text-xs">Update Links</button>
+                  </div>
+                </div>
+              </section>
+            </div>
+
+            <div className="space-y-8">
+              <section className="apple-card p-6">
+                <h3 className="text-[11px] font-bold uppercase tracking-tight text-text-muted">Your Resume</h3>
+                <div className="mt-4">
+                  {profile.resumeUrl ? (
+                    <div className="flex flex-col gap-3">
+                      <a href={profile.resumeUrl} target="_blank" rel="noreferrer" className="apple-button-secondary w-full justify-center">View Current Resume</a>
+                      <p className="text-[10px] text-center text-text-muted italic">Replace by uploading below</p>
+                    </div>
+                  ) : (
+                    <p className="text-sm text-text-secondary italic mb-4">No resume uploaded yet.</p>
+                  )}
+                  <div className="mt-4 flex flex-col gap-3">
+                    <input type="file" onChange={handleResumeUpload} className="text-xs text-text-muted" accept=".pdf" />
+                    <p className="text-[10px] text-text-muted">PDF only, max 5MB</p>
+                  </div>
+                </div>
+              </section>
+
+              <section className="apple-card p-6">
+                <h3 className="text-[11px] font-bold uppercase tracking-tight text-text-muted">Skills</h3>
+                <div className="mt-4 flex flex-wrap gap-2">
+                  {skillsList.map((skill) => (
+                    <span key={skill} className="rounded-apple bg-bg-app px-2.5 py-1 text-[11px] font-bold text-text-main border border-black/[0.03]">
+                      {skill}
+                    </span>
+                  ))}
+                  {skillsList.length === 0 && <p className="text-sm text-text-secondary italic">No skills added.</p>}
+                </div>
+                <button onClick={() => {setEditMode(true); setActiveTab("Overview")}} className="mt-4 text-xs font-bold text-brand-blue hover:underline">Edit Skills</button>
+              </section>
+            </div>
+          </div>
+        )}
+
+        {activeTab === "Experience" && (
+          <div className="space-y-6">
+            <div className="flex items-center justify-between">
+              <h3 className="text-xl font-bold">Professional Experience</h3>
+              <button onClick={addExperience} className="apple-button-primary text-xs font-bold">+ Add New</button>
+            </div>
+            {(form.experience || []).map((exp, index) => (
+              <div key={index} className="apple-card p-6 space-y-4 relative group">
+                <button 
+                  onClick={() => removeExperience(index)}
+                  className="absolute top-4 right-4 text-accent-error opacity-0 group-hover:opacity-100 transition-opacity text-xs font-bold uppercase"
                 >
-                  Add
+                  Remove
                 </button>
-              </div>
-              {(form.experience || []).map((exp, index) => (
-                <div key={index} className="space-y-2 rounded-xl border border-border p-3">
+                <div className="grid gap-4 md:grid-cols-2">
                   <input
-                    className="w-full rounded-xl border border-border bg-white px-3 py-2 text-sm text-sand"
+                    className="rounded-apple border border-black/[0.08] bg-white px-4 py-2 text-sm text-text-main"
                     value={exp.company || ""}
-                    onChange={(event) => updateExperience(index, "company", event.target.value)}
+                    onChange={(e) => updateExperience(index, "company", e.target.value)}
                     placeholder="Company"
                   />
                   <input
-                    className="w-full rounded-xl border border-border bg-white px-3 py-2 text-sm text-sand"
+                    className="rounded-apple border border-black/[0.08] bg-white px-4 py-2 text-sm text-text-main"
                     value={exp.role || ""}
-                    onChange={(event) => updateExperience(index, "role", event.target.value)}
+                    onChange={(e) => updateExperience(index, "role", e.target.value)}
                     placeholder="Role"
                   />
                   <textarea
-                    className="w-full rounded-xl border border-border bg-white px-3 py-2 text-sm text-sand"
+                    className="md:col-span-2 rounded-apple border border-black/[0.08] bg-white px-4 py-2 text-sm text-text-main"
                     value={exp.description || ""}
-                    onChange={(event) => updateExperience(index, "description", event.target.value)}
-                    placeholder="Description"
+                    onChange={(e) => updateExperience(index, "description", e.target.value)}
+                    placeholder="Describe your impact and responsibilities..."
                     rows={2}
                   />
-                  <button
-                    type="button"
-                    onClick={() => removeExperience(index)}
-                    className="rounded-full border border-border px-3 py-1 text-xs uppercase tracking-wide text-mist hover:border-teal"
-                  >
-                    Remove
-                  </button>
                 </div>
-              ))}
-            </div>
+              </div>
+            ))}
+            {(form.experience || []).length > 0 && (
+              <button onClick={handleSave} className="apple-button-primary">Save Experience</button>
+            )}
+            {(form.experience || []).length === 0 && (
+              <div className="apple-card p-12 text-center">
+                <p className="text-text-secondary">Showcase your professional journey.</p>
+                <button onClick={addExperience} className="mt-4 text-brand-blue font-bold hover:underline">Add your first experience</button>
+              </div>
+            )}
+          </div>
+        )}
 
-            <button
-              onClick={handleSave}
-              className="md:col-span-2 rounded-full bg-teal px-6 py-2 text-xs font-semibold uppercase tracking-wide text-charcoal"
-            >
-              Save changes
-            </button>
+        {activeTab === "Education" && (
+          <div className="apple-card p-12 text-center">
+            <div className="text-4xl mb-4">🎓</div>
+            <h3 className="text-lg font-bold">Education Tracking</h3>
+            <p className="mt-2 text-text-secondary max-w-sm mx-auto">
+              This feature is being refined to help you better connect with alumni. Coming very soon.
+            </p>
+          </div>
+        )}
+
+        {activeTab === "Projects" && (
+          <div className="apple-card p-12 text-center">
+            <div className="text-4xl mb-4">🚀</div>
+            <h3 className="text-lg font-bold">Project Showcase</h3>
+            <p className="mt-2 text-text-secondary max-w-sm mx-auto">
+              Share what you've built. We're building a beautiful way to display your creative and technical work.
+            </p>
+          </div>
+        )}
+
+        {activeTab === "Verification" && (
+          <div className="max-w-3xl mx-auto space-y-8">
+            <section className="apple-card p-8 text-center">
+              <h3 className="text-2xl font-bold">Build Trust with Verification</h3>
+              <p className="mt-3 text-text-secondary">
+                Verified badges increase your credibility by 3x and help you stand out to mentors and employers.
+              </p>
+              
+              <div className="mt-8 flex justify-center items-center gap-12">
+                <div className="flex flex-col items-center">
+                  <div className={`h-16 w-16 rounded-full flex items-center justify-center text-2xl mb-2 ${profile.studentVerified ? 'bg-accent-success/10 text-accent-success' : 'bg-bg-app text-text-muted'}`}>
+                    {profile.studentVerified ? "✓" : "🎓"}
+                  </div>
+                  <span className="text-xs font-bold uppercase tracking-tight">Student</span>
+                </div>
+                <div className="h-px w-20 bg-black/[0.05]" />
+                <div className="flex flex-col items-center">
+                  <div className={`h-16 w-16 rounded-full flex items-center justify-center text-2xl mb-2 ${profile.mentorVerified ? 'bg-accent-success/10 text-accent-success' : 'bg-bg-app text-text-muted'}`}>
+                    {profile.mentorVerified ? "✓" : "👨‍🏫"}
+                  </div>
+                  <span className="text-xs font-bold uppercase tracking-tight">Mentor</span>
+                </div>
+              </div>
+
+              <div className="mt-12 p-6 rounded-apple bg-bg-app border border-black/[0.03]">
+                <p className="text-sm font-semibold mb-4">Current Status: 
+                  <span className="ml-2">
+                    <StatusBadge 
+                      label={profile.userType === "student" ? studentStatus : mentorStatus} 
+                      tone={
+                        (profile.userType === "student" ? studentStatus : mentorStatus) === "approved" ? "success" :
+                        (profile.userType === "student" ? studentStatus : mentorStatus) === "pending" ? "warning" : "slate"
+                      }
+                    />
+                  </span>
+                </p>
+
+                {profile.userType === "student" ? (
+                  <div className="space-y-4">
+                    <div className="flex flex-col items-center gap-4">
+                      <input
+                        type="file"
+                        id="verification-doc"
+                        onChange={(e) => setDocFile(e.target.files?.[0] || null)}
+                        className="hidden"
+                        accept="image/*,.pdf"
+                      />
+                      <label htmlFor="verification-doc" className="apple-button-secondary cursor-pointer">
+                        {docFile ? docFile.name : "Select Student ID or Enrollment Doc"}
+                      </label>
+                      <button
+                        onClick={handleStudentVerification}
+                        disabled={isPendingVerification || profile.studentVerified}
+                        className="apple-button-primary disabled:opacity-50"
+                      >
+                        {isPendingVerification ? "Review in progress..." : profile.studentVerified ? "Verified" : "Submit for Review"}
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-6 max-w-md mx-auto text-left">
+                    <div className="space-y-4">
+                      <input
+                        className="w-full rounded-apple border border-black/[0.08] bg-white px-4 py-2 text-sm"
+                        placeholder="University or Professional Email"
+                        value={mentorInfo.universityEmail}
+                        onChange={(e) => setMentorInfo(prev => ({ ...prev, universityEmail: e.target.value }))}
+                      />
+                      <input
+                        className="w-full rounded-apple border border-black/[0.08] bg-white px-4 py-2 text-sm"
+                        placeholder="LinkedIn Profile URL"
+                        value={mentorInfo.linkedinUrl}
+                        onChange={(e) => setMentorInfo(prev => ({ ...prev, linkedinUrl: e.target.value }))}
+                      />
+                      <textarea
+                        className="w-full rounded-apple border border-black/[0.08] bg-white px-4 py-2 text-sm"
+                        placeholder="Additional notes for our verification team..."
+                        value={mentorInfo.note}
+                        onChange={(e) => setMentorInfo(prev => ({ ...prev, note: e.target.value }))}
+                        rows={2}
+                      />
+                      <div className="flex flex-col items-center gap-4 border-t border-black/[0.05] pt-4">
+                        <input type="file" onChange={(e) => setDocFile(e.target.files?.[0] || null)} className="text-xs" />
+                        <button
+                          onClick={handleMentorVerification}
+                          disabled={isPendingVerification || profile.mentorVerified}
+                          className="apple-button-primary w-full"
+                        >
+                          {isPendingVerification ? "Request Pending" : profile.mentorVerified ? "Verified" : "Request Mentor Status"}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </section>
+          </div>
+        )}
+
+        {activeTab === "Settings" && (
+          <div className="max-w-2xl mx-auto space-y-8">
+            <section className="apple-card p-8">
+              <h3 className="text-xl font-bold">Privacy & Visibility</h3>
+              <div className="mt-6 space-y-4">
+                <label className="flex items-center justify-between p-4 rounded-apple border border-black/[0.05] bg-bg-app/50">
+                  <div>
+                    <p className="text-[15px] font-bold">Private Profile</p>
+                    <p className="text-xs text-text-secondary">Hide your profile from non-members and search engines.</p>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={!!form.isPrivate}
+                    onChange={(e) => {
+                      setForm((prev) => ({ ...prev, isPrivate: e.target.checked }));
+                      handleSave();
+                    }}
+                    className="h-5 w-5 rounded-full border-black/[0.1] text-brand-blue focus:ring-brand-blue"
+                  />
+                </label>
+                
+                <div className="p-4 rounded-apple border border-black/[0.05]">
+                  <p className="text-xs font-bold uppercase tracking-tight text-text-muted mb-1">Email Address</p>
+                  <p className="text-sm font-medium text-text-main">{profile.email}</p>
+                </div>
+
+                <div className="p-4 rounded-apple border border-black/[0.05]">
+                  <p className="text-xs font-bold uppercase tracking-tight text-text-muted mb-1">Account Type</p>
+                  <p className="text-sm font-medium text-text-main capitalize">{profile.userType}</p>
+                </div>
+              </div>
+            </section>
+
+            <section className="apple-card p-8 border-accent-error/20">
+              <h3 className="text-xl font-bold text-accent-error">Danger Zone</h3>
+              <p className="mt-2 text-sm text-text-secondary">Permanently delete your account and all associated data.</p>
+              <button className="apple-button-secondary mt-6 border-accent-error/20 text-accent-error hover:bg-accent-error/5">
+                Delete My BridgeAZ Account
+              </button>
+            </section>
           </div>
         )}
       </div>
+
       <ShareSheet
         open={showShareSheet}
         onClose={() => setShowShareSheet(false)}
@@ -482,238 +681,6 @@ export default function Profile() {
           meta: { profileId: profile._id }
         })}
       />
-
-      <div className="flex flex-wrap gap-3">
-        {tabs.map((tab) => (
-          <button
-            key={tab}
-            onClick={() => setActiveTab(tab)}
-            className={`rounded-full border px-4 py-2 text-xs uppercase tracking-wide ${
-              activeTab === tab ? "border-teal bg-teal/20 text-teal" : "border-border text-mist"
-            }`}
-          >
-            {tab}
-          </button>
-        ))}
-      </div>
-
-      <div className="glass rounded-2xl p-6">
-        {activeTab === "Overview" && (
-          <div className="space-y-4">
-            <p className="text-sm text-mist">{profile.bio || "No bio yet."}</p>
-            {profile.locationNow?.country && (
-              <p className="text-xs text-mist">
-                Based in {profile.locationNow.city ? `${profile.locationNow.city}, ` : ""}
-                {profile.locationNow.country}
-              </p>
-            )}
-            {profile.resumeUrl && (
-              <a
-                href={profile.resumeUrl}
-                target="_blank"
-                rel="noreferrer"
-                className="text-xs text-teal underline"
-              >
-                View resume
-              </a>
-            )}
-            {(profile.socialLinks?.linkedin ||
-              profile.socialLinks?.github ||
-              profile.socialLinks?.website) && (
-              <div className="flex flex-wrap gap-3 text-xs text-mist">
-                {profile.socialLinks?.linkedin && (
-                  <a href={profile.socialLinks.linkedin} className="text-teal underline">
-                    LinkedIn
-                  </a>
-                )}
-                {profile.socialLinks?.github && (
-                  <a href={profile.socialLinks.github} className="text-teal underline">
-                    GitHub
-                  </a>
-                )}
-                {profile.socialLinks?.website && (
-                  <a href={profile.socialLinks.website} className="text-teal underline">
-                    Website
-                  </a>
-                )}
-              </div>
-            )}
-            <div>
-              <p className="text-xs uppercase tracking-wide text-mist">Skills</p>
-              <div className="mt-2 flex flex-wrap gap-2">
-                {skills.length ? (
-                  skills.map((skill) => (
-                    <span key={skill} className="rounded-full bg-surface-alt px-3 py-1 text-xs">
-                      {skill}
-                    </span>
-                  ))
-                ) : (
-                  <span className="text-xs text-mist">No skills listed.</span>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
-        {activeTab === "Experience" && (
-          <>
-            {profile.experience?.length ? (
-              <div className="space-y-3">
-                {profile.experience.map((item, index) => (
-                  <div key={index} className="rounded-xl border border-border p-4">
-                    <p className="text-sm text-sand">{item.role || "Role"}</p>
-                    <p className="text-xs text-mist">{item.company || item.org}</p>
-                    {item.description && (
-                      <p className="text-xs text-mist mt-2">{item.description}</p>
-                    )}
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="text-sm text-mist">No experience entries yet.</p>
-            )}
-          </>
-        )}
-        {activeTab === "Education" && (
-          <>
-            {/* Render education history with school metadata. */}
-            <p className="text-sm text-mist">Education entries coming soon.</p>
-          </>
-        )}
-        {activeTab === "Projects" && (
-          <>
-            {/* Add project cards once project entries are stored on the profile. */}
-            <p className="text-sm text-mist">Project showcase coming soon.</p>
-          </>
-        )}
-        {activeTab === "Activity" && (
-          <>
-            {/* Filter posts authored by this user and display here. */}
-            <p className="text-sm text-mist">User posts will appear here.</p>
-          </>
-        )}
-        {activeTab === "Settings" && isOwner && (
-          <div className="space-y-6">
-            <div>
-              <h3 className="text-sm font-semibold uppercase tracking-wide text-sand">Account</h3>
-              <div className="mt-3 space-y-3">
-                <label className="flex items-center justify-between rounded-xl border border-border px-4 py-3">
-                  <span className="text-sm text-sand">Private profile</span>
-                  <input
-                    type="checkbox"
-                    checked={!!form.isPrivate}
-                    onChange={(e) => {
-                      setForm((prev) => ({ ...prev, isPrivate: e.target.checked }));
-                      handleSave();
-                    }}
-                    className="h-4 w-4 rounded border-border"
-                  />
-                </label>
-                <div className="rounded-xl border border-border px-4 py-3">
-                  <p className="text-sm text-sand">Email</p>
-                  <p className="text-xs text-mist">{profile.email || "Not set"}</p>
-                </div>
-                <div className="rounded-xl border border-border px-4 py-3">
-                  <p className="text-sm text-sand">Account type</p>
-                  <p className="text-xs text-mist capitalize">{profile.userType || "Member"}</p>
-                </div>
-              </div>
-            </div>
-            <div>
-              <h3 className="text-sm font-semibold uppercase tracking-wide text-sand">Notifications</h3>
-              <div className="mt-3 space-y-3">
-                <label className="flex items-center justify-between rounded-xl border border-border px-4 py-3">
-                  <span className="text-sm text-sand">Email notifications</span>
-                  <input type="checkbox" defaultChecked className="h-4 w-4 rounded border-border" />
-                </label>
-                <label className="flex items-center justify-between rounded-xl border border-border px-4 py-3">
-                  <span className="text-sm text-sand">Mentorship alerts</span>
-                  <input type="checkbox" defaultChecked className="h-4 w-4 rounded border-border" />
-                </label>
-              </div>
-            </div>
-            <div>
-              <h3 className="text-sm font-semibold uppercase tracking-wide text-sand">Danger zone</h3>
-              <div className="mt-3">
-                <button className="rounded-full border border-coral/40 px-5 py-2 text-xs font-semibold uppercase tracking-wide text-coral hover:bg-coral/10">
-                  Delete account
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-        {activeTab === "Settings" && !isOwner && (
-          <p className="text-sm text-mist">Settings are only visible to the profile owner.</p>
-        )}
-      </div>
-
-      {isOwner && (
-        <div className="glass rounded-2xl p-6 space-y-4">
-          <h3 className="font-display text-xl">Verification</h3>
-          <p className="text-sm text-mist">
-            Upload a student ID or mentor credential. Admins manually approve requests.
-          </p>
-          <input
-            type="file"
-            onChange={(e) => {
-              const f = e.target.files?.[0] || null;
-              setDocFile(f);
-              setMessage("");
-            }}
-            className="text-xs text-mist"
-          />
-          <p className="text-xs text-mist">
-            {docFile ? docFile.name : "No file chosen"}
-          </p>
-          <p className="text-xs text-mist">
-            Status:{" "}
-            {profile.userType === "student" ? studentStatus : mentorStatus}
-          </p>
-          {profile.userType === "student" ? (
-            <button
-              onClick={handleStudentVerification}
-              disabled={isPendingVerification}
-              className="rounded-full bg-coral px-5 py-2 text-xs font-semibold uppercase tracking-wide text-charcoal"
-            >
-              {isPendingVerification ? "Request pending" : "Request student verification"}
-            </button>
-          ) : (
-            <div className="space-y-3">
-              <input
-                className="w-full rounded-xl border border-border bg-white px-4 py-2 text-sand"
-                placeholder="University email (optional)"
-                value={mentorInfo.universityEmail}
-                onChange={(event) =>
-                  setMentorInfo((prev) => ({ ...prev, universityEmail: event.target.value }))
-                }
-              />
-              <input
-                className="w-full rounded-xl border border-border bg-white px-4 py-2 text-sand"
-                placeholder="LinkedIn URL (optional)"
-                value={mentorInfo.linkedinUrl}
-                onChange={(event) =>
-                  setMentorInfo((prev) => ({ ...prev, linkedinUrl: event.target.value }))
-                }
-              />
-              <textarea
-                className="w-full rounded-xl border border-border bg-white px-4 py-2 text-sand"
-                rows={2}
-                placeholder="Short note for admin"
-                value={mentorInfo.note}
-                onChange={(event) => setMentorInfo((prev) => ({ ...prev, note: event.target.value }))}
-              />
-              <button
-                onClick={handleMentorVerification}
-                disabled={isPendingVerification}
-                className="rounded-full bg-coral px-5 py-2 text-xs font-semibold uppercase tracking-wide text-charcoal"
-              >
-                {isPendingVerification ? "Request pending" : "Request mentor verification"}
-              </button>
-              <p className="text-xs text-mist">Additional verification options are coming soon.</p>
-            </div>
-          )}
-          {message && <p className="text-sm text-teal">{message}</p>}
-        </div>
-      )}
     </div>
   );
 }

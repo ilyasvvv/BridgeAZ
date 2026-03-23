@@ -1,13 +1,16 @@
-export default function StatusBadge({ label, tone = "teal" }) {
-  const colors = {
-    teal: "bg-teal/20 text-teal border-teal/40",
-    coral: "bg-coral/20 text-coral border-coral/40",
-    ember: "bg-ember/20 text-ember border-ember/40",
-    slate: "bg-surface-alt text-mist border-border"
+export default function StatusBadge({ label, tone = "blue" }) {
+  const tones = {
+    blue: "bg-brand-blue/10 text-brand-blue border-brand-blue/20",
+    success: "bg-accent-success/10 text-accent-success border-accent-success/20",
+    warning: "bg-accent-warning/10 text-accent-warning border-accent-warning/20",
+    error: "bg-accent-error/10 text-accent-error border-accent-error/20",
+    slate: "bg-bg-app text-text-secondary border-black/[0.05]"
   };
 
+  const currentTone = tones[tone] || tones.blue;
+
   return (
-    <span className={`rounded-full border px-3 py-1 text-xs uppercase tracking-wide ${colors[tone]}`}>
+    <span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-tight ${currentTone}`}>
       {label}
     </span>
   );
