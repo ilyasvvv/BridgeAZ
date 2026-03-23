@@ -14,6 +14,10 @@ export default {
         coral: "#D4763C",
         ember: "#C4683A",
         teal: "#1565A3",
+        // Page-specific accents
+        "accent-profile": "#4338CA",
+        "accent-opp": "#0D9488",
+        "accent-chat": "#7C3AED",
         // Text
         sand: "#1B1F23", // Primary text
         mist: "#586069", // Secondary text

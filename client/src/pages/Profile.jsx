@@ -226,7 +226,7 @@ export default function Profile() {
     <div className="mx-auto max-w-5xl space-y-8 py-6">
       {/* Top Profile Card */}
       <div className="apple-card overflow-hidden">
-        <div className="h-32 bg-gradient-to-r from-brand/20 to-brand/5 md:h-48" />
+        <div className="h-32 bg-gradient-to-r from-accent-profile/20 to-accent-profile/5 md:h-48" />
         <div className="relative px-6 pb-8 md:px-10">
           <div className="relative -mt-12 flex flex-col items-start justify-between gap-6 md:-mt-16 md:flex-row md:items-end">
             <div className="flex flex-col items-start gap-4 md:flex-row md:items-end">
@@ -271,14 +271,14 @@ export default function Profile() {
       </div>
 
       {message && (
-        <div className="rounded-md bg-brand/10 p-4 text-center text-sm font-semibold text-brand border border-brand/20">
+        <div className="rounded-md bg-accent-profile/10 p-4 text-center text-sm font-semibold text-accent-profile border border-accent-profile/20">
           {message}
         </div>
       )}
 
       {/* Edit Mode Modal / Section */}
       {editMode && (
-        <div className="apple-card p-8 animate-fade-in border-brand/30 bg-slate/50 backdrop-blur-sm">
+        <div className="apple-card p-8 animate-fade-in border-accent-profile/30 bg-slate/50 backdrop-blur-sm">
           <div className="flex items-center justify-between">
             <h2 className="text-xl font-bold text-sand">Edit Basic Info</h2>
             <button onClick={() => setEditMode(false)} className="text-mist hover:text-sand text-sm font-medium">Cancel</button>
@@ -287,7 +287,7 @@ export default function Profile() {
             <div className="space-y-1">
               <label className="text-[11px] font-bold uppercase tracking-tight text-mist px-1 opacity-70">Full Name</label>
               <input
-                className="w-full rounded-md border border-border bg-slate px-4 py-2 text-sand outline-none focus:border-brand focus:ring-1 focus:ring-brand"
+                className="w-full rounded-md border border-border bg-slate px-4 py-2 text-sand outline-none focus:border-accent-profile focus:ring-1 focus:ring-accent-profile"
                 value={form.name}
                 onChange={(e) => setForm({ ...form, name: e.target.value })}
                 placeholder="Name"
@@ -296,7 +296,7 @@ export default function Profile() {
             <div className="space-y-1">
               <label className="text-[11px] font-bold uppercase tracking-tight text-mist px-1 opacity-70">Headline</label>
               <input
-                className="w-full rounded-md border border-border bg-slate px-4 py-2 text-sand outline-none focus:border-brand focus:ring-1 focus:ring-brand"
+                className="w-full rounded-md border border-border bg-slate px-4 py-2 text-sand outline-none focus:border-accent-profile focus:ring-1 focus:ring-accent-profile"
                 value={form.headline}
                 onChange={(e) => setForm({ ...form, headline: e.target.value })}
                 placeholder="Headline (e.g. Software Engineer at Google)"
@@ -305,7 +305,7 @@ export default function Profile() {
             <div className="space-y-1 md:col-span-2">
               <label className="text-[11px] font-bold uppercase tracking-tight text-mist px-1 opacity-70">Bio</label>
               <textarea
-                className="w-full rounded-md border border-border bg-slate px-4 py-2 text-sand outline-none focus:border-brand focus:ring-1 focus:ring-brand"
+                className="w-full rounded-md border border-border bg-slate px-4 py-2 text-sand outline-none focus:border-accent-profile focus:ring-1 focus:ring-accent-profile"
                 value={form.bio}
                 onChange={(e) => setForm({ ...form, bio: e.target.value })}
                 placeholder="Tell the community about yourself..."
@@ -315,7 +315,7 @@ export default function Profile() {
             <div className="space-y-1">
               <label className="text-[11px] font-bold uppercase tracking-tight text-mist px-1 opacity-70">Current Region</label>
               <input
-                className="w-full rounded-md border border-border bg-slate px-4 py-2 text-sand outline-none focus:border-brand focus:ring-1 focus:ring-brand"
+                className="w-full rounded-md border border-border bg-slate px-4 py-2 text-sand outline-none focus:border-accent-profile focus:ring-1 focus:ring-accent-profile"
                 value={form.currentRegion}
                 onChange={(e) => setForm({ ...form, currentRegion: e.target.value })}
                 placeholder="e.g. Europe, North America"
@@ -324,7 +324,7 @@ export default function Profile() {
             <div className="space-y-1">
               <label className="text-[11px] font-bold uppercase tracking-tight text-mist px-1 opacity-70">Skills</label>
               <input
-                className="w-full rounded-md border border-border bg-slate px-4 py-2 text-sand outline-none focus:border-brand focus:ring-1 focus:ring-brand"
+                className="w-full rounded-md border border-border bg-slate px-4 py-2 text-sand outline-none focus:border-accent-profile focus:ring-1 focus:ring-accent-profile"
                 value={form.skills}
                 onChange={(e) => setForm({ ...form, skills: e.target.value })}
                 placeholder="React, Design, Python..."
@@ -357,7 +357,7 @@ export default function Profile() {
             onClick={() => setActiveTab(tab)}
             className={`whitespace-nowrap px-6 py-4 text-sm font-bold transition-colors ${
               activeTab === tab 
-                ? "border-b-2 border-brand text-brand" 
+                ? "border-b-2 border-accent-profile text-accent-profile" 
                 : "text-mist hover:text-sand"
             }`}
           >
@@ -380,18 +380,18 @@ export default function Profile() {
                   <h4 className="text-[11px] font-bold uppercase tracking-tight text-mist opacity-70">Current Location</h4>
                   <div className="mt-2 flex gap-4">
                     <input
-                      className="rounded-md border border-border bg-slate px-4 py-1.5 text-sm text-sand outline-none focus:border-brand"
+                      className="rounded-md border border-border bg-slate px-4 py-1.5 text-sm text-sand outline-none focus:border-accent-profile"
                       placeholder="Country"
                       value={form.locationNow?.country || ""}
                       onChange={(e) => setForm({...form, locationNow: {...form.locationNow, country: e.target.value}})}
                     />
                     <input
-                      className="rounded-md border border-border bg-slate px-4 py-1.5 text-sm text-sand outline-none focus:border-brand"
+                      className="rounded-md border border-border bg-slate px-4 py-1.5 text-sm text-sand outline-none focus:border-accent-profile"
                       placeholder="City"
                       value={form.locationNow?.city || ""}
                       onChange={(e) => setForm({...form, locationNow: {...form.locationNow, city: e.target.value}})}
                     />
-                    <button onClick={handleSave} className="text-xs font-bold text-brand hover:underline">Update</button>
+                    <button onClick={handleSave} className="text-xs font-bold text-accent-profile hover:underline">Update</button>
                   </div>
                 </div>
               </section>
@@ -403,7 +403,7 @@ export default function Profile() {
                     <div key={key} className="space-y-1">
                       <label className="text-[11px] font-bold uppercase tracking-tight text-mist capitalize opacity-70">{key}</label>
                       <input
-                        className="w-full rounded-md border border-border bg-slate px-4 py-2 text-sm text-sand outline-none focus:border-brand"
+                        className="w-full rounded-md border border-border bg-slate px-4 py-2 text-sm text-sand outline-none focus:border-accent-profile"
                         value={form.socialLinks?.[key] || ""}
                         onChange={(e) => setForm({
                           ...form, 
@@ -449,7 +449,7 @@ export default function Profile() {
                   ))}
                   {skillsList.length === 0 && <p className="text-sm text-mist italic">No skills added.</p>}
                 </div>
-                <button onClick={() => {setEditMode(true); setActiveTab("Overview")}} className="mt-4 text-xs font-bold text-brand hover:underline">Edit Skills</button>
+                <button onClick={() => {setEditMode(true); setActiveTab("Overview")}} className="mt-4 text-xs font-bold text-accent-profile hover:underline">Edit Skills</button>
               </section>
             </div>
           </div>
@@ -498,7 +498,7 @@ export default function Profile() {
             {(form.experience || []).length === 0 && (
               <div className="apple-card p-12 text-center">
                 <p className="text-mist">Showcase your professional journey.</p>
-                <button onClick={addExperience} className="mt-4 text-brand font-bold hover:underline">Add your first experience</button>
+                <button onClick={addExperience} className="mt-4 text-accent-profile font-bold hover:underline">Add your first experience</button>
               </div>
             )}
           </div>
@@ -640,7 +640,7 @@ export default function Profile() {
                       setForm((prev) => ({ ...prev, isPrivate: e.target.checked }));
                       handleSave();
                     }}
-                    className="h-5 w-5 rounded-full border-border text-brand focus:ring-brand"
+                    className="h-5 w-5 rounded-full border-border text-accent-profile focus:ring-accent-profile"
                   />
                 </label>
                 
