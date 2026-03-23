@@ -16,151 +16,219 @@ const LOGGED_IN_LINKS = [
   { to: "/chats", label: "Chats" },
 ];
 
+/* ─── Sliding pill hook ─── */
+function useNavPill(activeKey) {
+  const containerRef = useRef(null);
+  const itemRefs = useRef({});
+  const hasAnimated = useRef(false);
+  const [style, setStyle] = useState({ left: 0, width: 0, opacity: 0 });
+
+  const measure = useCallback(() => {
+    const container = containerRef.current;
+    const el = activeKey ? itemRefs.current[activeKey] : null;
+    if (!container || !el) {
+      setStyle((s) => ({ ...s, opacity: 0 }));
+      return;
+    }
+    const cRect = container.getBoundingClientRect();
+    const eRect = el.getBoundingClientRect();
+    const left = eRect.left - cRect.left;
+    const width = eRect.width;
+
+    // Suppress transition on first paint so pill doesn't slide in from 0,0
+    if (!hasAnimated.current) {
+      hasAnimated.current = true;
+      setStyle({ left, width, opacity: 1 });
+    } else {
+      setStyle({ left, width, opacity: 1 });
+    }
+  }, [activeKey]);
+
+  // Measure after DOM paint
+  useLayoutEffect(() => {
+    // Double-rAF ensures fonts/layout have settled
+    let id1, id2;
+    id1 = requestAnimationFrame(() => {
+      id2 = requestAnimationFrame(measure);
+    });
+    return () => { cancelAnimationFrame(id1); cancelAnimationFrame(id2); };
+  }, [measure]);
+
+  // Re-measure on resize
+  useEffect(() => {
+    window.addEventListener("resize", measure);
+    return () => window.removeEventListener("resize", measure);
+  }, [measure]);
+
+  const setRef = useCallback((key) => (el) => {
+    itemRefs.current[key] = el;
+  }, []);
+
+  // Build the pill's inline style
+  const pillStyle = {
+    position: "absolute",
+    top: "50%",
+    height: 34,
+    borderRadius: 9999,
+    pointerEvents: "none",
+    left: style.left,
+    width: style.width,
+    opacity: style.opacity,
+    transform: "translateY(-50%)",
+    // Only transition after initial mount
+    transition: hasAnimated.current
+      ? "left 0.4s cubic-bezier(0.34,1.56,0.64,1), width 0.3s cubic-bezier(0.34,1.56,0.64,1), opacity 0.15s ease"
+      : "none",
+  };
+
+  return { containerRef, setRef, pillStyle };
+}
+
+/* ─── Navbar ─── */
 export default function Navbar() {
   const { user, token, logout } = useAuth();
   const [unreadCount, setUnreadCount] = useState(0);
+  const [mobileOpen, setMobileOpen] = useState(false);
   const location = useLocation();
-  const navRef = useRef(null);
-  const linkRefs = useRef({});
-  const [pill, setPill] = useState({ left: 0, width: 0, ready: false });
+
+  // Close mobile nav on route change
+  useEffect(() => { setMobileOpen(false); }, [location.pathname]);
 
   useEffect(() => {
-    const loadNotifications = async () => {
-      if (!token) return;
+    if (!user || !token) return;
+    (async () => {
       try {
         const notifications = await apiClient.get("/notifications", token);
-        const unread = notifications.filter((note) => !note.read).length;
-        setUnreadCount(unread);
-      } catch {
-        setUnreadCount(0);
-      }
-    };
-    if (user) loadNotifications();
+        setUnreadCount(notifications.filter((n) => !n.read).length);
+      } catch { setUnreadCount(0); }
+    })();
   }, [user, token]);
 
   const links = user ? LOGGED_IN_LINKS : LOGGED_OUT_LINKS;
-  const adminVisible = user && (user.isAdmin || (user.roles || []).some((role) => ["staffC", "staffB", "adminA"].includes(role)));
+  const adminVisible = user && (user.isAdmin || (user.roles || []).some((r) => ["staffC", "staffB", "adminA"].includes(r)));
+  const allLinks = adminVisible ? [...links, { to: "/admin", label: "Admin" }] : links;
 
-  const isLinkActive = useCallback(
-    (to) => {
-      if (to === "/") return location.pathname === "/";
-      return location.pathname.startsWith(to);
-    },
+  const isActive = useCallback(
+    (to) => (to === "/" ? location.pathname === "/" : location.pathname.startsWith(to)),
     [location.pathname]
   );
 
-  // Find the active link key
-  const activeKey = links.find((l) => isLinkActive(l.to))?.to || (adminVisible && isLinkActive("/admin") ? "/admin" : null);
+  const activeKey = allLinks.find((l) => isActive(l.to))?.to ?? null;
 
-  // Measure active link and update pill position
-  const updatePill = useCallback(() => {
-    if (!navRef.current || !activeKey) {
-      setPill((p) => ({ ...p, ready: false }));
-      return;
-    }
-    const el = linkRefs.current[activeKey];
-    if (!el) return;
-    const navRect = navRef.current.getBoundingClientRect();
-    const linkRect = el.getBoundingClientRect();
-    setPill({
-      left: linkRect.left - navRect.left,
-      width: linkRect.width,
-      ready: true,
-    });
-  }, [activeKey]);
-
-  useLayoutEffect(() => {
-    updatePill();
-  }, [updatePill]);
-
-  useEffect(() => {
-    window.addEventListener("resize", updatePill);
-    return () => window.removeEventListener("resize", updatePill);
-  }, [updatePill]);
+  // Desktop pill
+  const { containerRef, setRef, pillStyle } = useNavPill(activeKey);
 
   return (
-    <header className="relative z-20 border-b border-border bg-white/80 backdrop-blur-md">
-      <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
+    <header className="sticky top-0 z-20 border-b border-border bg-white/80 backdrop-blur-xl">
+      <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-3">
+        {/* Logo */}
         <Link to="/" className="font-display text-2xl text-sand">
           BridgeAZ
         </Link>
-        <nav ref={navRef} className="relative hidden items-center gap-1 md:flex">
-          {/* Sliding pill */}
-          <span
-            className="pointer-events-none absolute rounded-full bg-brand/10"
-            style={{
-              left: pill.left,
-              width: pill.width,
-              top: "50%",
-              height: 32,
-              transform: "translateY(-50%)",
-              opacity: pill.ready ? 1 : 0,
-              transition: "left 0.35s cubic-bezier(0.34,1.56,0.64,1), width 0.35s cubic-bezier(0.34,1.56,0.64,1), opacity 0.2s ease",
-            }}
-          />
-          {links.map((link) => {
-            const active = isLinkActive(link.to);
+
+        {/* ─── Desktop nav ─── */}
+        <nav ref={containerRef} className="relative hidden items-center md:flex">
+          {/* Pill */}
+          <span className="bg-brand/10" style={pillStyle} />
+
+          {allLinks.map((link) => {
+            const active = isActive(link.to);
             return (
               <NavLink
                 key={link.to}
-                ref={(el) => { linkRefs.current[link.to] = el; }}
+                ref={setRef(link.to)}
                 to={link.to}
                 end={link.to === "/"}
-                className={`relative z-10 rounded-full px-4 py-1.5 text-sm uppercase tracking-wide transition-colors duration-200 ${
-                  active
-                    ? "text-brand font-semibold"
-                    : "text-mist hover:text-sand"
+                className={`relative z-10 px-4 py-1.5 text-[13px] font-medium uppercase tracking-widest transition-colors duration-200 ${
+                  active ? "text-brand" : "text-mist hover:text-sand"
                 }`}
               >
                 {link.label}
               </NavLink>
             );
           })}
-          {adminVisible && (
-            <NavLink
-              ref={(el) => { linkRefs.current["/admin"] = el; }}
-              to="/admin"
-              className={`relative z-10 rounded-full px-4 py-1.5 text-sm uppercase tracking-wide transition-colors duration-200 ${
-                isLinkActive("/admin")
-                  ? "text-brand font-semibold"
-                  : "text-mist hover:text-sand"
-              }`}
-            >
-              Admin
-            </NavLink>
-          )}
         </nav>
-        {user ? (
-          <div className="flex items-center gap-3">
-            <Link to="/notifications" className="relative text-mist hover:text-sand">
-              <span className="text-lg">🔔</span>
-              {unreadCount > 0 && (
-                <span className="absolute -right-2 -top-1 rounded-full bg-coral px-1.5 text-[10px] text-charcoal">
-                  {unreadCount}
-                </span>
-              )}
-            </Link>
+
+        {/* ─── Right section ─── */}
+        <div className="flex items-center gap-3">
+          {user ? (
+            <>
+              <Link to="/notifications" className="relative text-mist hover:text-sand">
+                <span className="text-lg">🔔</span>
+                {unreadCount > 0 && (
+                  <span className="absolute -right-2 -top-1 rounded-full bg-coral px-1.5 text-[10px] text-charcoal">
+                    {unreadCount}
+                  </span>
+                )}
+              </Link>
+              <Link
+                to={`/profile/${user._id}/edit`}
+                className="text-sm text-mist transition-colors duration-200 hover:text-brand"
+              >
+                {user.name.split(" ")[0]}
+              </Link>
+              <button
+                onClick={logout}
+                className="hidden rounded-full border border-border px-4 py-2 text-xs uppercase tracking-wide text-sand hover:border-teal md:block"
+              >
+                Log out
+              </button>
+            </>
+          ) : (
             <Link
-              to={`/profile/${user._id}/edit`}
-              className="text-sm text-mist transition-colors duration-200 hover:text-brand"
+              to="/join"
+              className="rounded-full bg-coral px-5 py-2 text-xs font-semibold uppercase tracking-wide text-charcoal"
             >
-              {user.name.split(" ")[0]}
+              Join
             </Link>
+          )}
+
+          {/* Mobile hamburger */}
+          <button
+            onClick={() => setMobileOpen((v) => !v)}
+            className="flex flex-col gap-1 p-1 md:hidden"
+            aria-label="Toggle menu"
+          >
+            <span className={`h-0.5 w-5 rounded bg-sand transition-transform duration-200 ${mobileOpen ? "translate-y-[6px] rotate-45" : ""}`} />
+            <span className={`h-0.5 w-5 rounded bg-sand transition-opacity duration-200 ${mobileOpen ? "opacity-0" : ""}`} />
+            <span className={`h-0.5 w-5 rounded bg-sand transition-transform duration-200 ${mobileOpen ? "-translate-y-[6px] -rotate-45" : ""}`} />
+          </button>
+        </div>
+      </div>
+
+      {/* ─── Mobile dropdown ─── */}
+      <div
+        className={`overflow-hidden border-t border-border bg-white/95 backdrop-blur-xl transition-[max-height] duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)] md:hidden ${
+          mobileOpen ? "max-h-96" : "max-h-0 border-t-0"
+        }`}
+      >
+        <div className="flex flex-col gap-1 px-6 py-3">
+          {allLinks.map((link) => {
+            const active = isActive(link.to);
+            return (
+              <NavLink
+                key={link.to}
+                to={link.to}
+                end={link.to === "/"}
+                className={`rounded-xl px-4 py-2.5 text-sm font-medium uppercase tracking-widest transition-colors duration-200 ${
+                  active
+                    ? "bg-brand/10 text-brand"
+                    : "text-mist hover:bg-brand/5 hover:text-sand"
+                }`}
+              >
+                {link.label}
+              </NavLink>
+            );
+          })}
+          {user && (
             <button
               onClick={logout}
-              className="rounded-full border border-border px-4 py-2 text-xs uppercase tracking-wide text-sand hover:border-teal"
+              className="mt-2 rounded-xl border border-border px-4 py-2.5 text-left text-sm uppercase tracking-widest text-mist hover:border-teal"
             >
               Log out
             </button>
-          </div>
-        ) : (
-          <Link
-            to="/join"
-            className="rounded-full bg-coral px-5 py-2 text-xs font-semibold uppercase tracking-wide text-charcoal"
-          >
-            Join
-          </Link>
-        )}
+          )}
+        </div>
       </div>
     </header>
   );
