@@ -2,51 +2,51 @@
 @tailwind components;
 @tailwind utilities;
 
-@layer base {
-  :root {
-    color-scheme: light;
-  }
-  
-  body {
-    @apply bg-bg-app text-text-main antialiased;
-    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
-  }
-
-  h1, h2, h3, h4, h5, h6 {
-    @apply font-display tracking-tight text-text-main;
-  }
+:root {
+  font-family: "Space Grotesk", system-ui, sans-serif;
+  color-scheme: dark;
 }
 
-@layer components {
-  .apple-card {
-    @apply bg-bg-surface shadow-apple rounded-apple border border-black/[0.03] transition-all duration-300;
-  }
-  
-  .apple-card-hover {
-    @apply hover:shadow-apple-hover hover:-translate-y-0.5;
-  }
+body {
+  background: radial-gradient(circle at top left, #1b2735, #0f1419 45%, #0b0f14 100%);
+  min-height: 100vh;
+}
 
-  .apple-button-primary {
-    @apply bg-brand-blue text-white font-semibold py-2 px-6 rounded-apple hover:bg-brand-hover transition-all active:scale-[0.98];
-  }
+.font-display {
+  font-family: "Fraunces", serif;
+}
 
-  .apple-button-secondary {
-    @apply bg-bg-surface text-text-main border border-black/[0.08] font-semibold py-2 px-6 rounded-apple hover:bg-gray-50 transition-all active:scale-[0.98];
-  }
+.glass {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(14px);
+}
 
-  .glass-effect {
-    @apply bg-white/70 backdrop-blur-md border-b border-black/[0.05] sticky top-0 z-50;
-  }
+.gradient-border {
+  position: relative;
+}
+
+.gradient-border::before {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(120deg, rgba(255, 107, 74, 0.7), rgba(45, 212, 191, 0.7));
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
 }
 
 .fade-in {
-  animation: fade-in 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation: fade-in 0.8s ease forwards;
 }
 
 @keyframes fade-in {
   from {
     opacity: 0;
-    transform: translateY(16px);
+    transform: translateY(10px);
   }
   to {
     opacity: 1;
