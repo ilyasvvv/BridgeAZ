@@ -55,7 +55,7 @@ export default function Landing() {
             </Link>
           </div>
         </div>
-        <div className="glass gradient-border rounded-3xl p-6">
+        <div className="glass rounded-3xl p-6 shadow-elevated ring-1 ring-white/30">
           <h2 className="font-display text-2xl">Why BridgeAZ?</h2>
           <ul className="mt-4 space-y-3 text-sm text-mist">
             <li>Mentorship that actually feels human.</li>
@@ -74,7 +74,7 @@ export default function Landing() {
           {stats.map((stat) => (
             <div
               key={stat.label}
-              className="glass group cursor-default rounded-2xl p-6 transition-transform duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)] hover:-translate-y-1.5 hover:shadow-lg hover:shadow-brand/8"
+              className="glass group cursor-default rounded-2xl p-6 ring-1 ring-white/20 transition-all duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)] hover:-translate-y-1.5 hover:shadow-floating hover:ring-white/40"
             >
               <p className="text-3xl font-semibold text-sand transition-transform duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)] group-hover:scale-110 group-hover:text-brand">
                 {stat.value}
@@ -87,7 +87,7 @@ export default function Landing() {
 
       {/* Interactive Globe Section */}
       <section className="relative -mx-6 overflow-hidden rounded-3xl bg-[#0B1628] px-6 py-16 md:-mx-12 md:px-12">
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_50%_80%,rgba(21,101,163,0.08)_0%,transparent_60%)]" />
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_50%_80%,rgba(21,101,163,0.15)_0%,transparent_55%)]" />
         <div className="relative z-[2] mx-auto max-w-xl text-center">
           <p className="text-sm uppercase tracking-[0.4em] text-teal/70">Global network</p>
           <h2 className="mt-3 font-display text-3xl text-white md:text-4xl">
@@ -104,7 +104,7 @@ export default function Landing() {
           {globeStats.map((item) => (
             <div
               key={item.label}
-              className="group cursor-default rounded-xl px-6 py-3 text-center transition-all duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)] hover:-translate-y-1 hover:bg-white/5"
+              className="group cursor-default rounded-xl px-6 py-3 text-center transition-all duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)] hover:-translate-y-1 hover:bg-white/5 hover:shadow-[0_2px_8px_rgba(21,101,163,0.12),0_8px_24px_rgba(21,101,163,0.18),inset_0_1px_0_rgba(255,255,255,0.08)]"
             >
               <p className="font-display text-3xl font-semibold text-white transition-transform duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)] group-hover:scale-110">
                 {item.value}
@@ -123,7 +123,7 @@ export default function Landing() {
           <h2 className="mt-2 font-display text-3xl md:text-4xl">Built for every stage of your journey</h2>
         </div>
         <div className="grid gap-10 md:grid-cols-2">
-        <div className="glass rounded-2xl p-6">
+        <div className="glass rounded-2xl p-6 shadow-elevated ring-1 ring-white/20 transition-all duration-300 hover:shadow-floating hover:ring-white/35">
           <h3 className="font-display text-2xl">For Students</h3>
           <p className="mt-3 text-sm text-mist">
             Find mentors, share progress, and unlock internships from anywhere.
@@ -134,7 +134,7 @@ export default function Landing() {
             <li>Connect with peers across campuses.</li>
           </ul>
         </div>
-        <div className="glass rounded-2xl p-6">
+        <div className="glass rounded-2xl p-6 shadow-elevated ring-1 ring-white/20 transition-all duration-300 hover:shadow-floating hover:ring-white/35">
           <h3 className="font-display text-2xl">For Professionals</h3>
           <p className="mt-3 text-sm text-mist">
             Give back to the next generation and build relationships with emerging talent.
@@ -155,7 +155,7 @@ export default function Landing() {
         </div>
         <div className="grid gap-6 md:grid-cols-3">
         {testimonials.map((item) => (
-          <div key={item.name} className="glass rounded-2xl p-6">
+          <div key={item.name} className="glass rounded-2xl p-6 shadow-card ring-1 ring-white/20 transition-all duration-300 hover:shadow-glow hover:ring-brand/10">
             <p className="text-sm text-mist">"{item.quote}"</p>
             <p className="mt-4 text-xs uppercase tracking-wide text-teal">{item.name}</p>
           </div>

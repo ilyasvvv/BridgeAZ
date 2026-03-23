@@ -37,6 +37,11 @@
   .glass-effect {
     @apply bg-white/80 backdrop-blur-xl border-b border-border sticky top-0 z-50;
   }
+
+  .glass {
+    @apply bg-white/70 backdrop-blur-md border border-white/40 shadow-card;
+    background-image: linear-gradient(180deg, rgba(255,255,255,0.35) 0%, rgba(255,255,255,0) 40%);
+  }
 }
 
 .fade-in {
