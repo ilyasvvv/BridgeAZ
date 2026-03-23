@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import Globe from "../components/Globe";
 
 const stats = [
   { label: "Members worldwide", value: "3,500+" },
@@ -19,6 +20,12 @@ const testimonials = [
     name: "Murad, New York",
     quote: "I met my mentor within a week and landed an internship in fintech."
   }
+];
+
+const globeStats = [
+  { value: "2,400+", label: "Members" },
+  { value: "45+", label: "Countries" },
+  { value: "180+", label: "Mentors" }
 ];
 
 export default function Landing() {
@@ -65,6 +72,31 @@ export default function Landing() {
             <p className="mt-2 text-sm text-mist">{stat.label}</p>
           </div>
         ))}
+      </section>
+
+      {/* Interactive Globe Section */}
+      <section className="relative -mx-6 overflow-hidden rounded-3xl bg-[#0B1628] px-6 py-16 md:-mx-12 md:px-12">
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_50%_80%,rgba(21,101,163,0.08)_0%,transparent_60%)]" />
+        <div className="relative z-[2] mx-auto max-w-xl text-center">
+          <p className="text-sm uppercase tracking-[0.4em] text-teal/70">Global network</p>
+          <h2 className="mt-3 font-display text-3xl text-white md:text-4xl">
+            Azerbaijanis, everywhere
+          </h2>
+          <p className="mt-3 text-sm leading-relaxed text-white/45">
+            Our members span across the globe. Drag to explore where the community lives.
+          </p>
+        </div>
+        <div className="relative z-[1] mt-10">
+          <Globe />
+        </div>
+        <div className="relative z-[2] mt-10 flex flex-wrap justify-center gap-14">
+          {globeStats.map((item) => (
+            <div key={item.label} className="text-center">
+              <p className="font-display text-3xl font-semibold text-white">{item.value}</p>
+              <p className="mt-1 text-xs uppercase tracking-widest text-white/40">{item.label}</p>
+            </div>
+          ))}
+        </div>
       </section>
 
       <section className="grid gap-10 md:grid-cols-2">
