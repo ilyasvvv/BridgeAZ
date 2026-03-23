@@ -223,7 +223,7 @@ export default function Profile() {
   }
 
   return (
-    <div className="mx-auto max-w-5xl space-y-8 py-6" style={{ "--accent": "15 26 43", "--accent-soft": "209 207 201" }}>
+    <div className="mx-auto max-w-5xl space-y-8 py-6" style={{ "--accent": "70 100 140", "--accent-soft": "209 207 201" }}>
       {/* Top Profile Card */}
       <div className="apple-card overflow-hidden">
         <div className="h-32 bg-gradient-to-r from-accent-soft/40 to-accent-soft/10 md:h-48" />
