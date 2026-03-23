@@ -1,5 +1,5 @@
 import { Link, NavLink, useLocation } from "react-router-dom";
-import { useEffect, useState, useRef, useCallback } from "react";
+import { useEffect, useState, useRef, useCallback, useLayoutEffect } from "react";
 import { useAuth } from "../utils/auth";
 import { apiClient } from "../api/client";
 
@@ -21,8 +21,8 @@ export default function Navbar() {
   const [unreadCount, setUnreadCount] = useState(0);
   const location = useLocation();
   const navRef = useRef(null);
-  const pillRef = useRef(null);
-  const [pillStyle, setPillStyle] = useState({ width: 0, x: 0, opacity: 0 });
+  const linkRefs = useRef({});
+  const [pill, setPill] = useState({ left: 0, width: 0, ready: false });
 
   useEffect(() => {
     const loadNotifications = async () => {
@@ -35,48 +35,48 @@ export default function Navbar() {
         setUnreadCount(0);
       }
     };
-
-    if (user) {
-      loadNotifications();
-    }
+    if (user) loadNotifications();
   }, [user, token]);
 
-  // Sliding pill position calculation
-  const updatePill = useCallback(() => {
-    if (!navRef.current) return;
-    const activeLink = navRef.current.querySelector("a.active-nav-link");
-    if (activeLink) {
-      const navRect = navRef.current.getBoundingClientRect();
-      const linkRect = activeLink.getBoundingClientRect();
-      setPillStyle({
-        width: linkRect.width + 16,
-        x: linkRect.left - navRect.left - 8,
-        opacity: 1,
-      });
-    } else {
-      setPillStyle((prev) => ({ ...prev, opacity: 0 }));
-    }
-  }, []);
+  const links = user ? LOGGED_IN_LINKS : LOGGED_OUT_LINKS;
+  const adminVisible = user && (user.isAdmin || (user.roles || []).some((role) => ["staffC", "staffB", "adminA"].includes(role)));
 
-  useEffect(() => {
-    // Small delay so DOM has settled after route change
-    const timer = setTimeout(updatePill, 30);
-    return () => clearTimeout(timer);
-  }, [location.pathname, user, updatePill]);
+  const isLinkActive = useCallback(
+    (to) => {
+      if (to === "/") return location.pathname === "/";
+      return location.pathname.startsWith(to);
+    },
+    [location.pathname]
+  );
+
+  // Find the active link key
+  const activeKey = links.find((l) => isLinkActive(l.to))?.to || (adminVisible && isLinkActive("/admin") ? "/admin" : null);
+
+  // Measure active link and update pill position
+  const updatePill = useCallback(() => {
+    if (!navRef.current || !activeKey) {
+      setPill((p) => ({ ...p, ready: false }));
+      return;
+    }
+    const el = linkRefs.current[activeKey];
+    if (!el) return;
+    const navRect = navRef.current.getBoundingClientRect();
+    const linkRect = el.getBoundingClientRect();
+    setPill({
+      left: linkRect.left - navRect.left,
+      width: linkRect.width,
+      ready: true,
+    });
+  }, [activeKey]);
+
+  useLayoutEffect(() => {
+    updatePill();
+  }, [updatePill]);
 
   useEffect(() => {
     window.addEventListener("resize", updatePill);
     return () => window.removeEventListener("resize", updatePill);
   }, [updatePill]);
-
-  const links = user ? LOGGED_IN_LINKS : LOGGED_OUT_LINKS;
-  const adminVisible = user && (user.isAdmin || (user.roles || []).some((role) => ["staffC", "staffB", "adminA"].includes(role)));
-
-  // Determine if a link is active (for adding the class used by pill detection)
-  const isLinkActive = (to) => {
-    if (to === "/") return location.pathname === "/";
-    return location.pathname.startsWith(to);
-  };
 
   return (
     <header className="relative z-20 border-b border-border bg-white/80 backdrop-blur-md">
@@ -85,36 +85,44 @@ export default function Navbar() {
           BridgeAZ
         </Link>
         <nav ref={navRef} className="relative hidden items-center gap-1 md:flex">
-          {/* Sliding pill background */}
+          {/* Sliding pill */}
           <span
-            ref={pillRef}
-            className="absolute top-1/2 h-8 -translate-y-1/2 rounded-full bg-brand/10 transition-all duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)]"
+            className="pointer-events-none absolute rounded-full bg-brand/10"
             style={{
-              width: pillStyle.width,
-              transform: `translateX(${pillStyle.x}px) translateY(-50%)`,
-              opacity: pillStyle.opacity,
+              left: pill.left,
+              width: pill.width,
+              top: "50%",
+              height: 32,
+              transform: "translateY(-50%)",
+              opacity: pill.ready ? 1 : 0,
+              transition: "left 0.35s cubic-bezier(0.34,1.56,0.64,1), width 0.35s cubic-bezier(0.34,1.56,0.64,1), opacity 0.2s ease",
             }}
           />
-          {links.map((link) => (
-            <NavLink
-              key={link.to}
-              to={link.to}
-              end={link.to === "/"}
-              className={`relative z-10 rounded-full px-3 py-1.5 text-sm uppercase tracking-wide transition-colors duration-200 ${
-                isLinkActive(link.to)
-                  ? "active-nav-link text-brand font-medium"
-                  : "text-mist hover:text-sand"
-              }`}
-            >
-              {link.label}
-            </NavLink>
-          ))}
+          {links.map((link) => {
+            const active = isLinkActive(link.to);
+            return (
+              <NavLink
+                key={link.to}
+                ref={(el) => { linkRefs.current[link.to] = el; }}
+                to={link.to}
+                end={link.to === "/"}
+                className={`relative z-10 rounded-full px-4 py-1.5 text-sm uppercase tracking-wide transition-colors duration-200 ${
+                  active
+                    ? "text-brand font-semibold"
+                    : "text-mist hover:text-sand"
+                }`}
+              >
+                {link.label}
+              </NavLink>
+            );
+          })}
           {adminVisible && (
             <NavLink
+              ref={(el) => { linkRefs.current["/admin"] = el; }}
               to="/admin"
-              className={`relative z-10 rounded-full px-3 py-1.5 text-sm uppercase tracking-wide transition-colors duration-200 ${
+              className={`relative z-10 rounded-full px-4 py-1.5 text-sm uppercase tracking-wide transition-colors duration-200 ${
                 isLinkActive("/admin")
-                  ? "active-nav-link text-brand font-medium"
+                  ? "text-brand font-semibold"
                   : "text-mist hover:text-sand"
               }`}
             >

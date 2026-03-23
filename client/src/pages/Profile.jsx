@@ -8,7 +8,7 @@ import UserChip, { USER_CHIP_SIZES } from "../components/UserChip";
 import ShareSheet from "../components/ShareSheet";
 import { buildSharePayload } from "../utils/share";
 
-const tabs = ["Overview", "Experience", "Education", "Projects", "Activity"];
+const tabs = ["Overview", "Experience", "Education", "Projects", "Activity", "Settings"];
 
 export default function Profile() {
   const { id } = useParams();
@@ -590,6 +590,59 @@ export default function Profile() {
             {/* Filter posts authored by this user and display here. */}
             <p className="text-sm text-mist">User posts will appear here.</p>
           </>
+        )}
+        {activeTab === "Settings" && isOwner && (
+          <div className="space-y-6">
+            <div>
+              <h3 className="text-sm font-semibold uppercase tracking-wide text-sand">Account</h3>
+              <div className="mt-3 space-y-3">
+                <label className="flex items-center justify-between rounded-xl border border-border px-4 py-3">
+                  <span className="text-sm text-sand">Private profile</span>
+                  <input
+                    type="checkbox"
+                    checked={!!form.isPrivate}
+                    onChange={(e) => {
+                      setForm((prev) => ({ ...prev, isPrivate: e.target.checked }));
+                      handleSave();
+                    }}
+                    className="h-4 w-4 rounded border-border"
+                  />
+                </label>
+                <div className="rounded-xl border border-border px-4 py-3">
+                  <p className="text-sm text-sand">Email</p>
+                  <p className="text-xs text-mist">{profile.email || "Not set"}</p>
+                </div>
+                <div className="rounded-xl border border-border px-4 py-3">
+                  <p className="text-sm text-sand">Account type</p>
+                  <p className="text-xs text-mist capitalize">{profile.userType || "Member"}</p>
+                </div>
+              </div>
+            </div>
+            <div>
+              <h3 className="text-sm font-semibold uppercase tracking-wide text-sand">Notifications</h3>
+              <div className="mt-3 space-y-3">
+                <label className="flex items-center justify-between rounded-xl border border-border px-4 py-3">
+                  <span className="text-sm text-sand">Email notifications</span>
+                  <input type="checkbox" defaultChecked className="h-4 w-4 rounded border-border" />
+                </label>
+                <label className="flex items-center justify-between rounded-xl border border-border px-4 py-3">
+                  <span className="text-sm text-sand">Mentorship alerts</span>
+                  <input type="checkbox" defaultChecked className="h-4 w-4 rounded border-border" />
+                </label>
+              </div>
+            </div>
+            <div>
+              <h3 className="text-sm font-semibold uppercase tracking-wide text-sand">Danger zone</h3>
+              <div className="mt-3">
+                <button className="rounded-full border border-coral/40 px-5 py-2 text-xs font-semibold uppercase tracking-wide text-coral hover:bg-coral/10">
+                  Delete account
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+        {activeTab === "Settings" && !isOwner && (
+          <p className="text-sm text-mist">Settings are only visible to the profile owner.</p>
         )}
       </div>
 

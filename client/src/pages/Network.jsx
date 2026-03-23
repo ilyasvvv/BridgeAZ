@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef, useLayoutEffect, useCallback } from "react";
 import { apiClient } from "../api/client";
 import { useAuth } from "../utils/auth";
 import ProfileCard from "../components/ProfileCard";
@@ -13,6 +13,25 @@ export default function Network() {
   const [users, setUsers] = useState([]);
   const [filters, setFilters] = useState({ region: "", userType: "", isMentor: false });
   const [error, setError] = useState("");
+  const tabBarRef = useRef(null);
+  const tabRefs = useRef({});
+  const [tabPill, setTabPill] = useState({ left: 0, width: 0 });
+
+  const measureTab = useCallback(() => {
+    const bar = tabBarRef.current;
+    const btn = tabRefs.current[activeTab];
+    if (!bar || !btn) return;
+    const barRect = bar.getBoundingClientRect();
+    const btnRect = btn.getBoundingClientRect();
+    setTabPill({ left: btnRect.left - barRect.left, width: btnRect.width });
+  }, [activeTab]);
+
+  useLayoutEffect(() => { measureTab(); }, [measureTab]);
+
+  useEffect(() => {
+    window.addEventListener("resize", measureTab);
+    return () => window.removeEventListener("resize", measureTab);
+  }, [measureTab]);
 
   const loadNetwork = async () => {
     setError("");
@@ -72,13 +91,14 @@ export default function Network() {
       <h1 className="font-display text-3xl">Network</h1>
 
       {/* Tab nav with sliding pill */}
-      <div className="relative flex items-center gap-1 rounded-xl bg-white p-1 shadow-sm border border-border">
+      <div ref={tabBarRef} className="relative flex items-center gap-1 rounded-xl bg-white p-1.5 shadow-sm border border-border">
         {TABS.map((tab) => (
           <button
             key={tab}
+            ref={(el) => { tabRefs.current[tab] = el; }}
             onClick={() => setActiveTab(tab)}
-            className={`relative z-10 rounded-lg px-5 py-2 text-sm font-medium tracking-wide transition-colors duration-200 ${
-              activeTab === tab ? "text-white" : "text-mist hover:text-sand"
+            className={`relative z-10 rounded-lg px-5 py-2.5 text-sm font-medium tracking-wide transition-colors duration-200 ${
+              activeTab === tab ? "text-brand font-semibold" : "text-mist hover:text-sand"
             }`}
           >
             {tab}
@@ -86,10 +106,13 @@ export default function Network() {
         ))}
         {/* Sliding pill */}
         <span
-          className="absolute left-1 top-1 h-[calc(100%-8px)] rounded-lg bg-brand transition-transform duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)]"
+          className="pointer-events-none absolute rounded-lg bg-brand/10"
           style={{
-            width: `calc((100% - 8px) / ${TABS.length})`,
-            transform: `translateX(${TABS.indexOf(activeTab) * 100}%)`,
+            left: tabPill.left,
+            width: tabPill.width,
+            top: 6,
+            bottom: 6,
+            transition: "left 0.35s cubic-bezier(0.34,1.56,0.64,1), width 0.35s cubic-bezier(0.34,1.56,0.64,1)",
           }}
         />
       </div>
