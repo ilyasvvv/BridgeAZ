@@ -226,7 +226,7 @@ export default function ShareSheet({ open, onClose, shareInput }) {
           <button
             type="button"
             onClick={onClose}
-            className="rounded-full border border-border px-3 py-1 text-xs uppercase tracking-wide text-mist hover:border-teal"
+            className="rounded-full border border-border px-3 py-1 text-xs uppercase tracking-wide text-mist hover:border-accent"
           >
             Close
           </button>
@@ -262,7 +262,7 @@ export default function ShareSheet({ open, onClose, shareInput }) {
                     type="button"
                     onClick={() => toggleRecipient(candidate)}
                     className={`flex w-full items-center justify-between rounded-lg px-2 py-1.5 text-left ${
-                      isSelected ? "bg-teal/15" : "hover:bg-gray-100"
+                      isSelected ? "bg-accent/15" : "hover:bg-gray-100"
                     }`}
                   >
                     <UserChip user={candidate} size={USER_CHIP_SIZES.THREAD_LIST} showRole={false} />
@@ -281,7 +281,7 @@ export default function ShareSheet({ open, onClose, shareInput }) {
                 key={selected._id}
                 type="button"
                 onClick={() => toggleRecipient(selected)}
-                className="rounded-full border border-border bg-charcoal px-3 py-1 text-xs text-sand hover:border-teal"
+                className="rounded-full border border-border bg-charcoal px-3 py-1 text-xs text-sand hover:border-accent"
               >
                 {selected.name} ×
               </button>
@@ -304,7 +304,7 @@ export default function ShareSheet({ open, onClose, shareInput }) {
             type="button"
             onClick={onClose}
             disabled={sending}
-            className="rounded-full border border-border px-4 py-2 text-xs uppercase tracking-wide text-mist hover:border-teal disabled:opacity-60"
+            className="rounded-full border border-border px-4 py-2 text-xs uppercase tracking-wide text-mist hover:border-accent disabled:opacity-60"
           >
             Cancel
           </button>
@@ -312,7 +312,7 @@ export default function ShareSheet({ open, onClose, shareInput }) {
             type="button"
             onClick={handleSend}
             disabled={sending}
-            className="rounded-full bg-teal px-4 py-2 text-xs font-semibold uppercase tracking-wide text-charcoal disabled:opacity-60"
+            className="rounded-full bg-accent px-4 py-2 text-xs font-semibold uppercase tracking-wide text-charcoal disabled:opacity-60"
           >
             {sending ? "Sending..." : "Send"}
           </button>

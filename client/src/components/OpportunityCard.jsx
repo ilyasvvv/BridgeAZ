@@ -19,12 +19,12 @@ export default function OpportunityCard({
   };
 
   return (
-    <div className="glass group relative overflow-hidden rounded-2xl border border-border bg-white p-5 transition-all hover:border-teal/30 hover:bg-white">
+    <div className="glass group relative overflow-hidden rounded-2xl border border-border bg-white p-5 transition-all hover:border-accent/30 hover:bg-white">
       <div className="flex flex-col gap-4">
         <div className="flex items-start justify-between gap-4">
           <div className="space-y-1.5">
             <div className="flex flex-wrap items-center gap-2">
-              <span className="font-sans text-[10px] font-bold uppercase tracking-widest text-teal/80">
+              <span className="font-sans text-[10px] font-bold uppercase tracking-widest text-accent/80">
                 {opportunity.orgName}
               </span>
               <span className="h-1 w-1 rounded-full bg-mist/30" />
@@ -80,7 +80,7 @@ export default function OpportunityCard({
 
         <div className="mt-2 flex items-center justify-between border-t border-border pt-4">
           <div className="flex items-center gap-2">
-            <span className={`h-1.5 w-1.5 rounded-full ${opportunity.status === "open" ? "bg-teal shadow-[0_0_8px_rgba(21,101,163,0.3)]" : "bg-mist/30"}`} />
+            <span className={`h-1.5 w-1.5 rounded-full ${opportunity.status === "open" ? "bg-accent shadow-[0_0_8px_rgb(var(--accent)/0.3)]" : "bg-mist/30"}`} />
             <span className="font-sans text-[10px] font-bold uppercase tracking-widest text-mist">
               {opportunity.status}
             </span>
@@ -88,7 +88,7 @@ export default function OpportunityCard({
           <div className="flex items-center gap-2">
             <button
               onClick={onShare}
-              className="flex h-8 w-8 items-center justify-center rounded-full border border-border text-mist hover:border-teal/50 hover:text-teal transition-colors"
+              className="flex h-8 w-8 items-center justify-center rounded-full border border-border text-mist hover:border-accent/50 hover:text-accent transition-colors"
               title="Share"
             >
               <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -121,7 +121,7 @@ export default function OpportunityCard({
             
             <Link
               to={`/opportunities/${opportunity._id}`}
-              className="rounded-full bg-teal px-4 py-1.5 font-sans text-[10px] font-bold uppercase tracking-widest text-charcoal hover:bg-teal/90 transition-all shadow-sm"
+              className="rounded-full bg-accent px-4 py-1.5 font-sans text-[10px] font-bold uppercase tracking-widest text-charcoal hover:bg-accent/90 transition-all shadow-sm"
             >
               Details
             </Link>

@@ -302,7 +302,7 @@ export default function Chats() {
             <a
               key={tokenKey}
               href={toHref(cleanUrl)}
-              className="text-accent-chat underline"
+              className="text-accent underline"
               target="_blank"
               rel="noopener noreferrer"
             >
@@ -319,7 +319,7 @@ export default function Chats() {
           <a
             key={tokenKey}
             href={toHref(cleanUrl)}
-            className="text-accent-chat underline"
+            className="text-accent underline"
             target="_blank"
             rel="noopener noreferrer"
           >
@@ -466,7 +466,7 @@ export default function Chats() {
                 />
               </button>
             ) : (
-              <div className="flex w-full items-center justify-between rounded-lg border border-border px-2 py-1 text-[11px] hover:border-accent-chat">
+              <div className="flex w-full items-center justify-between rounded-lg border border-border px-2 py-1 text-[11px] hover:border-accent">
                 <button
                   type="button"
                   onClick={() => openViewer(item)}
@@ -480,7 +480,7 @@ export default function Chats() {
                   href={item.url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="ml-2 shrink-0 text-accent-chat underline"
+                  className="ml-2 shrink-0 text-accent underline"
                 >
                   Open
                 </a>
@@ -963,7 +963,7 @@ export default function Chats() {
       return (
         <Link
           to={share.url}
-          className="mt-2 block rounded-lg border border-border bg-charcoal px-2 py-2 hover:border-accent-chat"
+          className="mt-2 block rounded-lg border border-border bg-charcoal px-2 py-2 hover:border-accent"
         >
           {preview?.status === "loading" || !preview ? (
             <p className="text-xs text-mist">Loading preview...</p>
@@ -1001,7 +1001,7 @@ export default function Chats() {
                   {attachmentKind === "pdf" ? "PDF attachment" : "File attachment"}
                 </div>
               ) : null}
-              <span className="inline-flex rounded-full border border-border px-2 py-0.5 text-[10px] uppercase tracking-wide text-accent-chat">
+              <span className="inline-flex rounded-full border border-border px-2 py-0.5 text-[10px] uppercase tracking-wide text-accent">
                 Open post
               </span>
             </div>
@@ -1009,7 +1009,7 @@ export default function Chats() {
             <div className="space-y-1">
               <p className="text-[10px] uppercase tracking-wide text-mist">Shared post</p>
               <p className="text-xs text-sand">{share.title || "Post"}</p>
-              <span className="inline-flex rounded-full border border-border px-2 py-0.5 text-[10px] uppercase tracking-wide text-accent-chat">
+              <span className="inline-flex rounded-full border border-border px-2 py-0.5 text-[10px] uppercase tracking-wide text-accent">
                 Open post
               </span>
             </div>
@@ -1022,12 +1022,12 @@ export default function Chats() {
       return (
         <Link
           to={share.url}
-          className="mt-2 block rounded-lg border border-border bg-charcoal px-2 py-2 hover:border-accent-chat"
+          className="mt-2 block rounded-lg border border-border bg-charcoal px-2 py-2 hover:border-accent"
         >
           <p className="text-[10px] uppercase tracking-wide text-mist">Shared opportunity</p>
           <p className="text-xs text-sand">{share.title || "Opportunity"}</p>
           {share.subtitle ? <p className="text-[11px] text-mist">{share.subtitle}</p> : null}
-          <span className="mt-1 inline-flex rounded-full border border-border px-2 py-0.5 text-[10px] uppercase tracking-wide text-accent-chat">
+          <span className="mt-1 inline-flex rounded-full border border-border px-2 py-0.5 text-[10px] uppercase tracking-wide text-accent">
             Open opportunity
           </span>
         </Link>
@@ -1043,7 +1043,7 @@ export default function Chats() {
       return (
         <Link
           to={share.url}
-          className="mt-2 block rounded-lg border border-border bg-charcoal px-2 py-2 hover:border-accent-chat"
+          className="mt-2 block rounded-lg border border-border bg-charcoal px-2 py-2 hover:border-accent"
         >
           <div className="flex items-center gap-2">
             <Avatar url={share.imageUrl} alt={`${share.title || "Profile"} avatar`} size={24} />
@@ -1072,7 +1072,7 @@ export default function Chats() {
       return (
         <Link
           to={share.url}
-          className="mt-2 block rounded-lg border border-border bg-charcoal px-2 py-2 hover:border-accent-chat"
+          className="mt-2 block rounded-lg border border-border bg-charcoal px-2 py-2 hover:border-accent"
         >
           <p className="text-[10px] uppercase tracking-wide text-mist">Shared comment</p>
           <p
@@ -1086,7 +1086,7 @@ export default function Chats() {
           >
             {share.title || "Comment"}
           </p>
-          <span className="mt-1 inline-flex rounded-full border border-border px-2 py-0.5 text-[10px] uppercase tracking-wide text-accent-chat">
+          <span className="mt-1 inline-flex rounded-full border border-border px-2 py-0.5 text-[10px] uppercase tracking-wide text-accent">
             View in post
           </span>
         </Link>
@@ -1096,7 +1096,7 @@ export default function Chats() {
     return (
       <Link
         to={share.url}
-        className="mt-2 block rounded-lg border border-border bg-charcoal px-2 py-2 hover:border-accent-chat"
+        className="mt-2 block rounded-lg border border-border bg-charcoal px-2 py-2 hover:border-accent"
       >
         <p className="text-[10px] uppercase tracking-wide text-mist">
           Shared {share.entityType}
@@ -1107,7 +1107,7 @@ export default function Chats() {
   };
 
   return (
-    <div className="mx-auto grid max-w-6xl gap-4 md:h-[calc(100vh-72px)] md:grid-cols-[minmax(280px,360px)_minmax(0,1fr)] md:overflow-hidden">
+    <div className="mx-auto grid max-w-6xl gap-4 md:h-[calc(100vh-72px)] md:grid-cols-[minmax(280px,360px)_minmax(0,1fr)] md:overflow-hidden" style={{ "--accent": "8 145 178" }}>
       <section className="glass rounded-2xl p-3 md:flex md:min-h-0 md:flex-col">
         <h2 className="font-display text-xl">Threads</h2>
         <div className="mt-2 space-y-2 md:min-h-0 md:flex-1 md:overflow-y-auto md:pr-1">
@@ -1128,8 +1128,8 @@ export default function Chats() {
                 tabIndex={0}
                 className={`w-full rounded-xl border px-2.5 py-1.5 text-left text-sm ${
                   activeThread?._id === thread._id
-                    ? "border-accent-chat bg-accent-chat/10 text-accent-chat"
-                    : "border-border text-mist hover:border-accent-chat"
+                    ? "border-accent bg-accent/10 text-accent"
+                    : "border-border text-mist hover:border-accent"
                 }`}
               >
                 <div className="flex items-start justify-between gap-2">
@@ -1161,7 +1161,7 @@ export default function Chats() {
                     {thread.lastMessageAt &&
                       (!thread.myLastReadAt ||
                         new Date(thread.myLastReadAt) < new Date(thread.lastMessageAt)) && (
-                        <span className="h-2 w-2 rounded-full bg-accent-chat" aria-label="Unread" />
+                        <span className="h-2 w-2 rounded-full bg-accent" aria-label="Unread" />
                       )}
                   </div>
                 </div>
@@ -1197,13 +1197,13 @@ export default function Chats() {
                 <div className="flex flex-wrap gap-2">
                   <button
                     onClick={handleAccept}
-                    className="rounded-full bg-accent-chat px-4 py-2 text-xs font-semibold uppercase tracking-wide text-charcoal"
+                    className="rounded-full bg-accent px-4 py-2 text-xs font-semibold uppercase tracking-wide text-charcoal"
                   >
                     Accept
                   </button>
                   <button
                     onClick={handleReject}
-                    className="rounded-full border border-border px-4 py-2 text-xs uppercase tracking-wide text-mist hover:border-accent-chat"
+                    className="rounded-full border border-border px-4 py-2 text-xs uppercase tracking-wide text-mist hover:border-accent"
                   >
                     Decline
                   </button>
@@ -1241,7 +1241,7 @@ export default function Chats() {
                   <div
                     className={`relative max-w-[70%] rounded-xl px-3 pr-10 py-2 text-sm ${
                       message.senderId === user?._id
-                        ? "bg-accent-chat/20 text-sand"
+                        ? "bg-accent/20 text-sand"
                         : "border border-border text-sand"
                     }`}
                     data-chat-menu-root="true"
@@ -1268,7 +1268,7 @@ export default function Chats() {
                         href={toHref(previewUrl)}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="mt-2 block rounded-lg border border-border bg-charcoal px-2 py-2 text-xs text-mist hover:border-accent-chat"
+                        className="mt-2 block rounded-lg border border-border bg-charcoal px-2 py-2 text-xs text-mist hover:border-accent"
                       >
                         {previewData?.status === "loading" ? (
                           <p>Loading preview...</p>
@@ -1380,7 +1380,7 @@ export default function Chats() {
                             key={emoji}
                             type="button"
                             onClick={() => handleToggleReaction(message._id, emoji)}
-                            className="rounded-full border border-border px-2 py-0.5 text-xs hover:border-accent-chat"
+                            className="rounded-full border border-border px-2 py-0.5 text-xs hover:border-accent"
                           >
                             {emoji}
                           </button>
@@ -1398,7 +1398,7 @@ export default function Chats() {
                               onClick={() => handleToggleReaction(message._id, emoji)}
                               className={`rounded-full border px-2 py-0.5 text-[11px] ${
                                 mine
-                                  ? "border-accent-chat bg-accent-chat/10 text-accent-chat"
+                                  ? "border-accent bg-accent/10 text-accent"
                                   : "border-border text-mist"
                               }`}
                             >
@@ -1425,7 +1425,7 @@ export default function Chats() {
           onDrop={handleDrop}
           className={`rounded-xl border p-2 transition ${
             isDragOver
-              ? "border-accent-chat bg-accent-chat/10"
+              ? "border-accent bg-accent/10"
               : "border-border bg-transparent"
           }`}
         >
@@ -1484,28 +1484,28 @@ export default function Chats() {
             <button
               type="button"
               onClick={() => applyFormatting("bold")}
-              className="rounded-full border border-border px-2 py-1 hover:border-accent-chat"
+              className="rounded-full border border-border px-2 py-1 hover:border-accent"
             >
               Bold
             </button>
             <button
               type="button"
               onClick={() => applyFormatting("italic")}
-              className="rounded-full border border-border px-2 py-1 hover:border-accent-chat"
+              className="rounded-full border border-border px-2 py-1 hover:border-accent"
             >
               Italic
             </button>
             <button
               type="button"
               onClick={() => applyFormatting("code")}
-              className="rounded-full border border-border px-2 py-1 hover:border-accent-chat"
+              className="rounded-full border border-border px-2 py-1 hover:border-accent"
             >
               Code
             </button>
             <button
               type="button"
               onClick={() => applyFormatting("link")}
-              className="rounded-full border border-border px-2 py-1 hover:border-accent-chat"
+              className="rounded-full border border-border px-2 py-1 hover:border-accent"
             >
               Link
             </button>
@@ -1520,7 +1520,7 @@ export default function Chats() {
               placeholder="Type a message..."
               disabled={!activeThread || activeStatus !== "active"}
             />
-            <label className="inline-flex h-11 cursor-pointer items-center rounded-full border border-border px-3 text-xs uppercase tracking-wide text-mist hover:border-accent-chat">
+            <label className="inline-flex h-11 cursor-pointer items-center rounded-full border border-border px-3 text-xs uppercase tracking-wide text-mist hover:border-accent">
               Attach
               <input
                 type="file"
@@ -1536,7 +1536,7 @@ export default function Chats() {
             </label>
             <button
               type="submit"
-              className="inline-flex h-11 items-center rounded-full bg-accent-chat px-4 text-xs font-semibold uppercase tracking-wide text-charcoal disabled:opacity-60"
+              className="inline-flex h-11 items-center rounded-full bg-accent px-4 text-xs font-semibold uppercase tracking-wide text-charcoal disabled:opacity-60"
               disabled={!activeThread || activeStatus !== "active"}
             >
               Send
@@ -1568,7 +1568,7 @@ export default function Chats() {
                     <button
                       type="button"
                       onClick={() => setViewerZoom((prev) => Math.max(0.5, Number((prev - 0.25).toFixed(2))))}
-                      className="rounded-full border border-border px-3 py-1 text-xs uppercase tracking-wide text-sand hover:border-accent-chat"
+                      className="rounded-full border border-border px-3 py-1 text-xs uppercase tracking-wide text-sand hover:border-accent"
                     >
                       -
                     </button>
@@ -1576,14 +1576,14 @@ export default function Chats() {
                     <button
                       type="button"
                       onClick={() => setViewerZoom((prev) => Math.min(3, Number((prev + 0.25).toFixed(2))))}
-                      className="rounded-full border border-border px-3 py-1 text-xs uppercase tracking-wide text-sand hover:border-accent-chat"
+                      className="rounded-full border border-border px-3 py-1 text-xs uppercase tracking-wide text-sand hover:border-accent"
                     >
                       +
                     </button>
                     <button
                       type="button"
                       onClick={() => setViewerZoom(1)}
-                      className="rounded-full border border-border px-3 py-1 text-xs uppercase tracking-wide text-sand hover:border-accent-chat"
+                      className="rounded-full border border-border px-3 py-1 text-xs uppercase tracking-wide text-sand hover:border-accent"
                     >
                       Reset
                     </button>
@@ -1592,14 +1592,14 @@ export default function Chats() {
                 <a
                   href={viewerAttachment.url}
                   download
-                  className="rounded-full bg-accent-chat px-3 py-1 text-xs font-semibold uppercase tracking-wide text-charcoal"
+                  className="rounded-full bg-accent px-3 py-1 text-xs font-semibold uppercase tracking-wide text-charcoal"
                 >
                   Download
                 </a>
                 <button
                   type="button"
                   onClick={() => setViewerAttachment(null)}
-                  className="rounded-full border border-border px-3 py-1 text-xs uppercase tracking-wide text-sand hover:border-accent-chat"
+                  className="rounded-full border border-border px-3 py-1 text-xs uppercase tracking-wide text-sand hover:border-accent"
                 >
                   Close
                 </button>

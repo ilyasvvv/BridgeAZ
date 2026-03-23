@@ -97,7 +97,7 @@ export default function CountryCombobox({ value = "", onChange, id = "country", 
                 onClick={() => selectCountry(country)}
                 className={`w-full rounded-lg px-3 py-2 text-left text-sm ${
                   index === activeIndex
-                    ? "bg-teal/20 text-teal"
+                    ? "bg-accent/20 text-accent"
                     : "text-sand hover:bg-gray-100"
                 }`}
               >

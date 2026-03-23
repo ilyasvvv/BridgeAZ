@@ -5,6 +5,7 @@
 @layer base {
   :root {
     color-scheme: light;
+    --accent: 21 101 163; /* default brand blue fallback */
   }
   
   body {
@@ -27,7 +28,7 @@
   }
 
   .apple-button-primary {
-    @apply bg-brand text-white font-semibold py-2.5 px-6 rounded-md hover:opacity-90 transition-all active:scale-[0.98] shadow-sm;
+    @apply bg-accent text-white font-semibold py-2.5 px-6 rounded-md hover:opacity-90 transition-all active:scale-[0.98] shadow-sm;
   }
 
   .apple-button-secondary {

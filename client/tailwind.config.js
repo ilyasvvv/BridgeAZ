@@ -14,10 +14,8 @@ export default {
         coral: "#D4763C",
         ember: "#C4683A",
         teal: "#1565A3",
-        // Page-specific accents
-        "accent-profile": "#6D28D9",
-        "accent-opp": "#059669",
-        "accent-chat": "#0891B2",
+        // Dynamic page accent (set via CSS variable per page)
+        accent: "rgb(var(--accent) / <alpha-value>)",
         // Text
         sand: "#1B1F23", // Primary text
         mist: "#586069", // Secondary text
