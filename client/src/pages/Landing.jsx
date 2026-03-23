@@ -65,13 +65,24 @@ export default function Landing() {
         </div>
       </section>
 
-      <section className="grid gap-6 md:grid-cols-3">
-        {stats.map((stat) => (
-          <div key={stat.label} className="glass rounded-2xl p-6">
-            <p className="text-3xl font-semibold text-sand">{stat.value}</p>
-            <p className="mt-2 text-sm text-mist">{stat.label}</p>
-          </div>
-        ))}
+      <section>
+        <div className="mb-8 text-center">
+          <p className="text-sm uppercase tracking-[0.4em] text-teal">By the numbers</p>
+          <h2 className="mt-2 font-display text-3xl md:text-4xl">Our growing impact</h2>
+        </div>
+        <div className="grid gap-6 md:grid-cols-3">
+          {stats.map((stat) => (
+            <div
+              key={stat.label}
+              className="glass group cursor-default rounded-2xl p-6 transition-transform duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)] hover:-translate-y-1.5 hover:shadow-lg hover:shadow-brand/8"
+            >
+              <p className="text-3xl font-semibold text-sand transition-transform duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)] group-hover:scale-110 group-hover:text-brand">
+                {stat.value}
+              </p>
+              <p className="mt-2 text-sm text-mist">{stat.label}</p>
+            </div>
+          ))}
+        </div>
       </section>
 
       {/* Interactive Globe Section */}
@@ -91,15 +102,27 @@ export default function Landing() {
         </div>
         <div className="relative z-[2] mt-10 flex flex-wrap justify-center gap-14">
           {globeStats.map((item) => (
-            <div key={item.label} className="text-center">
-              <p className="font-display text-3xl font-semibold text-white">{item.value}</p>
-              <p className="mt-1 text-xs uppercase tracking-widest text-white/40">{item.label}</p>
+            <div
+              key={item.label}
+              className="group cursor-default rounded-xl px-6 py-3 text-center transition-all duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)] hover:-translate-y-1 hover:bg-white/5"
+            >
+              <p className="font-display text-3xl font-semibold text-white transition-transform duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)] group-hover:scale-110">
+                {item.value}
+              </p>
+              <p className="mt-1 text-xs uppercase tracking-widest text-white/40 transition-colors duration-300 group-hover:text-white/70">
+                {item.label}
+              </p>
             </div>
           ))}
         </div>
       </section>
 
-      <section className="grid gap-10 md:grid-cols-2">
+      <section>
+        <div className="mb-8 text-center">
+          <p className="text-sm uppercase tracking-[0.4em] text-teal">Why join BridgeAZ</p>
+          <h2 className="mt-2 font-display text-3xl md:text-4xl">Built for every stage of your journey</h2>
+        </div>
+        <div className="grid gap-10 md:grid-cols-2">
         <div className="glass rounded-2xl p-6">
           <h3 className="font-display text-2xl">For Students</h3>
           <p className="mt-3 text-sm text-mist">
@@ -122,15 +145,22 @@ export default function Landing() {
             <li>Stay connected to the community network.</li>
           </ul>
         </div>
+        </div>
       </section>
 
-      <section className="grid gap-6 md:grid-cols-3">
+      <section>
+        <div className="mb-8 text-center">
+          <p className="text-sm uppercase tracking-[0.4em] text-teal">What our members are saying</p>
+          <h2 className="mt-2 font-display text-3xl md:text-4xl">Stories from the community</h2>
+        </div>
+        <div className="grid gap-6 md:grid-cols-3">
         {testimonials.map((item) => (
           <div key={item.name} className="glass rounded-2xl p-6">
             <p className="text-sm text-mist">"{item.quote}"</p>
             <p className="mt-4 text-xs uppercase tracking-wide text-teal">{item.name}</p>
           </div>
         ))}
+        </div>
       </section>
     </div>
   );

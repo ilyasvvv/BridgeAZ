@@ -125,11 +125,11 @@ export default function Globe() {
         r * Math.sin(phi) * Math.sin(theta)
       );
       if (loc.isAz) {
-        dotColors.push(0.831, 0.463, 0.235);
-        dotSizes.push(0.15);
+        dotColors.push(1.0, 0.55, 0.2);
+        dotSizes.push(0.35);
       } else {
-        dotColors.push(0.082, 0.396, 0.639);
-        dotSizes.push(0.08 + Math.random() * 0.06);
+        dotColors.push(0.4, 0.75, 1.0);
+        dotSizes.push(0.18 + Math.random() * 0.1);
       }
     }
 
@@ -138,6 +138,7 @@ export default function Globe() {
     dotGeo.setAttribute("color", new THREE.Float32BufferAttribute(dotColors, 3));
     dotGeo.setAttribute("size", new THREE.Float32BufferAttribute(dotSizes, 1));
 
+    // Bright dot layer (normal blending for visibility)
     const dotMat = new THREE.ShaderMaterial({
       vertexShader: `
         attribute float size;
@@ -146,7 +147,7 @@ export default function Globe() {
         void main() {
           vColor = color;
           vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
-          gl_PointSize = size * (200.0 / -mvPosition.z);
+          gl_PointSize = size * (300.0 / -mvPosition.z);
           gl_Position = projectionMatrix * mvPosition;
         }`,
       fragmentShader: `
@@ -154,15 +155,39 @@ export default function Globe() {
         void main() {
           float d = distance(gl_PointCoord, vec2(0.5));
           if (d > 0.5) discard;
-          float alpha = 1.0 - smoothstep(0.2, 0.5, d);
-          gl_FragColor = vec4(vColor, alpha * 0.9);
+          float alpha = 1.0 - smoothstep(0.15, 0.5, d);
+          gl_FragColor = vec4(vColor, alpha);
+        }`,
+      transparent: true,
+      depthWrite: false,
+    });
+    scene.add(new THREE.Points(dotGeo, dotMat));
+
+    // Additive glow layer behind dots
+    const glowDotMat = new THREE.ShaderMaterial({
+      vertexShader: `
+        attribute float size;
+        attribute vec3 color;
+        varying vec3 vColor;
+        void main() {
+          vColor = color;
+          vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
+          gl_PointSize = size * (600.0 / -mvPosition.z);
+          gl_Position = projectionMatrix * mvPosition;
+        }`,
+      fragmentShader: `
+        varying vec3 vColor;
+        void main() {
+          float d = distance(gl_PointCoord, vec2(0.5));
+          if (d > 0.5) discard;
+          float alpha = (1.0 - smoothstep(0.0, 0.5, d)) * 0.4;
+          gl_FragColor = vec4(vColor, alpha);
         }`,
       transparent: true,
       blending: THREE.AdditiveBlending,
       depthWrite: false,
     });
-
-    scene.add(new THREE.Points(dotGeo, dotMat));
+    scene.add(new THREE.Points(dotGeo, glowDotMat));
 
     // Animation loop
     let animationId;

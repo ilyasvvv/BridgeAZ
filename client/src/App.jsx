@@ -128,11 +128,7 @@ export default function App() {
         />
         <Route
           path="/explore"
-          element={
-            <ProtectedRoute>
-              <Explore />
-            </ProtectedRoute>
-          }
+          element={<Navigate to="/network" replace />}
         />
         <Route
           path="/admin"
