@@ -35,8 +35,8 @@ export default function PublicProfile() {
   if (error) {
     return (
       <div className="mx-auto max-w-3xl py-12 text-center">
-        <h2 className="text-2xl font-bold text-text-main">Oops!</h2>
-        <p className="mt-2 text-text-secondary">{error}</p>
+        <h2 className="text-2xl font-bold text-sand">Oops!</h2>
+        <p className="mt-2 text-mist">{error}</p>
         <button
           onClick={() => navigate(-1)}
           className="apple-button-secondary mt-6"
@@ -50,8 +50,8 @@ export default function PublicProfile() {
   if (!profile) {
     return (
       <div className="mx-auto max-w-4xl animate-pulse space-y-6 py-12">
-        <div className="h-48 rounded-apple-lg bg-gray-200" />
-        <div className="h-96 rounded-apple-lg bg-gray-200" />
+        <div className="h-48 rounded-lg bg-border" />
+        <div className="h-96 rounded-lg bg-border" />
       </div>
     );
   }
@@ -81,11 +81,11 @@ export default function PublicProfile() {
     <div className="mx-auto max-w-5xl space-y-8 py-6">
       {/* Header Card */}
       <div className="apple-card overflow-hidden">
-        <div className="h-32 bg-gradient-to-r from-brand-blue/20 to-brand-blue/5 md:h-48" />
+        <div className="h-32 bg-gradient-to-r from-brand/20 to-brand/5 md:h-48" />
         <div className="relative px-6 pb-8 md:px-10">
           <div className="relative -mt-12 flex flex-col items-start justify-between gap-6 md:-mt-16 md:flex-row md:items-end">
             <div className="flex flex-col items-start gap-4 md:flex-row md:items-end">
-              <div className="rounded-full border-4 border-white shadow-apple">
+              <div className="rounded-full border-4 border-slate shadow-card">
                 <UserChip
                   user={profile}
                   size={128}
@@ -94,8 +94,8 @@ export default function PublicProfile() {
                 />
               </div>
               <div className="mb-2">
-                <h1 className="text-3xl font-extrabold text-text-main">{profile.name}</h1>
-                <p className="text-lg font-medium text-text-secondary">{profile.headline || "BridgeAZ Member"}</p>
+                <h1 className="text-3xl font-extrabold text-sand">{profile.name}</h1>
+                <p className="text-lg font-medium text-mist">{profile.headline || "BridgeAZ Member"}</p>
                 <div className="mt-3 flex flex-wrap items-center gap-2">
                   <RegionPill region={profile.currentRegion} />
                   <StatusBadge label={profile.userType} tone={profile.userType === "professional" ? "blue" : "slate"} />
@@ -137,15 +137,15 @@ export default function PublicProfile() {
           {/* Bio Section */}
           <section className="apple-card p-8">
             <h2 className="text-xl font-bold">About</h2>
-            <p className="mt-4 text-[15px] leading-relaxed text-text-secondary">
+            <p className="mt-4 text-[15px] leading-relaxed text-mist">
               {profile.bio || `${profile.name} hasn't shared a bio yet.`}
             </p>
             {profile.skills?.length > 0 && (
               <div className="mt-8">
-                <h3 className="text-sm font-bold uppercase tracking-tight text-text-muted">Skills</h3>
+                <h3 className="text-sm font-bold uppercase tracking-tight text-mist opacity-70">Skills</h3>
                 <div className="mt-3 flex flex-wrap gap-2">
                   {profile.skills.map((skill) => (
-                    <span key={skill} className="rounded-apple bg-bg-app px-3 py-1.5 text-xs font-semibold text-text-main border border-black/[0.03]">
+                    <span key={skill} className="rounded-md bg-charcoal px-3 py-1.5 text-xs font-semibold text-sand border border-border">
                       {skill}
                     </span>
                   ))}
@@ -161,14 +161,14 @@ export default function PublicProfile() {
               <div className="mt-6 space-y-8">
                 {profile.experience.map((exp, idx) => (
                   <div key={idx} className="flex gap-4">
-                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-apple bg-bg-app text-xl">
+                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-md bg-charcoal text-xl border border-border">
                       🏢
                     </div>
                     <div>
-                      <h3 className="font-bold text-text-main">{exp.role || exp.title}</h3>
-                      <p className="text-sm font-medium text-text-secondary">{exp.company || exp.org}</p>
+                      <h3 className="font-bold text-sand">{exp.role || exp.title}</h3>
+                      <p className="text-sm font-medium text-mist">{exp.company || exp.org}</p>
                       {exp.description && (
-                        <p className="mt-3 text-sm text-text-secondary leading-relaxed">
+                        <p className="mt-3 text-sm text-mist leading-relaxed">
                           {exp.description}
                         </p>
                       )}
@@ -177,7 +177,7 @@ export default function PublicProfile() {
                 ))}
               </div>
             ) : (
-              <p className="mt-4 text-sm text-text-secondary italic">No experience entries listed.</p>
+              <p className="mt-4 text-sm text-mist italic">No experience entries listed.</p>
             )}
           </section>
         </div>
@@ -186,7 +186,7 @@ export default function PublicProfile() {
         <div className="space-y-8">
           {/* Links Section */}
           <section className="apple-card p-6">
-            <h2 className="text-sm font-bold uppercase tracking-tight text-text-muted">Connect</h2>
+            <h2 className="text-sm font-bold uppercase tracking-tight text-mist opacity-70">Connect</h2>
             <div className="mt-4 space-y-4">
               {links.map((link) => (
                 <a
@@ -194,18 +194,18 @@ export default function PublicProfile() {
                   href={link.url}
                   target="_blank"
                   rel="noreferrer"
-                  className="flex items-center gap-3 text-sm font-medium text-text-main hover:text-brand-blue transition-colors"
+                  className="flex items-center gap-3 text-sm font-medium text-sand hover:text-brand transition-colors"
                 >
-                  <span className="flex h-8 w-8 items-center justify-center rounded-apple bg-bg-app text-sm">
+                  <span className="flex h-8 w-8 items-center justify-center rounded-md bg-charcoal text-sm border border-border">
                     {link.icon}
                   </span>
                   {link.label}
                 </a>
               ))}
-              {links.length === 0 && <p className="text-sm text-text-secondary italic">No social links.</p>}
+              {links.length === 0 && <p className="text-sm text-mist italic">No social links.</p>}
             </div>
             {profile.resumeUrl && (
-              <div className="mt-6 border-t border-black/[0.05] pt-6">
+              <div className="mt-6 border-t border-border pt-6">
                 <a
                   href={profile.resumeUrl}
                   target="_blank"
@@ -220,15 +220,15 @@ export default function PublicProfile() {
 
           {/* Activity/Stats Section */}
           <section className="apple-card p-6">
-            <h2 className="text-sm font-bold uppercase tracking-tight text-text-muted">Community</h2>
+            <h2 className="text-sm font-bold uppercase tracking-tight text-mist opacity-70">Community</h2>
             <div className="mt-4 space-y-4">
               <div className="flex items-center justify-between text-sm">
-                <span className="text-text-secondary">Member Since</span>
-                <span className="font-semibold text-text-main">{new Date(profile.createdAt).toLocaleDateString(undefined, { year: 'numeric', month: 'long' })}</span>
+                <span className="text-mist">Member Since</span>
+                <span className="font-semibold text-sand">{new Date(profile.createdAt).toLocaleDateString(undefined, { year: 'numeric', month: 'long' })}</span>
               </div>
               <div className="flex items-center justify-between text-sm">
-                <span className="text-text-secondary">Region</span>
-                <span className="font-semibold text-text-main">{profile.currentRegion || '—'}</span>
+                <span className="text-mist">Region</span>
+                <span className="font-semibold text-sand">{profile.currentRegion || '—'}</span>
               </div>
             </div>
           </section>

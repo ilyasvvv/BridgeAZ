@@ -219,19 +219,19 @@ export default function Profile() {
     (profile?.userType === "professional" && mentorStatus === "pending");
 
   if (!profile) {
-    return <div className="p-20 text-center text-text-secondary animate-pulse">Loading your profile...</div>;
+    return <div className="p-20 text-center text-mist animate-pulse">Loading your profile...</div>;
   }
 
   return (
     <div className="mx-auto max-w-5xl space-y-8 py-6">
       {/* Top Profile Card */}
       <div className="apple-card overflow-hidden">
-        <div className="h-32 bg-gradient-to-r from-brand-blue/20 to-brand-blue/5 md:h-48" />
+        <div className="h-32 bg-gradient-to-r from-brand/20 to-brand/5 md:h-48" />
         <div className="relative px-6 pb-8 md:px-10">
           <div className="relative -mt-12 flex flex-col items-start justify-between gap-6 md:-mt-16 md:flex-row md:items-end">
             <div className="flex flex-col items-start gap-4 md:flex-row md:items-end">
               <div className="group relative">
-                <div className="rounded-full border-4 border-white shadow-apple overflow-hidden">
+                <div className="rounded-full border-4 border-slate shadow-card overflow-hidden">
                   <UserChip
                     user={form.avatarUrl ? { ...profile, avatarUrl: form.avatarUrl } : profile}
                     size={128}
@@ -239,14 +239,14 @@ export default function Profile() {
                     nameClassName="hidden"
                   />
                 </div>
-                <label className="absolute inset-0 flex cursor-pointer items-center justify-center rounded-full bg-black/40 opacity-0 transition-opacity group-hover:opacity-100">
-                  <span className="text-white text-xs font-bold uppercase">Change</span>
+                <label className="absolute inset-0 flex cursor-pointer items-center justify-center rounded-full bg-sand/40 opacity-0 transition-opacity group-hover:opacity-100">
+                  <span className="text-slate text-xs font-bold uppercase">Change</span>
                   <input type="file" className="hidden" onChange={handleAvatarUpload} accept="image/*" />
                 </label>
               </div>
               <div className="mb-2">
-                <h1 className="text-3xl font-extrabold text-text-main">{profile.name}</h1>
-                <p className="text-lg font-medium text-text-secondary">{profile.headline || "BridgeAZ Member"}</p>
+                <h1 className="text-3xl font-extrabold text-sand">{profile.name}</h1>
+                <p className="text-lg font-medium text-mist">{profile.headline || "BridgeAZ Member"}</p>
                 <div className="mt-3 flex flex-wrap items-center gap-2">
                   <RegionPill region={profile.currentRegion} />
                   <StatusBadge label={profile.userType} tone={profile.userType === "professional" ? "blue" : "slate"} />
@@ -271,41 +271,41 @@ export default function Profile() {
       </div>
 
       {message && (
-        <div className="rounded-apple bg-brand-blue/10 p-4 text-center text-sm font-semibold text-brand-blue">
+        <div className="rounded-md bg-brand/10 p-4 text-center text-sm font-semibold text-brand border border-brand/20">
           {message}
         </div>
       )}
 
       {/* Edit Mode Modal / Section */}
       {editMode && (
-        <div className="apple-card p-8 animate-fade-in border-brand-blue/30 bg-white/50 backdrop-blur-sm">
+        <div className="apple-card p-8 animate-fade-in border-brand/30 bg-slate/50 backdrop-blur-sm">
           <div className="flex items-center justify-between">
-            <h2 className="text-xl font-bold">Edit Basic Info</h2>
-            <button onClick={() => setEditMode(false)} className="text-text-muted hover:text-text-main text-sm font-medium">Cancel</button>
+            <h2 className="text-xl font-bold text-sand">Edit Basic Info</h2>
+            <button onClick={() => setEditMode(false)} className="text-mist hover:text-sand text-sm font-medium">Cancel</button>
           </div>
           <div className="mt-6 grid gap-6 md:grid-cols-2">
             <div className="space-y-1">
-              <label className="text-[11px] font-bold uppercase tracking-tight text-text-muted px-1">Full Name</label>
+              <label className="text-[11px] font-bold uppercase tracking-tight text-mist px-1 opacity-70">Full Name</label>
               <input
-                className="w-full rounded-apple border border-black/[0.08] bg-white px-4 py-2 text-text-main outline-none focus:border-brand-blue focus:ring-1 focus:ring-brand-blue"
+                className="w-full rounded-md border border-border bg-slate px-4 py-2 text-sand outline-none focus:border-brand focus:ring-1 focus:ring-brand"
                 value={form.name}
                 onChange={(e) => setForm({ ...form, name: e.target.value })}
                 placeholder="Name"
               />
             </div>
             <div className="space-y-1">
-              <label className="text-[11px] font-bold uppercase tracking-tight text-text-muted px-1">Headline</label>
+              <label className="text-[11px] font-bold uppercase tracking-tight text-mist px-1 opacity-70">Headline</label>
               <input
-                className="w-full rounded-apple border border-black/[0.08] bg-white px-4 py-2 text-text-main outline-none focus:border-brand-blue focus:ring-1 focus:ring-brand-blue"
+                className="w-full rounded-md border border-border bg-slate px-4 py-2 text-sand outline-none focus:border-brand focus:ring-1 focus:ring-brand"
                 value={form.headline}
                 onChange={(e) => setForm({ ...form, headline: e.target.value })}
                 placeholder="Headline (e.g. Software Engineer at Google)"
               />
             </div>
             <div className="space-y-1 md:col-span-2">
-              <label className="text-[11px] font-bold uppercase tracking-tight text-text-muted px-1">Bio</label>
+              <label className="text-[11px] font-bold uppercase tracking-tight text-mist px-1 opacity-70">Bio</label>
               <textarea
-                className="w-full rounded-apple border border-black/[0.08] bg-white px-4 py-2 text-text-main outline-none focus:border-brand-blue focus:ring-1 focus:ring-brand-blue"
+                className="w-full rounded-md border border-border bg-slate px-4 py-2 text-sand outline-none focus:border-brand focus:ring-1 focus:ring-brand"
                 value={form.bio}
                 onChange={(e) => setForm({ ...form, bio: e.target.value })}
                 placeholder="Tell the community about yourself..."
@@ -313,18 +313,18 @@ export default function Profile() {
               />
             </div>
             <div className="space-y-1">
-              <label className="text-[11px] font-bold uppercase tracking-tight text-text-muted px-1">Current Region</label>
+              <label className="text-[11px] font-bold uppercase tracking-tight text-mist px-1 opacity-70">Current Region</label>
               <input
-                className="w-full rounded-apple border border-black/[0.08] bg-white px-4 py-2 text-text-main outline-none focus:border-brand-blue focus:ring-1 focus:ring-brand-blue"
+                className="w-full rounded-md border border-border bg-slate px-4 py-2 text-sand outline-none focus:border-brand focus:ring-1 focus:ring-brand"
                 value={form.currentRegion}
                 onChange={(e) => setForm({ ...form, currentRegion: e.target.value })}
                 placeholder="e.g. Europe, North America"
               />
             </div>
             <div className="space-y-1">
-              <label className="text-[11px] font-bold uppercase tracking-tight text-text-muted px-1">Skills</label>
+              <label className="text-[11px] font-bold uppercase tracking-tight text-mist px-1 opacity-70">Skills</label>
               <input
-                className="w-full rounded-apple border border-black/[0.08] bg-white px-4 py-2 text-text-main outline-none focus:border-brand-blue focus:ring-1 focus:ring-brand-blue"
+                className="w-full rounded-md border border-border bg-slate px-4 py-2 text-sand outline-none focus:border-brand focus:ring-1 focus:ring-brand"
                 value={form.skills}
                 onChange={(e) => setForm({ ...form, skills: e.target.value })}
                 placeholder="React, Design, Python..."
@@ -350,15 +350,15 @@ export default function Profile() {
       )}
 
       {/* Main Tabs Navigation */}
-      <div className="flex border-b border-black/[0.05] overflow-x-auto">
+      <div className="flex border-b border-border overflow-x-auto">
         {tabs.map((tab) => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
             className={`whitespace-nowrap px-6 py-4 text-sm font-bold transition-colors ${
               activeTab === tab 
-                ? "border-b-2 border-brand-blue text-brand-blue" 
-                : "text-text-muted hover:text-text-main"
+                ? "border-b-2 border-brand text-brand" 
+                : "text-mist hover:text-sand"
             }`}
           >
             {tab}
@@ -372,38 +372,38 @@ export default function Profile() {
           <div className="grid gap-8 md:grid-cols-[1fr_320px]">
             <div className="space-y-8">
               <section className="apple-card p-8">
-                <h3 className="text-xl font-bold">About</h3>
-                <p className="mt-4 text-[15px] leading-relaxed text-text-secondary">
+                <h3 className="text-xl font-bold text-sand">About</h3>
+                <p className="mt-4 text-[15px] leading-relaxed text-mist">
                   {profile.bio || "No bio yet. Add one to help others know you better."}
                 </p>
                 <div className="mt-8">
-                  <h4 className="text-[11px] font-bold uppercase tracking-tight text-text-muted">Current Location</h4>
+                  <h4 className="text-[11px] font-bold uppercase tracking-tight text-mist opacity-70">Current Location</h4>
                   <div className="mt-2 flex gap-4">
                     <input
-                      className="rounded-apple border border-black/[0.08] bg-white px-4 py-1.5 text-sm text-text-main outline-none focus:border-brand-blue"
+                      className="rounded-md border border-border bg-slate px-4 py-1.5 text-sm text-sand outline-none focus:border-brand"
                       placeholder="Country"
                       value={form.locationNow?.country || ""}
                       onChange={(e) => setForm({...form, locationNow: {...form.locationNow, country: e.target.value}})}
                     />
                     <input
-                      className="rounded-apple border border-black/[0.08] bg-white px-4 py-1.5 text-sm text-text-main outline-none focus:border-brand-blue"
+                      className="rounded-md border border-border bg-slate px-4 py-1.5 text-sm text-sand outline-none focus:border-brand"
                       placeholder="City"
                       value={form.locationNow?.city || ""}
                       onChange={(e) => setForm({...form, locationNow: {...form.locationNow, city: e.target.value}})}
                     />
-                    <button onClick={handleSave} className="text-xs font-bold text-brand-blue hover:underline">Update</button>
+                    <button onClick={handleSave} className="text-xs font-bold text-brand hover:underline">Update</button>
                   </div>
                 </div>
               </section>
 
               <section className="apple-card p-8">
-                <h3 className="text-xl font-bold">Social & Links</h3>
+                <h3 className="text-xl font-bold text-sand">Social & Links</h3>
                 <div className="mt-6 grid gap-6 md:grid-cols-2">
                   {Object.keys(form.socialLinks || {}).map((key) => (
                     <div key={key} className="space-y-1">
-                      <label className="text-[11px] font-bold uppercase tracking-tight text-text-muted capitalize">{key}</label>
+                      <label className="text-[11px] font-bold uppercase tracking-tight text-mist capitalize opacity-70">{key}</label>
                       <input
-                        className="w-full rounded-apple border border-black/[0.08] bg-white px-4 py-2 text-sm text-text-main outline-none focus:border-brand-blue"
+                        className="w-full rounded-md border border-border bg-slate px-4 py-2 text-sm text-sand outline-none focus:border-brand"
                         value={form.socialLinks?.[key] || ""}
                         onChange={(e) => setForm({
                           ...form, 
@@ -422,34 +422,34 @@ export default function Profile() {
 
             <div className="space-y-8">
               <section className="apple-card p-6">
-                <h3 className="text-[11px] font-bold uppercase tracking-tight text-text-muted">Your Resume</h3>
+                <h3 className="text-[11px] font-bold uppercase tracking-tight text-mist opacity-70">Your Resume</h3>
                 <div className="mt-4">
                   {profile.resumeUrl ? (
                     <div className="flex flex-col gap-3">
                       <a href={profile.resumeUrl} target="_blank" rel="noreferrer" className="apple-button-secondary w-full justify-center">View Current Resume</a>
-                      <p className="text-[10px] text-center text-text-muted italic">Replace by uploading below</p>
+                      <p className="text-[10px] text-center text-mist italic">Replace by uploading below</p>
                     </div>
                   ) : (
-                    <p className="text-sm text-text-secondary italic mb-4">No resume uploaded yet.</p>
+                    <p className="text-sm text-mist italic mb-4">No resume uploaded yet.</p>
                   )}
                   <div className="mt-4 flex flex-col gap-3">
-                    <input type="file" onChange={handleResumeUpload} className="text-xs text-text-muted" accept=".pdf" />
-                    <p className="text-[10px] text-text-muted">PDF only, max 5MB</p>
+                    <input type="file" onChange={handleResumeUpload} className="text-xs text-mist" accept=".pdf" />
+                    <p className="text-[10px] text-mist">PDF only, max 5MB</p>
                   </div>
                 </div>
               </section>
 
               <section className="apple-card p-6">
-                <h3 className="text-[11px] font-bold uppercase tracking-tight text-text-muted">Skills</h3>
+                <h3 className="text-[11px] font-bold uppercase tracking-tight text-mist opacity-70">Skills</h3>
                 <div className="mt-4 flex flex-wrap gap-2">
                   {skillsList.map((skill) => (
-                    <span key={skill} className="rounded-apple bg-bg-app px-2.5 py-1 text-[11px] font-bold text-text-main border border-black/[0.03]">
+                    <span key={skill} className="rounded-md bg-charcoal px-2.5 py-1 text-[11px] font-bold text-sand border border-border">
                       {skill}
                     </span>
                   ))}
-                  {skillsList.length === 0 && <p className="text-sm text-text-secondary italic">No skills added.</p>}
+                  {skillsList.length === 0 && <p className="text-sm text-mist italic">No skills added.</p>}
                 </div>
-                <button onClick={() => {setEditMode(true); setActiveTab("Overview")}} className="mt-4 text-xs font-bold text-brand-blue hover:underline">Edit Skills</button>
+                <button onClick={() => {setEditMode(true); setActiveTab("Overview")}} className="mt-4 text-xs font-bold text-brand hover:underline">Edit Skills</button>
               </section>
             </div>
           </div>
@@ -458,7 +458,7 @@ export default function Profile() {
         {activeTab === "Experience" && (
           <div className="space-y-6">
             <div className="flex items-center justify-between">
-              <h3 className="text-xl font-bold">Professional Experience</h3>
+              <h3 className="text-xl font-bold text-sand">Professional Experience</h3>
               <button onClick={addExperience} className="apple-button-primary text-xs font-bold">+ Add New</button>
             </div>
             {(form.experience || []).map((exp, index) => (
@@ -471,19 +471,19 @@ export default function Profile() {
                 </button>
                 <div className="grid gap-4 md:grid-cols-2">
                   <input
-                    className="rounded-apple border border-black/[0.08] bg-white px-4 py-2 text-sm text-text-main"
+                    className="rounded-md border border-border bg-slate px-4 py-2 text-sm text-sand"
                     value={exp.company || ""}
                     onChange={(e) => updateExperience(index, "company", e.target.value)}
                     placeholder="Company"
                   />
                   <input
-                    className="rounded-apple border border-black/[0.08] bg-white px-4 py-2 text-sm text-text-main"
+                    className="rounded-md border border-border bg-slate px-4 py-2 text-sm text-sand"
                     value={exp.role || ""}
                     onChange={(e) => updateExperience(index, "role", e.target.value)}
                     placeholder="Role"
                   />
                   <textarea
-                    className="md:col-span-2 rounded-apple border border-black/[0.08] bg-white px-4 py-2 text-sm text-text-main"
+                    className="md:col-span-2 rounded-md border border-border bg-slate px-4 py-2 text-sm text-sand"
                     value={exp.description || ""}
                     onChange={(e) => updateExperience(index, "description", e.target.value)}
                     placeholder="Describe your impact and responsibilities..."
@@ -497,8 +497,8 @@ export default function Profile() {
             )}
             {(form.experience || []).length === 0 && (
               <div className="apple-card p-12 text-center">
-                <p className="text-text-secondary">Showcase your professional journey.</p>
-                <button onClick={addExperience} className="mt-4 text-brand-blue font-bold hover:underline">Add your first experience</button>
+                <p className="text-mist">Showcase your professional journey.</p>
+                <button onClick={addExperience} className="mt-4 text-brand font-bold hover:underline">Add your first experience</button>
               </div>
             )}
           </div>
@@ -507,8 +507,8 @@ export default function Profile() {
         {activeTab === "Education" && (
           <div className="apple-card p-12 text-center">
             <div className="text-4xl mb-4">🎓</div>
-            <h3 className="text-lg font-bold">Education Tracking</h3>
-            <p className="mt-2 text-text-secondary max-w-sm mx-auto">
+            <h3 className="text-lg font-bold text-sand">Education Tracking</h3>
+            <p className="mt-2 text-mist max-w-sm mx-auto">
               This feature is being refined to help you better connect with alumni. Coming very soon.
             </p>
           </div>
@@ -517,8 +517,8 @@ export default function Profile() {
         {activeTab === "Projects" && (
           <div className="apple-card p-12 text-center">
             <div className="text-4xl mb-4">🚀</div>
-            <h3 className="text-lg font-bold">Project Showcase</h3>
-            <p className="mt-2 text-text-secondary max-w-sm mx-auto">
+            <h3 className="text-lg font-bold text-sand">Project Showcase</h3>
+            <p className="mt-2 text-mist max-w-sm mx-auto">
               Share what you've built. We're building a beautiful way to display your creative and technical work.
             </p>
           </div>
@@ -527,29 +527,29 @@ export default function Profile() {
         {activeTab === "Verification" && (
           <div className="max-w-3xl mx-auto space-y-8">
             <section className="apple-card p-8 text-center">
-              <h3 className="text-2xl font-bold">Build Trust with Verification</h3>
-              <p className="mt-3 text-text-secondary">
+              <h3 className="text-2xl font-bold text-sand">Build Trust with Verification</h3>
+              <p className="mt-3 text-mist">
                 Verified badges increase your credibility by 3x and help you stand out to mentors and employers.
               </p>
               
               <div className="mt-8 flex justify-center items-center gap-12">
                 <div className="flex flex-col items-center">
-                  <div className={`h-16 w-16 rounded-full flex items-center justify-center text-2xl mb-2 ${profile.studentVerified ? 'bg-accent-success/10 text-accent-success' : 'bg-bg-app text-text-muted'}`}>
+                  <div className={`h-16 w-16 rounded-full flex items-center justify-center text-2xl mb-2 ${profile.studentVerified ? 'bg-accent-success/10 text-accent-success' : 'bg-charcoal text-mist border border-border'}`}>
                     {profile.studentVerified ? "✓" : "🎓"}
                   </div>
-                  <span className="text-xs font-bold uppercase tracking-tight">Student</span>
+                  <span className="text-xs font-bold uppercase tracking-tight text-mist">Student</span>
                 </div>
-                <div className="h-px w-20 bg-black/[0.05]" />
+                <div className="h-px w-20 bg-border" />
                 <div className="flex flex-col items-center">
-                  <div className={`h-16 w-16 rounded-full flex items-center justify-center text-2xl mb-2 ${profile.mentorVerified ? 'bg-accent-success/10 text-accent-success' : 'bg-bg-app text-text-muted'}`}>
+                  <div className={`h-16 w-16 rounded-full flex items-center justify-center text-2xl mb-2 ${profile.mentorVerified ? 'bg-accent-success/10 text-accent-success' : 'bg-charcoal text-mist border border-border'}`}>
                     {profile.mentorVerified ? "✓" : "👨‍🏫"}
                   </div>
-                  <span className="text-xs font-bold uppercase tracking-tight">Mentor</span>
+                  <span className="text-xs font-bold uppercase tracking-tight text-mist">Mentor</span>
                 </div>
               </div>
 
-              <div className="mt-12 p-6 rounded-apple bg-bg-app border border-black/[0.03]">
-                <p className="text-sm font-semibold mb-4">Current Status: 
+              <div className="mt-12 p-6 rounded-md bg-charcoal border border-border">
+                <p className="text-sm font-semibold mb-4 text-sand">Current Status: 
                   <span className="ml-2">
                     <StatusBadge 
                       label={profile.userType === "student" ? studentStatus : mentorStatus} 
@@ -587,26 +587,26 @@ export default function Profile() {
                   <div className="space-y-6 max-w-md mx-auto text-left">
                     <div className="space-y-4">
                       <input
-                        className="w-full rounded-apple border border-black/[0.08] bg-white px-4 py-2 text-sm"
+                        className="w-full rounded-md border border-border bg-slate px-4 py-2 text-sm text-sand"
                         placeholder="University or Professional Email"
                         value={mentorInfo.universityEmail}
                         onChange={(e) => setMentorInfo(prev => ({ ...prev, universityEmail: e.target.value }))}
                       />
                       <input
-                        className="w-full rounded-apple border border-black/[0.08] bg-white px-4 py-2 text-sm"
+                        className="w-full rounded-md border border-border bg-slate px-4 py-2 text-sm text-sand"
                         placeholder="LinkedIn Profile URL"
                         value={mentorInfo.linkedinUrl}
                         onChange={(e) => setMentorInfo(prev => ({ ...prev, linkedinUrl: e.target.value }))}
                       />
                       <textarea
-                        className="w-full rounded-apple border border-black/[0.08] bg-white px-4 py-2 text-sm"
+                        className="w-full rounded-md border border-border bg-slate px-4 py-2 text-sm text-sand"
                         placeholder="Additional notes for our verification team..."
                         value={mentorInfo.note}
                         onChange={(e) => setMentorInfo(prev => ({ ...prev, note: e.target.value }))}
                         rows={2}
                       />
-                      <div className="flex flex-col items-center gap-4 border-t border-black/[0.05] pt-4">
-                        <input type="file" onChange={(e) => setDocFile(e.target.files?.[0] || null)} className="text-xs" />
+                      <div className="flex flex-col items-center gap-4 border-t border-border pt-4">
+                        <input type="file" onChange={(e) => setDocFile(e.target.files?.[0] || null)} className="text-xs text-mist" />
                         <button
                           onClick={handleMentorVerification}
                           disabled={isPendingVerification || profile.mentorVerified}
@@ -626,12 +626,12 @@ export default function Profile() {
         {activeTab === "Settings" && (
           <div className="max-w-2xl mx-auto space-y-8">
             <section className="apple-card p-8">
-              <h3 className="text-xl font-bold">Privacy & Visibility</h3>
+              <h3 className="text-xl font-bold text-sand">Privacy & Visibility</h3>
               <div className="mt-6 space-y-4">
-                <label className="flex items-center justify-between p-4 rounded-apple border border-black/[0.05] bg-bg-app/50">
+                <label className="flex items-center justify-between p-4 rounded-md border border-border bg-charcoal/50">
                   <div>
-                    <p className="text-[15px] font-bold">Private Profile</p>
-                    <p className="text-xs text-text-secondary">Hide your profile from non-members and search engines.</p>
+                    <p className="text-[15px] font-bold text-sand">Private Profile</p>
+                    <p className="text-xs text-mist">Hide your profile from non-members and search engines.</p>
                   </div>
                   <input
                     type="checkbox"
@@ -640,25 +640,25 @@ export default function Profile() {
                       setForm((prev) => ({ ...prev, isPrivate: e.target.checked }));
                       handleSave();
                     }}
-                    className="h-5 w-5 rounded-full border-black/[0.1] text-brand-blue focus:ring-brand-blue"
+                    className="h-5 w-5 rounded-full border-border text-brand focus:ring-brand"
                   />
                 </label>
                 
-                <div className="p-4 rounded-apple border border-black/[0.05]">
-                  <p className="text-xs font-bold uppercase tracking-tight text-text-muted mb-1">Email Address</p>
-                  <p className="text-sm font-medium text-text-main">{profile.email}</p>
+                <div className="p-4 rounded-md border border-border">
+                  <p className="text-xs font-bold uppercase tracking-tight text-mist opacity-70 mb-1">Email Address</p>
+                  <p className="text-sm font-medium text-sand">{profile.email}</p>
                 </div>
 
-                <div className="p-4 rounded-apple border border-black/[0.05]">
-                  <p className="text-xs font-bold uppercase tracking-tight text-text-muted mb-1">Account Type</p>
-                  <p className="text-sm font-medium text-text-main capitalize">{profile.userType}</p>
+                <div className="p-4 rounded-md border border-border">
+                  <p className="text-xs font-bold uppercase tracking-tight text-mist opacity-70 mb-1">Account Type</p>
+                  <p className="text-sm font-medium text-sand capitalize">{profile.userType}</p>
                 </div>
               </div>
             </section>
 
             <section className="apple-card p-8 border-accent-error/20">
               <h3 className="text-xl font-bold text-accent-error">Danger Zone</h3>
-              <p className="mt-2 text-sm text-text-secondary">Permanently delete your account and all associated data.</p>
+              <p className="mt-2 text-sm text-mist">Permanently delete your account and all associated data.</p>
               <button className="apple-button-secondary mt-6 border-accent-error/20 text-accent-error hover:bg-accent-error/5">
                 Delete My BridgeAZ Account
               </button>
