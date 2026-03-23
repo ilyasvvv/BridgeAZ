@@ -129,7 +129,13 @@ export default function Navbar() {
         {/* ─── Desktop nav ─── */}
         <nav ref={containerRef} className="relative hidden items-center md:flex">
           {/* Pill */}
-          <span className="bg-brand/10" style={pillStyle} />
+          <span
+            style={{
+              ...pillStyle,
+              background: "rgba(21, 101, 163, 0.1)",
+              border: "1.5px solid rgba(21, 101, 163, 0.25)",
+            }}
+          />
 
           {allLinks.map((link) => {
             const active = isActive(link.to);

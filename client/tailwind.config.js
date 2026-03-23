@@ -12,7 +12,8 @@ export default {
         sand: "#1B1F23",
         mist: "#586069",
         border: "#E1E5EB",
-        "surface-alt": "#F0F2F5"
+        "surface-alt": "#F0F2F5",
+        brand: "#1565A3"
       },
       fontFamily: {
         display: ["Newsreader", "serif"],
