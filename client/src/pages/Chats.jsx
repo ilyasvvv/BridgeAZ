@@ -1107,7 +1107,7 @@ export default function Chats() {
   };
 
   return (
-    <div className="mx-auto grid max-w-6xl gap-4 md:h-[calc(100vh-72px)] md:grid-cols-[minmax(280px,360px)_minmax(0,1fr)] md:overflow-hidden" style={{ "--accent": "8 145 178" }}>
+    <div className="mx-auto grid max-w-6xl gap-4 md:h-[calc(100vh-72px)] md:grid-cols-[minmax(280px,360px)_minmax(0,1fr)] md:overflow-hidden" style={{ "--accent": "29 29 68", "--accent-soft": "95 96 116" }}>
       <section className="glass rounded-2xl p-3 md:flex md:min-h-0 md:flex-col">
         <h2 className="font-display text-xl">Threads</h2>
         <div className="mt-2 space-y-2 md:min-h-0 md:flex-1 md:overflow-y-auto md:pr-1">

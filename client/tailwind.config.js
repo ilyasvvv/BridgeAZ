@@ -16,6 +16,7 @@ export default {
         teal: "#1565A3",
         // Dynamic page accent (set via CSS variable per page)
         accent: "rgb(var(--accent) / <alpha-value>)",
+        "accent-soft": "rgb(var(--accent-soft, var(--accent)) / <alpha-value>)",
         // Text
         sand: "#1B1F23", // Primary text
         mist: "#586069", // Secondary text

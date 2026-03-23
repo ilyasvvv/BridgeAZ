@@ -223,10 +223,10 @@ export default function Profile() {
   }
 
   return (
-    <div className="mx-auto max-w-5xl space-y-8 py-6" style={{ "--accent": "109 40 217" }}>
+    <div className="mx-auto max-w-5xl space-y-8 py-6" style={{ "--accent": "15 26 43", "--accent-soft": "209 207 201" }}>
       {/* Top Profile Card */}
       <div className="apple-card overflow-hidden">
-        <div className="h-32 bg-gradient-to-r from-accent/20 to-accent/5 md:h-48" />
+        <div className="h-32 bg-gradient-to-r from-accent-soft/40 to-accent-soft/10 md:h-48" />
         <div className="relative px-6 pb-8 md:px-10">
           <div className="relative -mt-12 flex flex-col items-start justify-between gap-6 md:-mt-16 md:flex-row md:items-end">
             <div className="flex flex-col items-start gap-4 md:flex-row md:items-end">
@@ -271,7 +271,7 @@ export default function Profile() {
       </div>
 
       {message && (
-        <div className="rounded-md bg-accent/10 p-4 text-center text-sm font-semibold text-accent border border-accent/20">
+        <div className="rounded-md bg-accent-soft/30 p-4 text-center text-sm font-semibold text-accent border border-accent-soft/50">
           {message}
         </div>
       )}
