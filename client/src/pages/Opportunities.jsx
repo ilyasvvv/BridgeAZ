@@ -380,7 +380,7 @@ export default function Opportunities() {
         <div className="flex flex-wrap items-center gap-3">
           <button
             onClick={() => setShowNotifyModal(true)}
-            className="flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-5 py-2.5 font-sans text-[10px] font-bold uppercase tracking-widest text-mist transition-all hover:border-teal/40 hover:text-teal"
+            className="flex items-center gap-2 rounded-full border border-border bg-charcoal px-5 py-2.5 font-sans text-[10px] font-bold uppercase tracking-widest text-mist transition-all hover:border-teal/40 hover:text-teal"
           >
             <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
@@ -394,7 +394,7 @@ export default function Opportunities() {
                 if (showForm) setEditingId(null);
               }}
               className={`flex items-center gap-2 rounded-full px-5 py-2.5 font-sans text-[10px] font-bold uppercase tracking-widest transition-all shadow-lg ${
-                showForm ? "bg-slate text-sand border border-white/10" : "bg-teal text-charcoal hover:bg-teal/90"
+                showForm ? "bg-slate text-sand border border-border" : "bg-teal text-charcoal hover:bg-teal/90"
               }`}
             >
               <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -415,8 +415,8 @@ export default function Opportunities() {
 
       {/* Post/Edit Form */}
       {showForm && (
-        <div className="glass overflow-hidden rounded-2xl border border-white/10 bg-slate/20">
-          <div className="border-b border-white/5 bg-white/5 px-6 py-4">
+        <div className="glass overflow-hidden rounded-2xl border border-border bg-white">
+          <div className="border-b border-border bg-charcoal px-6 py-4">
             <h2 className="font-display text-lg text-sand">
               {editingId ? "Edit Opportunity" : "Post a New Opportunity"}
             </h2>
@@ -426,7 +426,7 @@ export default function Opportunities() {
               <div className="space-y-2 md:col-span-1">
                 <label className="font-sans text-[10px] font-bold uppercase tracking-widest text-mist ml-1">Title</label>
                 <input
-                  className="w-full rounded-xl border border-white/10 bg-charcoal/40 px-4 py-3 font-sans text-sm text-sand placeholder:text-mist/30 focus:border-teal/50 focus:outline-none focus:ring-1 focus:ring-teal/50"
+                  className="w-full rounded-xl border border-border bg-charcoal/40 px-4 py-3 font-sans text-sm text-sand placeholder:text-mist/30 focus:border-teal/50 focus:outline-none focus:ring-1 focus:ring-teal/50"
                   placeholder="e.g. Senior Software Engineer"
                   value={form.title}
                   onChange={(e) => setForm((prev) => ({ ...prev, title: e.target.value }))}
@@ -436,7 +436,7 @@ export default function Opportunities() {
               <div className="space-y-2 md:col-span-1">
                 <label className="font-sans text-[10px] font-bold uppercase tracking-widest text-mist ml-1">Organization</label>
                 <input
-                  className="w-full rounded-xl border border-white/10 bg-charcoal/40 px-4 py-3 font-sans text-sm text-sand placeholder:text-mist/30 focus:border-teal/50 focus:outline-none focus:ring-1 focus:ring-teal/50"
+                  className="w-full rounded-xl border border-border bg-charcoal/40 px-4 py-3 font-sans text-sm text-sand placeholder:text-mist/30 focus:border-teal/50 focus:outline-none focus:ring-1 focus:ring-teal/50"
                   placeholder="e.g. AzeSA Global"
                   value={form.orgName}
                   onChange={(e) => setForm((prev) => ({ ...prev, orgName: e.target.value }))}
@@ -446,7 +446,7 @@ export default function Opportunities() {
               <div className="space-y-2">
                 <label className="font-sans text-[10px] font-bold uppercase tracking-widest text-mist ml-1">Type</label>
                 <select
-                  className="w-full appearance-none rounded-xl border border-white/10 bg-charcoal/40 px-4 py-3 font-sans text-sm text-sand focus:border-teal/50 focus:outline-none"
+                  className="w-full appearance-none rounded-xl border border-border bg-charcoal/40 px-4 py-3 font-sans text-sm text-sand focus:border-teal/50 focus:outline-none"
                   value={form.type}
                   onChange={(e) => setForm((prev) => ({ ...prev, type: e.target.value }))}
                 >
@@ -456,7 +456,7 @@ export default function Opportunities() {
               <div className="space-y-2">
                 <label className="font-sans text-[10px] font-bold uppercase tracking-widest text-mist ml-1">Location Mode</label>
                 <select
-                  className="w-full appearance-none rounded-xl border border-white/10 bg-charcoal/40 px-4 py-3 font-sans text-sm text-sand focus:border-teal/50 focus:outline-none"
+                  className="w-full appearance-none rounded-xl border border-border bg-charcoal/40 px-4 py-3 font-sans text-sm text-sand focus:border-teal/50 focus:outline-none"
                   value={form.locationMode}
                   onChange={(e) => setForm((prev) => ({ ...prev, locationMode: e.target.value }))}
                 >
@@ -466,7 +466,7 @@ export default function Opportunities() {
               <div className="space-y-2">
                 <label className="font-sans text-[10px] font-bold uppercase tracking-widest text-mist ml-1">Country</label>
                 <select
-                  className="w-full appearance-none rounded-xl border border-white/10 bg-charcoal/40 px-4 py-3 font-sans text-sm text-sand focus:border-teal/50 focus:outline-none"
+                  className="w-full appearance-none rounded-xl border border-border bg-charcoal/40 px-4 py-3 font-sans text-sm text-sand focus:border-teal/50 focus:outline-none"
                   value={form.country}
                   onChange={(e) => setForm((prev) => ({ ...prev, country: e.target.value }))}
                 >
@@ -477,7 +477,7 @@ export default function Opportunities() {
               <div className="space-y-2">
                 <label className="font-sans text-[10px] font-bold uppercase tracking-widest text-mist ml-1">City (Optional)</label>
                 <input
-                  className="w-full rounded-xl border border-white/10 bg-charcoal/40 px-4 py-3 font-sans text-sm text-sand placeholder:text-mist/30 focus:border-teal/50 focus:outline-none"
+                  className="w-full rounded-xl border border-border bg-charcoal/40 px-4 py-3 font-sans text-sm text-sand placeholder:text-mist/30 focus:border-teal/50 focus:outline-none"
                   placeholder="e.g. Baku"
                   value={form.city}
                   onChange={(e) => setForm((prev) => ({ ...prev, city: e.target.value }))}
@@ -486,7 +486,7 @@ export default function Opportunities() {
               <div className="space-y-2 md:col-span-2">
                 <label className="font-sans text-[10px] font-bold uppercase tracking-widest text-mist ml-1">Description</label>
                 <textarea
-                  className="w-full rounded-xl border border-white/10 bg-charcoal/40 px-4 py-3 font-sans text-sm text-sand placeholder:text-mist/30 focus:border-teal/50 focus:outline-none"
+                  className="w-full rounded-xl border border-border bg-charcoal/40 px-4 py-3 font-sans text-sm text-sand placeholder:text-mist/30 focus:border-teal/50 focus:outline-none"
                   placeholder="Describe the role, responsibilities, and impact..."
                   value={form.description}
                   onChange={(e) => setForm((prev) => ({ ...prev, description: e.target.value }))}
@@ -497,7 +497,7 @@ export default function Opportunities() {
               <div className="space-y-2 md:col-span-2">
                 <label className="font-sans text-[10px] font-bold uppercase tracking-widest text-mist ml-1">Requirements (Comma Separated)</label>
                 <input
-                  className="w-full rounded-xl border border-white/10 bg-charcoal/40 px-4 py-3 font-sans text-sm text-sand placeholder:text-mist/30 focus:border-teal/50 focus:outline-none"
+                  className="w-full rounded-xl border border-border bg-charcoal/40 px-4 py-3 font-sans text-sm text-sand placeholder:text-mist/30 focus:border-teal/50 focus:outline-none"
                   placeholder="e.g. React, Node.js, 3+ years experience"
                   value={form.requirements}
                   onChange={(e) => setForm((prev) => ({ ...prev, requirements: e.target.value }))}
@@ -506,7 +506,7 @@ export default function Opportunities() {
               <div className="space-y-2">
                 <label className="font-sans text-[10px] font-bold uppercase tracking-widest text-mist ml-1">Apply URL (Optional)</label>
                 <input
-                  className="w-full rounded-xl border border-white/10 bg-charcoal/40 px-4 py-3 font-sans text-sm text-sand placeholder:text-mist/30 focus:border-teal/50 focus:outline-none"
+                  className="w-full rounded-xl border border-border bg-charcoal/40 px-4 py-3 font-sans text-sm text-sand placeholder:text-mist/30 focus:border-teal/50 focus:outline-none"
                   placeholder="https://..."
                   value={form.applyUrl}
                   onChange={(e) => setForm((prev) => ({ ...prev, applyUrl: e.target.value }))}
@@ -515,7 +515,7 @@ export default function Opportunities() {
               <div className="space-y-2">
                 <label className="font-sans text-[10px] font-bold uppercase tracking-widest text-mist ml-1">Contact Email (Optional)</label>
                 <input
-                  className="w-full rounded-xl border border-white/10 bg-charcoal/40 px-4 py-3 font-sans text-sm text-sand placeholder:text-mist/30 focus:border-teal/50 focus:outline-none"
+                  className="w-full rounded-xl border border-border bg-charcoal/40 px-4 py-3 font-sans text-sm text-sand placeholder:text-mist/30 focus:border-teal/50 focus:outline-none"
                   placeholder="careers@org.com"
                   value={form.contactEmail}
                   onChange={(e) => setForm((prev) => ({ ...prev, contactEmail: e.target.value }))}
@@ -524,7 +524,7 @@ export default function Opportunities() {
               <div className="space-y-2">
                 <label className="font-sans text-[10px] font-bold uppercase tracking-widest text-mist ml-1">Visibility Region</label>
                 <select
-                  className="w-full appearance-none rounded-xl border border-white/10 bg-charcoal/40 px-4 py-3 font-sans text-sm text-sand focus:border-teal/50 focus:outline-none"
+                  className="w-full appearance-none rounded-xl border border-border bg-charcoal/40 px-4 py-3 font-sans text-sm text-sand focus:border-teal/50 focus:outline-none"
                   value={form.visibilityRegion}
                   onChange={(e) => setForm((prev) => ({ ...prev, visibilityRegion: e.target.value }))}
                 >
@@ -536,7 +536,7 @@ export default function Opportunities() {
               <div className="space-y-2">
                 <label className="font-sans text-[10px] font-bold uppercase tracking-widest text-mist ml-1">Tags (Comma Separated)</label>
                 <input
-                  className="w-full rounded-xl border border-white/10 bg-charcoal/40 px-4 py-3 font-sans text-sm text-sand placeholder:text-mist/30 focus:border-teal/50 focus:outline-none"
+                  className="w-full rounded-xl border border-border bg-charcoal/40 px-4 py-3 font-sans text-sm text-sand placeholder:text-mist/30 focus:border-teal/50 focus:outline-none"
                   placeholder="engineering, remote, startup"
                   value={form.tags}
                   onChange={(e) => setForm((prev) => ({ ...prev, tags: e.target.value }))}
@@ -556,7 +556,7 @@ export default function Opportunities() {
       )}
 
       {/* Filters Bar */}
-      <div className="glass rounded-2xl border border-white/10 bg-slate/10 p-2 shadow-inner">
+      <div className="glass rounded-2xl border border-border bg-white p-2 shadow-inner">
         <div className="flex flex-col gap-2 md:flex-row md:items-center">
           <div className="relative flex-1">
             <svg className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-mist/40" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -607,7 +607,7 @@ export default function Opportunities() {
           <div className="flex items-center gap-1 rounded-xl bg-charcoal/40 p-1 ml-auto">
             <button
               onClick={() => setViewMode("grid")}
-              className={`flex h-8 w-8 items-center justify-center rounded-lg transition-all ${viewMode === "grid" ? "bg-white/10 text-teal" : "text-mist/40 hover:text-mist"}`}
+              className={`flex h-8 w-8 items-center justify-center rounded-lg transition-all ${viewMode === "grid" ? "bg-surface-alt text-teal" : "text-mist/40 hover:text-mist"}`}
               title="Grid View"
             >
               <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -616,7 +616,7 @@ export default function Opportunities() {
             </button>
             <button
               onClick={() => setViewMode("list")}
-              className={`flex h-8 w-8 items-center justify-center rounded-lg transition-all ${viewMode === "list" ? "bg-white/10 text-teal" : "text-mist/40 hover:text-mist"}`}
+              className={`flex h-8 w-8 items-center justify-center rounded-lg transition-all ${viewMode === "list" ? "bg-surface-alt text-teal" : "text-mist/40 hover:text-mist"}`}
               title="Split View"
             >
               <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -642,7 +642,7 @@ export default function Opportunities() {
           <p className="font-sans text-[10px] font-bold uppercase tracking-widest text-mist">Loading opportunities...</p>
         </div>
       ) : opportunities.length === 0 ? (
-        <div className="flex flex-col items-center justify-center rounded-3xl border border-dashed border-white/10 py-20 bg-white/5">
+        <div className="flex flex-col items-center justify-center rounded-3xl border border-dashed border-border py-20 bg-charcoal">
           <p className="font-display text-xl text-sand/50">No opportunities found</p>
           <p className="mt-1 font-sans text-sm text-mist/40">Try adjusting your filters or search keywords.</p>
         </div>
@@ -663,7 +663,7 @@ export default function Opportunities() {
       ) : (
         <div className="grid h-[700px] gap-6 lg:grid-cols-[400px_1fr]">
           {/* List Sidebar */}
-          <div className="glass flex flex-col overflow-hidden rounded-2xl border border-white/10 bg-slate/10">
+          <div className="glass flex flex-col overflow-hidden rounded-2xl border border-border bg-white">
             <div className="overflow-y-auto p-2 space-y-2">
               {opportunities.map((opportunity) => (
                 <button
@@ -672,7 +672,7 @@ export default function Opportunities() {
                   className={`group w-full rounded-xl border p-4 text-left transition-all ${
                     selectedOpportunity?._id === opportunity._id
                       ? "border-teal/40 bg-teal/10 shadow-sm shadow-teal/5"
-                      : "border-transparent hover:bg-white/5"
+                      : "border-transparent hover:bg-charcoal"
                   }`}
                 >
                   <div className="flex flex-col gap-1.5">
@@ -690,7 +690,7 @@ export default function Opportunities() {
                       {opportunity.title}
                     </p>
                     <div className="flex flex-wrap items-center gap-2 mt-1">
-                      <span className="font-sans text-[9px] font-medium uppercase tracking-tighter text-mist/60 border border-white/10 rounded px-1">
+                      <span className="font-sans text-[9px] font-medium uppercase tracking-tighter text-mist/60 border border-border rounded px-1">
                         {opportunity.type}
                       </span>
                       <span className="font-sans text-[9px] text-mist/40">
@@ -704,10 +704,10 @@ export default function Opportunities() {
           </div>
 
           {/* Details Pane */}
-          <div className="glass flex flex-col overflow-hidden rounded-2xl border border-white/10 bg-slate/10">
+          <div className="glass flex flex-col overflow-hidden rounded-2xl border border-border bg-white">
             {selectedOpportunityForPane ? (
               <div className="flex-1 overflow-y-auto">
-                <div className="sticky top-0 z-10 border-b border-white/5 bg-slate/20 backdrop-blur-md px-8 py-6">
+                <div className="sticky top-0 z-10 border-b border-border bg-white backdrop-blur-md px-8 py-6">
                   <div className="flex items-start justify-between gap-6">
                     <div className="space-y-2">
                       <div className="flex items-center gap-2">
@@ -715,7 +715,7 @@ export default function Opportunities() {
                           {selectedOpportunityForPane.orgName || selectedOpportunityForPane.company}
                         </span>
                         {selectedOpportunityForPane.postedBy === user?._id && (
-                          <span className="rounded bg-white/5 px-2 py-0.5 font-sans text-[9px] font-bold uppercase tracking-wider text-mist">
+                          <span className="rounded bg-charcoal px-2 py-0.5 font-sans text-[9px] font-bold uppercase tracking-wider text-mist">
                             Your Posting
                           </span>
                         )}
@@ -751,7 +751,7 @@ export default function Opportunities() {
                       </div>
                       <button
                         onClick={() => setShareInput(buildOpportunityShareInput(selectedOpportunityForPane))}
-                        className="rounded-full border border-white/10 p-2 text-mist transition-all hover:bg-white/5 hover:text-teal"
+                        className="rounded-full border border-border p-2 text-mist transition-all hover:bg-charcoal hover:text-teal"
                         title="Share Opportunity"
                       >
                         <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -771,7 +771,7 @@ export default function Opportunities() {
                   )}
 
                   <section className="space-y-4">
-                    <h4 className="font-sans text-[11px] font-bold uppercase tracking-[0.25em] text-mist/60 border-b border-white/5 pb-2">Description</h4>
+                    <h4 className="font-sans text-[11px] font-bold uppercase tracking-[0.25em] text-mist/60 border-b border-border pb-2">Description</h4>
                     <p className="font-sans text-base leading-relaxed text-sand/90 whitespace-pre-wrap">
                       {selectedOpportunityForPane.description}
                     </p>
@@ -779,10 +779,10 @@ export default function Opportunities() {
 
                   {selectedOpportunityForPane.requirements?.length ? (
                     <section className="space-y-4">
-                      <h4 className="font-sans text-[11px] font-bold uppercase tracking-[0.25em] text-mist/60 border-b border-white/5 pb-2">Requirements</h4>
+                      <h4 className="font-sans text-[11px] font-bold uppercase tracking-[0.25em] text-mist/60 border-b border-border pb-2">Requirements</h4>
                       <ul className="grid gap-3 md:grid-cols-2">
                         {selectedOpportunityForPane.requirements.map((item) => (
-                          <li key={item} className="flex items-start gap-3 rounded-xl border border-white/5 bg-white/5 p-4 transition-all hover:border-teal/20">
+                          <li key={item} className="flex items-start gap-3 rounded-xl border border-border bg-charcoal p-4 transition-all hover:border-teal/20">
                             <span className="mt-1 h-1 w-1 shrink-0 rounded-full bg-teal" />
                             <span className="font-sans text-sm text-sand/80">{item}</span>
                           </li>
@@ -793,10 +793,10 @@ export default function Opportunities() {
 
                   {selectedOpportunityForPane.tags?.length ? (
                     <section className="space-y-4">
-                      <h4 className="font-sans text-[11px] font-bold uppercase tracking-[0.25em] text-mist/60 border-b border-white/5 pb-2">Tags</h4>
+                      <h4 className="font-sans text-[11px] font-bold uppercase tracking-[0.25em] text-mist/60 border-b border-border pb-2">Tags</h4>
                       <div className="flex flex-wrap gap-2">
                         {selectedOpportunityForPane.tags.map((tag) => (
-                          <span key={tag} className="rounded-lg border border-white/10 bg-white/5 px-3 py-1 font-sans text-[10px] font-bold uppercase tracking-widest text-mist">
+                          <span key={tag} className="rounded-lg border border-border bg-charcoal px-3 py-1 font-sans text-[10px] font-bold uppercase tracking-widest text-mist">
                             #{tag}
                           </span>
                         ))}
@@ -804,7 +804,7 @@ export default function Opportunities() {
                     </section>
                   ) : null}
 
-                  <div className="sticky bottom-0 mt-12 flex flex-wrap items-center gap-4 border-t border-white/5 bg-slate/10 backdrop-blur-md -mx-8 px-8 py-6">
+                  <div className="sticky bottom-0 mt-12 flex flex-wrap items-center gap-4 border-t border-border bg-white backdrop-blur-md -mx-8 px-8 py-6">
                     {selectedOpportunityForPane.applyUrl && (
                       <a
                         href={selectedOpportunityForPane.applyUrl}
@@ -836,13 +836,13 @@ export default function Opportunities() {
                       <div className="ml-auto flex items-center gap-2">
                         <button
                           onClick={() => startEdit(selectedOpportunityForPane)}
-                          className="rounded-full border border-white/10 px-6 py-3 font-sans text-[10px] font-bold uppercase tracking-widest text-mist hover:bg-white/5 hover:text-sand transition-all"
+                          className="rounded-full border border-border px-6 py-3 font-sans text-[10px] font-bold uppercase tracking-widest text-mist hover:bg-charcoal hover:text-sand transition-all"
                         >
                           Edit
                         </button>
                         <button
                           onClick={() => closeOpportunity(selectedOpportunityForPane._id)}
-                          className="rounded-full border border-white/10 px-6 py-3 font-sans text-[10px] font-bold uppercase tracking-widest text-mist hover:bg-white/5 hover:text-sand transition-all"
+                          className="rounded-full border border-border px-6 py-3 font-sans text-[10px] font-bold uppercase tracking-widest text-mist hover:bg-charcoal hover:text-sand transition-all"
                         >
                           Close
                         </button>
@@ -859,7 +859,7 @@ export default function Opportunities() {
               </div>
             ) : (
               <div className="flex flex-1 flex-col items-center justify-center p-20 text-center">
-                <div className="mb-6 rounded-full bg-white/5 p-6">
+                <div className="mb-6 rounded-full bg-charcoal p-6">
                   <svg className="h-12 w-12 text-mist/20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
                   </svg>
@@ -876,8 +876,8 @@ export default function Opportunities() {
       {showNotifyModal && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-charcoal/80 backdrop-blur-sm" onClick={() => setShowNotifyModal(false)} />
-          <div className="glass relative w-full max-w-xl overflow-hidden rounded-3xl border border-white/10 bg-slate/90 p-0 shadow-2xl">
-            <div className="border-b border-white/5 bg-white/5 px-8 py-6">
+          <div className="glass relative w-full max-w-xl overflow-hidden rounded-3xl border border-border bg-slate/90 p-0 shadow-2xl">
+            <div className="border-b border-border bg-charcoal px-8 py-6">
               <h3 className="font-display text-2xl text-sand">Opportunity Alerts</h3>
               <p className="font-sans text-sm text-mist/60 mt-1">Get notified when new positions match your interests.</p>
             </div>
@@ -887,7 +887,7 @@ export default function Opportunities() {
                 <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
                   {notifyTypeOptions.map((type) => (
                     <label key={type} className={`flex cursor-pointer items-center gap-3 rounded-xl border p-3 transition-all ${
-                      notifyPrefs.types.includes(type) ? "border-teal/40 bg-teal/10 text-sand" : "border-white/5 bg-white/5 text-mist/60 hover:border-white/20"
+                      notifyPrefs.types.includes(type) ? "border-teal/40 bg-teal/10 text-sand" : "border-border bg-charcoal text-mist/60 hover:border-border"
                     }`}>
                       <input
                         type="checkbox"
@@ -910,7 +910,7 @@ export default function Opportunities() {
                       key={mode}
                       onClick={() => setNotifyPrefs((p) => ({ ...p, locationModes: toggleMultiValue(p.locationModes, mode) }))}
                       className={`rounded-full border px-5 py-2 font-sans text-[11px] font-bold uppercase tracking-widest transition-all ${
-                        notifyPrefs.locationModes.includes(mode) ? "border-teal/40 bg-teal/10 text-teal" : "border-white/10 bg-white/5 text-mist/60 hover:border-white/20"
+                        notifyPrefs.locationModes.includes(mode) ? "border-teal/40 bg-teal/10 text-teal" : "border-border bg-charcoal text-mist/60 hover:border-border"
                       }`}
                     >
                       {mode}
@@ -925,7 +925,7 @@ export default function Opportunities() {
                   <select
                     value={notifyPrefs.country}
                     onChange={(e) => setNotifyPrefs((p) => ({ ...p, country: e.target.value }))}
-                    className="w-full appearance-none rounded-xl border border-white/10 bg-charcoal/60 px-4 py-3 font-sans text-sm text-sand focus:border-teal/40 focus:outline-none"
+                    className="w-full appearance-none rounded-xl border border-border bg-charcoal/60 px-4 py-3 font-sans text-sm text-sand focus:border-teal/40 focus:outline-none"
                   >
                     <option value="">Any Country</option>
                     {countries.map((c) => <option key={c} value={c}>{c}</option>)}
@@ -936,13 +936,13 @@ export default function Opportunities() {
                   <input
                     value={notifyPrefs.keywords}
                     onChange={(e) => setNotifyPrefs((p) => ({ ...p, keywords: e.target.value }))}
-                    className="w-full rounded-xl border border-white/10 bg-charcoal/60 px-4 py-3 font-sans text-sm text-sand placeholder:text-mist/30 focus:border-teal/40 focus:outline-none"
+                    className="w-full rounded-xl border border-border bg-charcoal/60 px-4 py-3 font-sans text-sm text-sand placeholder:text-mist/30 focus:border-teal/40 focus:outline-none"
                     placeholder="e.g. AI, Backend, Internship"
                   />
                 </div>
               </div>
             </div>
-            <div className="flex items-center justify-between border-t border-white/5 bg-white/5 px-8 py-6">
+            <div className="flex items-center justify-between border-t border-border bg-charcoal px-8 py-6">
               <button
                 onClick={() => setShowNotifyModal(false)}
                 className="font-sans text-[11px] font-bold uppercase tracking-widest text-mist hover:text-sand"

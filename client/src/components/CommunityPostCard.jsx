@@ -93,7 +93,7 @@ export default function CommunityPostCard({
         {post.content}
       </p>
       {attachmentUrl && (
-        <div className="mt-4 rounded-xl border border-white/10 bg-white/5 p-3 text-xs text-mist min-w-0 overflow-hidden">
+        <div className="mt-4 rounded-xl border border-border bg-charcoal p-3 text-xs text-mist min-w-0 overflow-hidden">
           {isImage ? (
             <img
               src={attachmentUrl}
@@ -114,14 +114,14 @@ export default function CommunityPostCard({
                 <button
                   type="button"
                   onClick={() => seekVideoBy(-5)}
-                  className="rounded-full border border-white/10 px-3 py-1 text-[11px] uppercase tracking-wide text-mist hover:border-teal"
+                  className="rounded-full border border-border px-3 py-1 text-[11px] uppercase tracking-wide text-mist hover:border-teal"
                 >
                   ⟲ 5s
                 </button>
                 <button
                   type="button"
                   onClick={() => seekVideoBy(5)}
-                  className="rounded-full border border-white/10 px-3 py-1 text-[11px] uppercase tracking-wide text-mist hover:border-teal"
+                  className="rounded-full border border-border px-3 py-1 text-[11px] uppercase tracking-wide text-mist hover:border-teal"
                 >
                   5s ⟳
                 </button>
@@ -160,34 +160,34 @@ export default function CommunityPostCard({
         <button
           onClick={() => onLike?.(post._id)}
           className={`rounded-full border px-3 py-1 uppercase tracking-wide ${
-            liked ? "border-teal text-teal" : "border-white/10 hover:border-teal"
+            liked ? "border-teal text-teal" : "border-border hover:border-teal"
           }`}
         >
           {liked ? "Liked" : "Like"}
         </button>
         <button
           onClick={() => setShareTarget(postSharePayload)}
-          className="rounded-full border border-white/10 px-3 py-1 uppercase tracking-wide hover:border-teal"
+          className="rounded-full border border-border px-3 py-1 uppercase tracking-wide hover:border-teal"
         >
           Share
         </button>
         <button
           onClick={onRespond}
-          className="rounded-full border border-white/10 px-3 py-1 uppercase tracking-wide hover:border-teal"
+          className="rounded-full border border-border px-3 py-1 uppercase tracking-wide hover:border-teal"
         >
           Respond
         </button>
         <button
           onClick={onSave}
           className={`rounded-full border px-3 py-1 uppercase tracking-wide ${
-            isSaved ? "border-teal text-teal" : "border-white/10 hover:border-teal"
+            isSaved ? "border-teal text-teal" : "border-border hover:border-teal"
           }`}
         >
           {isSaved ? "Saved" : "Save"}
         </button>
         <button
           onClick={onFollow}
-          className="rounded-full border border-white/10 px-3 py-1 uppercase tracking-wide hover:border-teal"
+          className="rounded-full border border-border px-3 py-1 uppercase tracking-wide hover:border-teal"
         >
           Follow
         </button>
@@ -195,13 +195,13 @@ export default function CommunityPostCard({
           <>
             <button
               onClick={onEdit}
-              className="rounded-full border border-white/10 px-3 py-1 uppercase tracking-wide hover:border-teal"
+              className="rounded-full border border-border px-3 py-1 uppercase tracking-wide hover:border-teal"
             >
               Edit
             </button>
             <button
               onClick={onDelete}
-              className="rounded-full border border-white/10 px-3 py-1 uppercase tracking-wide hover:border-teal"
+              className="rounded-full border border-border px-3 py-1 uppercase tracking-wide hover:border-teal"
             >
               Delete
             </button>
@@ -209,7 +209,7 @@ export default function CommunityPostCard({
         )}
       </div>
       {comments.length > 0 && (
-        <div className="mt-4 space-y-2 rounded-xl border border-white/10 bg-white/5 p-3 text-xs text-mist">
+        <div className="mt-4 space-y-2 rounded-xl border border-border bg-charcoal p-3 text-xs text-mist">
           {shownReplies.map((comment) => (
             <div key={comment._id} className="space-y-1">
               <div className="flex items-center justify-between gap-2">
@@ -232,7 +232,7 @@ export default function CommunityPostCard({
                       })
                     )
                   }
-                  className="rounded-full border border-white/10 px-2 py-0.5 text-[10px] uppercase tracking-wide text-mist hover:border-teal"
+                  className="rounded-full border border-border px-2 py-0.5 text-[10px] uppercase tracking-wide text-mist hover:border-teal"
                 >
                   Share
                 </button>
@@ -257,7 +257,7 @@ export default function CommunityPostCard({
             value={replyValue}
             onChange={onReplyChange}
             rows={2}
-            className="w-full rounded-xl border border-white/10 bg-slate/40 px-4 py-2 text-sm text-sand"
+            className="w-full rounded-xl border border-border bg-white px-4 py-2 text-sm text-sand"
             placeholder="Share a thoughtful response..."
             required
           />

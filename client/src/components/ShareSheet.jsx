@@ -218,7 +218,7 @@ export default function ShareSheet({ open, onClose, shareInput }) {
       <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onClose} />
       <div className="relative z-10 flex min-h-full items-center justify-center px-4 py-6">
         <div
-          className="w-full max-w-2xl rounded-2xl border border-white/10 bg-slate-900/95 p-5 shadow-2xl"
+          className="w-full max-w-2xl rounded-2xl border border-border bg-white/95 p-5 shadow-2xl"
           onClick={(event) => event.stopPropagation()}
         >
         <div className="flex items-center justify-between gap-3">
@@ -226,13 +226,13 @@ export default function ShareSheet({ open, onClose, shareInput }) {
           <button
             type="button"
             onClick={onClose}
-            className="rounded-full border border-white/10 px-3 py-1 text-xs uppercase tracking-wide text-mist hover:border-teal"
+            className="rounded-full border border-border px-3 py-1 text-xs uppercase tracking-wide text-mist hover:border-teal"
           >
             Close
           </button>
         </div>
 
-        <div className="mt-4 rounded-xl border border-white/10 bg-white/5 p-3">
+        <div className="mt-4 rounded-xl border border-border bg-charcoal p-3">
           <p className="text-[11px] uppercase tracking-wide text-mist">
             {shareInput?.entityType || "item"}
           </p>
@@ -245,9 +245,9 @@ export default function ShareSheet({ open, onClose, shareInput }) {
             value={query}
             onChange={(event) => setQuery(event.target.value)}
             placeholder="Search users"
-            className="w-full rounded-xl border border-white/10 bg-slate/40 px-4 py-2 text-sm text-sand"
+            className="w-full rounded-xl border border-border bg-white px-4 py-2 text-sm text-sand"
           />
-          <div className="max-h-56 space-y-2 overflow-y-auto rounded-xl border border-white/10 bg-white/5 p-2">
+          <div className="max-h-56 space-y-2 overflow-y-auto rounded-xl border border-border bg-charcoal p-2">
             {searchState.loading ? (
               <p className="px-2 py-1 text-xs text-mist">Loading users...</p>
             ) : rankedUsers.length === 0 ? (
@@ -262,7 +262,7 @@ export default function ShareSheet({ open, onClose, shareInput }) {
                     type="button"
                     onClick={() => toggleRecipient(candidate)}
                     className={`flex w-full items-center justify-between rounded-lg px-2 py-1.5 text-left ${
-                      isSelected ? "bg-teal/15" : "hover:bg-white/10"
+                      isSelected ? "bg-teal/15" : "hover:bg-gray-100"
                     }`}
                   >
                     <UserChip user={candidate} size={USER_CHIP_SIZES.THREAD_LIST} showRole={false} />
@@ -281,7 +281,7 @@ export default function ShareSheet({ open, onClose, shareInput }) {
                 key={selected._id}
                 type="button"
                 onClick={() => toggleRecipient(selected)}
-                className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-sand hover:border-teal"
+                className="rounded-full border border-border bg-charcoal px-3 py-1 text-xs text-sand hover:border-teal"
               >
                 {selected.name} ×
               </button>
@@ -293,7 +293,7 @@ export default function ShareSheet({ open, onClose, shareInput }) {
             onChange={(event) => setNote(event.target.value)}
             rows={2}
             placeholder="Optional note"
-            className="w-full rounded-xl border border-white/10 bg-slate/40 px-4 py-2 text-sm text-sand"
+            className="w-full rounded-xl border border-border bg-white px-4 py-2 text-sm text-sand"
           />
         </div>
 
@@ -304,7 +304,7 @@ export default function ShareSheet({ open, onClose, shareInput }) {
             type="button"
             onClick={onClose}
             disabled={sending}
-            className="rounded-full border border-white/10 px-4 py-2 text-xs uppercase tracking-wide text-mist hover:border-teal disabled:opacity-60"
+            className="rounded-full border border-border px-4 py-2 text-xs uppercase tracking-wide text-mist hover:border-teal disabled:opacity-60"
           >
             Cancel
           </button>

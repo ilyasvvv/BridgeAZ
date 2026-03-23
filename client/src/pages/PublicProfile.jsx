@@ -38,7 +38,7 @@ export default function PublicProfile() {
         <p className="text-sm text-coral">{error}</p>
         <button
           onClick={() => navigate(-1)}
-          className="rounded-full border border-white/10 px-4 py-2 text-xs uppercase tracking-wide text-sand hover:border-teal"
+          className="rounded-full border border-border px-4 py-2 text-xs uppercase tracking-wide text-sand hover:border-teal"
         >
           Back
         </button>
@@ -75,7 +75,7 @@ export default function PublicProfile() {
     <div className="mx-auto max-w-4xl space-y-6">
       <button
         onClick={() => navigate(-1)}
-        className="rounded-full border border-white/10 px-4 py-2 text-xs uppercase tracking-wide text-sand hover:border-teal"
+        className="rounded-full border border-border px-4 py-2 text-xs uppercase tracking-wide text-sand hover:border-teal"
       >
         Back
       </button>
@@ -104,7 +104,7 @@ export default function PublicProfile() {
               <button
                 type="button"
                 onClick={() => setShowShareSheet(true)}
-                className="self-start rounded-full border border-white/10 px-4 py-2 text-xs uppercase tracking-wide text-sand hover:border-teal"
+                className="self-start rounded-full border border-border px-4 py-2 text-xs uppercase tracking-wide text-sand hover:border-teal"
               >
                 Share
               </button>
@@ -114,7 +114,7 @@ export default function PublicProfile() {
             <button
               type="button"
               onClick={() => setShowShareSheet(true)}
-              className="self-start rounded-full border border-white/10 px-4 py-2 text-xs uppercase tracking-wide text-sand hover:border-teal"
+              className="self-start rounded-full border border-border px-4 py-2 text-xs uppercase tracking-wide text-sand hover:border-teal"
             >
               Share
             </button>
@@ -142,7 +142,7 @@ export default function PublicProfile() {
             <p className="text-xs uppercase tracking-wide text-mist">Skills</p>
             <div className="mt-2 flex flex-wrap gap-2">
               {profile.skills.map((skill) => (
-                <span key={skill} className="rounded-full bg-white/10 px-3 py-1 text-xs">
+                <span key={skill} className="rounded-full bg-surface-alt px-3 py-1 text-xs">
                   {skill}
                 </span>
               ))}

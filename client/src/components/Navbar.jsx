@@ -30,7 +30,7 @@ export default function Navbar() {
     }`;
 
   return (
-    <header className="relative z-20 border-b border-white/10 bg-slate/60 backdrop-blur-md">
+    <header className="relative z-20 border-b border-border bg-white/80 backdrop-blur-md">
       <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
         <Link to="/" className="font-display text-2xl text-sand">
           BridgeAZ
@@ -90,7 +90,7 @@ export default function Navbar() {
             <span className="text-sm text-mist">Hi, {user.name.split(" ")[0]}</span>
             <button
               onClick={logout}
-              className="rounded-full border border-white/20 px-4 py-2 text-xs uppercase tracking-wide text-sand hover:border-teal"
+              className="rounded-full border border-border px-4 py-2 text-xs uppercase tracking-wide text-sand hover:border-teal"
             >
               Log out
             </button>

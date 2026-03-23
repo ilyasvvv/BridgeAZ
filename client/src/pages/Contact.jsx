@@ -29,7 +29,7 @@ export default function Contact() {
           <input
             value={form.name}
             onChange={(event) => setForm((prev) => ({ ...prev, name: event.target.value }))}
-            className="mt-2 w-full rounded-xl border border-white/10 bg-slate/40 px-4 py-2 text-sand"
+            className="mt-2 w-full rounded-xl border border-border bg-white px-4 py-2 text-sand"
             required
           />
         </div>
@@ -39,7 +39,7 @@ export default function Contact() {
             type="email"
             value={form.email}
             onChange={(event) => setForm((prev) => ({ ...prev, email: event.target.value }))}
-            className="mt-2 w-full rounded-xl border border-white/10 bg-slate/40 px-4 py-2 text-sand"
+            className="mt-2 w-full rounded-xl border border-border bg-white px-4 py-2 text-sand"
             required
           />
         </div>
@@ -49,7 +49,7 @@ export default function Contact() {
             rows={4}
             value={form.message}
             onChange={(event) => setForm((prev) => ({ ...prev, message: event.target.value }))}
-            className="mt-2 w-full rounded-xl border border-white/10 bg-slate/40 px-4 py-2 text-sand"
+            className="mt-2 w-full rounded-xl border border-border bg-white px-4 py-2 text-sand"
             required
           />
         </div>

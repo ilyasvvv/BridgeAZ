@@ -59,7 +59,7 @@ export default function Join() {
               className={`rounded-full border px-3 py-1 ${
                 mode === item.value
                   ? "border-teal bg-teal/20 text-teal"
-                  : "border-white/10 text-mist hover:border-teal"
+                  : "border-border text-mist hover:border-teal"
               }`}
             >
               {item.label}
@@ -81,7 +81,7 @@ export default function Join() {
               onChange={(event) =>
                 setLoginForm((prev) => ({ ...prev, email: event.target.value }))
               }
-              className="mt-2 w-full rounded-xl border border-white/10 bg-slate/40 px-4 py-2 text-sand"
+              className="mt-2 w-full rounded-xl border border-border bg-white px-4 py-2 text-sand"
               required
             />
           </div>
@@ -94,7 +94,7 @@ export default function Join() {
               onChange={(event) =>
                 setLoginForm((prev) => ({ ...prev, password: event.target.value }))
               }
-              className="mt-2 w-full rounded-xl border border-white/10 bg-slate/40 px-4 py-2 text-sand"
+              className="mt-2 w-full rounded-xl border border-border bg-white px-4 py-2 text-sand"
               required
             />
           </div>
@@ -115,7 +115,7 @@ export default function Join() {
               onChange={(event) =>
                 setRegisterForm((prev) => ({ ...prev, name: event.target.value }))
               }
-              className="mt-2 w-full rounded-xl border border-white/10 bg-slate/40 px-4 py-2 text-sand"
+              className="mt-2 w-full rounded-xl border border-border bg-white px-4 py-2 text-sand"
               required
             />
           </div>
@@ -128,7 +128,7 @@ export default function Join() {
               onChange={(event) =>
                 setRegisterForm((prev) => ({ ...prev, email: event.target.value }))
               }
-              className="mt-2 w-full rounded-xl border border-white/10 bg-slate/40 px-4 py-2 text-sand"
+              className="mt-2 w-full rounded-xl border border-border bg-white px-4 py-2 text-sand"
               required
             />
           </div>
@@ -141,7 +141,7 @@ export default function Join() {
               onChange={(event) =>
                 setRegisterForm((prev) => ({ ...prev, password: event.target.value }))
               }
-              className="mt-2 w-full rounded-xl border border-white/10 bg-slate/40 px-4 py-2 text-sand"
+              className="mt-2 w-full rounded-xl border border-border bg-white px-4 py-2 text-sand"
               required
             />
           </div>
@@ -153,7 +153,7 @@ export default function Join() {
                 onChange={(event) =>
                   setRegisterForm((prev) => ({ ...prev, userType: event.target.value }))
                 }
-                className="mt-2 w-full rounded-xl border border-white/10 bg-slate/40 px-4 py-2 text-sand"
+                className="mt-2 w-full rounded-xl border border-border bg-white px-4 py-2 text-sand"
               >
                 <option value="student">Student</option>
                 <option value="professional">Professional</option>

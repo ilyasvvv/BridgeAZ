@@ -58,12 +58,12 @@ export default function Network() {
           connections.map((conn) => {
             const isPending = conn.status === "pending";
             return (
-              <div key={conn._id} className="flex items-center justify-between rounded-xl border border-white/10 px-4 py-2 text-sm text-sand">
+              <div key={conn._id} className="flex items-center justify-between rounded-xl border border-border px-4 py-2 text-sm text-sand">
                 <span>{conn.requesterId?.name || conn.addresseeId?.name}</span>
                 {isPending && (
                   <button
                     onClick={() => handleAccept(conn._id)}
-                    className="rounded-full border border-white/10 px-3 py-1 text-xs uppercase tracking-wide text-mist hover:border-teal"
+                    className="rounded-full border border-border px-3 py-1 text-xs uppercase tracking-wide text-mist hover:border-teal"
                   >
                     Accept
                   </button>
@@ -79,13 +79,13 @@ export default function Network() {
           <p className="text-sm text-mist">No mentorships yet.</p>
         ) : (
           mentorships.map((item) => (
-            <div key={item._id} className="flex items-center justify-between rounded-xl border border-white/10 px-4 py-2 text-sm text-sand">
+            <div key={item._id} className="flex items-center justify-between rounded-xl border border-border px-4 py-2 text-sm text-sand">
               <span>
                 Mentor: {item.mentorId?.name || "Mentor"} / Mentee: {item.menteeId?.name || "Mentee"}
               </span>
               <button
                 onClick={() => handleEnd(item._id)}
-                className="rounded-full border border-white/10 px-3 py-1 text-xs uppercase tracking-wide text-mist hover:border-teal"
+                className="rounded-full border border-border px-3 py-1 text-xs uppercase tracking-wide text-mist hover:border-teal"
               >
                 End
               </button>

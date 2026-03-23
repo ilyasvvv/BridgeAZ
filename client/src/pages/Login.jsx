@@ -39,7 +39,7 @@ export default function Login() {
             type="email"
             value={form.email}
             onChange={handleChange}
-            className="mt-2 w-full rounded-xl border border-white/10 bg-slate/40 px-4 py-2 text-sand"
+            className="mt-2 w-full rounded-xl border border-border bg-white px-4 py-2 text-sand"
             required
           />
         </div>
@@ -50,7 +50,7 @@ export default function Login() {
             type="password"
             value={form.password}
             onChange={handleChange}
-            className="mt-2 w-full rounded-xl border border-white/10 bg-slate/40 px-4 py-2 text-sand"
+            className="mt-2 w-full rounded-xl border border-border bg-white px-4 py-2 text-sand"
             required
           />
         </div>

@@ -82,7 +82,7 @@ export default function OpportunityDetail() {
         {opportunity.tags?.length ? (
           <div className="flex flex-wrap gap-2">
             {opportunity.tags.map((tag) => (
-              <span key={tag} className="rounded-full bg-white/10 px-3 py-1 text-xs text-mist">
+              <span key={tag} className="rounded-full bg-surface-alt px-3 py-1 text-xs text-mist">
                 {tag}
               </span>
             ))}
@@ -93,7 +93,7 @@ export default function OpportunityDetail() {
           <button
             type="button"
             onClick={() => setShowShareSheet(true)}
-            className="rounded-full border border-white/10 px-4 py-2 text-center text-xs uppercase tracking-wide text-sand hover:border-teal"
+            className="rounded-full border border-border px-4 py-2 text-center text-xs uppercase tracking-wide text-sand hover:border-teal"
           >
             Share
           </button>
@@ -110,7 +110,7 @@ export default function OpportunityDetail() {
           {opportunity.contactEmail && (
             <a
               href={`mailto:${opportunity.contactEmail}`}
-              className="rounded-full border border-white/10 px-4 py-2 text-center text-xs uppercase tracking-wide text-sand hover:border-teal"
+              className="rounded-full border border-border px-4 py-2 text-center text-xs uppercase tracking-wide text-sand hover:border-teal"
             >
               Contact via email
             </a>

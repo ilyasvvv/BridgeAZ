@@ -66,7 +66,7 @@ export default function Notifications() {
                 {!note.read && (
                   <button
                     onClick={() => markRead(note._id)}
-                    className="rounded-full border border-white/10 px-3 py-1 text-xs uppercase tracking-wide text-mist hover:border-teal"
+                    className="rounded-full border border-border px-3 py-1 text-xs uppercase tracking-wide text-mist hover:border-teal"
                   >
                     Mark read
                   </button>

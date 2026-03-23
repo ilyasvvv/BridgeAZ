@@ -19,7 +19,7 @@ export default function OpportunityCard({
   };
 
   return (
-    <div className="glass group relative overflow-hidden rounded-2xl border border-white/5 bg-slate/10 p-5 transition-all hover:border-teal/30 hover:bg-slate/20">
+    <div className="glass group relative overflow-hidden rounded-2xl border border-border bg-white p-5 transition-all hover:border-teal/30 hover:bg-white">
       <div className="flex flex-col gap-4">
         <div className="flex items-start justify-between gap-4">
           <div className="space-y-1.5">
@@ -27,7 +27,7 @@ export default function OpportunityCard({
               <span className="font-sans text-[10px] font-bold uppercase tracking-widest text-teal/80">
                 {opportunity.orgName}
               </span>
-              <span className="h-1 w-1 rounded-full bg-white/20" />
+              <span className="h-1 w-1 rounded-full bg-mist/30" />
               <span className="font-sans text-[10px] font-medium uppercase tracking-widest text-mist">
                 {formatRelativeTime(opportunity.createdAt)}
               </span>
@@ -68,7 +68,7 @@ export default function OpportunityCard({
         {opportunity.tags?.length ? (
           <div className="flex flex-wrap gap-1.5">
             {opportunity.tags.slice(0, 3).map((tag) => (
-              <span key={tag} className="rounded-md bg-white/5 px-2 py-1 font-sans text-[10px] font-medium uppercase tracking-wider text-mist/70">
+              <span key={tag} className="rounded-md bg-charcoal px-2 py-1 font-sans text-[10px] font-medium uppercase tracking-wider text-mist/70">
                 #{tag}
               </span>
             ))}
@@ -78,9 +78,9 @@ export default function OpportunityCard({
           </div>
         ) : null}
 
-        <div className="mt-2 flex items-center justify-between border-t border-white/5 pt-4">
+        <div className="mt-2 flex items-center justify-between border-t border-border pt-4">
           <div className="flex items-center gap-2">
-            <span className={`h-1.5 w-1.5 rounded-full ${opportunity.status === "open" ? "bg-teal shadow-[0_0_8px_rgba(45,212,191,0.5)]" : "bg-mist/30"}`} />
+            <span className={`h-1.5 w-1.5 rounded-full ${opportunity.status === "open" ? "bg-teal shadow-[0_0_8px_rgba(21,101,163,0.3)]" : "bg-mist/30"}`} />
             <span className="font-sans text-[10px] font-bold uppercase tracking-widest text-mist">
               {opportunity.status}
             </span>
@@ -88,7 +88,7 @@ export default function OpportunityCard({
           <div className="flex items-center gap-2">
             <button
               onClick={onShare}
-              className="flex h-8 w-8 items-center justify-center rounded-full border border-white/10 text-mist hover:border-teal/50 hover:text-teal transition-colors"
+              className="flex h-8 w-8 items-center justify-center rounded-full border border-border text-mist hover:border-teal/50 hover:text-teal transition-colors"
               title="Share"
             >
               <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -97,16 +97,16 @@ export default function OpportunityCard({
             </button>
             
             {isOwner && (
-              <div className="flex items-center gap-1.5 rounded-full bg-white/5 p-1 border border-white/10">
+              <div className="flex items-center gap-1.5 rounded-full bg-charcoal p-1 border border-border">
                 <button
                   onClick={onEdit}
-                  className="rounded-full px-2 py-1 font-sans text-[10px] font-bold uppercase tracking-tight text-mist hover:bg-white/10 hover:text-sand transition-all"
+                  className="rounded-full px-2 py-1 font-sans text-[10px] font-bold uppercase tracking-tight text-mist hover:bg-gray-100 hover:text-sand transition-all"
                 >
                   Edit
                 </button>
                 <button
                   onClick={onClose}
-                  className="rounded-full px-2 py-1 font-sans text-[10px] font-bold uppercase tracking-tight text-mist hover:bg-white/10 hover:text-sand transition-all"
+                  className="rounded-full px-2 py-1 font-sans text-[10px] font-bold uppercase tracking-tight text-mist hover:bg-gray-100 hover:text-sand transition-all"
                 >
                   Close
                 </button>

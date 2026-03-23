@@ -341,11 +341,11 @@ export default function ForYou() {
           <div className="flex flex-wrap items-center justify-between gap-3">
             <h2 className="font-display text-xl">Share an update</h2>
             <label className="flex items-center gap-2">
-              <span className="text-xs text-white/50 whitespace-nowrap">Visibility</span>
+              <span className="text-xs text-mist whitespace-nowrap">Visibility</span>
               <select
                 value={newPostVisibility}
                 onChange={(event) => setNewPostVisibility(event.target.value)}
-                className="h-7 w-auto rounded-md border border-white/10 bg-white/5 px-2 py-0 text-xs text-sand focus:outline-none focus:ring-0 focus:border-white/20"
+                className="h-7 w-auto rounded-md border border-border bg-charcoal px-2 py-0 text-xs text-sand focus:outline-none focus:ring-0 focus:border-border"
               >
                 <option value="public">Everyone</option>
                 <option value="connections">My connections</option>
@@ -356,7 +356,7 @@ export default function ForYou() {
             value={newPostContent}
             onChange={(event) => setNewPostContent(event.target.value)}
             rows={3}
-            className="mt-4 w-full rounded-xl border border-white/10 bg-slate/40 px-4 py-3 text-sm text-sand"
+            className="mt-4 w-full rounded-xl border border-border bg-white px-4 py-3 text-sm text-sand"
             placeholder="Share what you're working on..."
             required
           />
@@ -376,7 +376,7 @@ export default function ForYou() {
                   setNewPostAttachmentPreviewUrl("");
                   setNewPostVisibility("public");
                 }}
-                className="rounded-full border border-white/10 px-4 py-2 text-xs uppercase tracking-wide text-mist hover:border-teal"
+                className="rounded-full border border-border px-4 py-2 text-xs uppercase tracking-wide text-mist hover:border-teal"
               >
                 Clear
               </button>
@@ -390,7 +390,7 @@ export default function ForYou() {
             </div>
           </div>
           {newPostAttachment && (
-            <div className="mt-3 rounded-xl border border-white/10 bg-white/5 p-3 text-xs text-mist">
+            <div className="mt-3 rounded-xl border border-border bg-charcoal p-3 text-xs text-mist">
               <p className="truncate">
                 {newPostAttachment.name} · {newPostAttachment.type || "file"} ·{" "}
                 {(newPostAttachment.size / (1024 * 1024)).toFixed(1)} MB
@@ -418,13 +418,13 @@ export default function ForYou() {
               <button
                 type="button"
                 onClick={() => setShowFilters((prev) => !prev)}
-                className="rounded-full border border-white/10 px-3 py-1 text-xs uppercase tracking-wide text-sand hover:border-teal"
+                className="rounded-full border border-border px-3 py-1 text-xs uppercase tracking-wide text-sand hover:border-teal"
               >
                 Filters
               </button>
             </div>
             {showFilters && (
-              <div className="rounded-xl border border-white/10 bg-white/5 p-3">
+              <div className="rounded-xl border border-border bg-charcoal p-3">
                 <h3 className="text-sm text-sand">Filters</h3>
                 <div className="mt-3 grid gap-3 md:grid-cols-2">
                   <label className="space-y-1">
@@ -434,7 +434,7 @@ export default function ForYou() {
                       onChange={(event) =>
                         setFilterDraft((prev) => ({ ...prev, visibility: event.target.value }))
                       }
-                      className="h-9 rounded-lg border border-white/10 bg-slate-900/50 px-3 text-sm text-sand"
+                      className="h-9 rounded-lg border border-border bg-white px-3 text-sm text-sand"
                     >
                       <option value="all">All</option>
                       <option value="public">Public</option>
@@ -449,7 +449,7 @@ export default function ForYou() {
                       onChange={(event) =>
                         setFilterDraft((prev) => ({ ...prev, region: event.target.value }))
                       }
-                      className="h-9 rounded-lg border border-white/10 bg-slate-900/50 px-3 text-sm text-sand"
+                      className="h-9 rounded-lg border border-border bg-white px-3 text-sm text-sand"
                     >
                       <option value="all">All</option>
                       <option value="my">My region</option>
@@ -509,7 +509,7 @@ export default function ForYou() {
                       onChange={(event) =>
                         setFilterDraft((prev) => ({ ...prev, sort: event.target.value }))
                       }
-                      className="h-9 rounded-lg border border-white/10 bg-slate-900/50 px-3 text-sm text-sand"
+                      className="h-9 rounded-lg border border-border bg-white px-3 text-sm text-sand"
                     >
                       <option value="latest">Latest</option>
                       <option value="most-liked">Most liked</option>
@@ -528,7 +528,7 @@ export default function ForYou() {
                   <button
                     type="button"
                     onClick={handleResetFilters}
-                    className="rounded-full border border-white/10 px-4 py-1.5 text-xs uppercase tracking-wide text-mist hover:border-teal"
+                    className="rounded-full border border-border px-4 py-1.5 text-xs uppercase tracking-wide text-mist hover:border-teal"
                   >
                     Reset
                   </button>
@@ -578,7 +578,7 @@ export default function ForYou() {
                 value={editDraft}
                 onChange={(event) => setEditDraft(event.target.value)}
                 rows={3}
-                className="w-full rounded-xl border border-white/10 bg-slate/40 px-4 py-2 text-sm text-sand"
+                className="w-full rounded-xl border border-border bg-white px-4 py-2 text-sm text-sand"
               />
               <div className="flex gap-2">
                 <button
@@ -589,7 +589,7 @@ export default function ForYou() {
                 </button>
                 <button
                   onClick={() => setEditingPostId(null)}
-                  className="rounded-full border border-white/10 px-4 py-2 text-xs uppercase tracking-wide text-mist hover:border-teal"
+                  className="rounded-full border border-border px-4 py-2 text-xs uppercase tracking-wide text-mist hover:border-teal"
                 >
                   Cancel
                 </button>
@@ -600,7 +600,7 @@ export default function ForYou() {
           <section className="glass rounded-2xl p-5 space-y-4">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <h3 className="font-display text-xl">Progress, not performance</h3>
-              <span className="rounded-full border border-white/10 px-3 py-1 text-xs uppercase tracking-wide text-mist">
+              <span className="rounded-full border border-border px-3 py-1 text-xs uppercase tracking-wide text-mist">
                 Progress updates
               </span>
             </div>
@@ -646,7 +646,7 @@ export default function ForYou() {
                   {mentors.slice(0, 4).map((mentor) => (
                     <div
                       key={mentor._id}
-                      className="rounded-xl border border-white/10 bg-slate/40 p-3"
+                      className="rounded-xl border border-border bg-white p-3"
                     >
                       <UserChip
                         user={mentor}
@@ -672,7 +672,7 @@ export default function ForYou() {
                   {requests.slice(0, 4).map((request) => (
                     <div
                       key={request._id}
-                      className="rounded-xl border border-white/10 bg-slate/40 p-3"
+                      className="rounded-xl border border-border bg-white p-3"
                     >
                       <UserChip
                         user={request.fromStudent}
@@ -706,7 +706,7 @@ export default function ForYou() {
                   <Link
                     key={opportunity._id}
                     to={`/opportunities/${opportunity._id}`}
-                    className="block rounded-xl border border-white/10 bg-slate/40 p-3 hover:border-teal"
+                    className="block rounded-xl border border-border bg-white p-3 hover:border-teal"
                   >
                     <p className="text-sm text-sand">{opportunity.title}</p>
                     <p className="text-xs text-mist">

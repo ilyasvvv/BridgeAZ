@@ -3,7 +3,7 @@ export default function StatusBadge({ label, tone = "teal" }) {
     teal: "bg-teal/20 text-teal border-teal/40",
     coral: "bg-coral/20 text-coral border-coral/40",
     ember: "bg-ember/20 text-ember border-ember/40",
-    slate: "bg-white/10 text-mist border-white/10"
+    slate: "bg-surface-alt text-mist border-border"
   };
 
   return (

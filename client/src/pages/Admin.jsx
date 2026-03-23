@@ -183,7 +183,7 @@ export default function Admin() {
                 className={`rounded-full px-4 py-2 text-xs font-semibold uppercase tracking-wide ${
                   activeTab === tab.id
                     ? "bg-teal text-charcoal"
-                    : "border border-white/10 text-sand hover:border-teal"
+                    : "border border-border text-sand hover:border-teal"
                 }`}
               >
                 {tab.label}
@@ -223,7 +223,7 @@ export default function Admin() {
                   onChange={(event) =>
                     setComment((prev) => ({ ...prev, [request._id]: event.target.value }))
                   }
-                  className="mt-3 w-full rounded-xl border border-white/10 bg-slate/40 px-3 py-2 text-xs text-sand"
+                  className="mt-3 w-full rounded-xl border border-border bg-white px-3 py-2 text-xs text-sand"
                 />
                 <div className="mt-4 flex gap-3">
                   <button
@@ -236,7 +236,7 @@ export default function Admin() {
                   <button
                     onClick={() => handleAction(request._id, "reject")}
                     disabled={!!actionLoading[request._id]}
-                    className="rounded-full border border-white/10 px-4 py-2 text-xs uppercase tracking-wide text-sand hover:border-coral"
+                    className="rounded-full border border-border px-4 py-2 text-xs uppercase tracking-wide text-sand hover:border-coral"
                   >
                     {actionLoading[request._id] === "reject" ? "Rejecting..." : "Reject"}
                   </button>
@@ -257,7 +257,7 @@ export default function Admin() {
                 <p className="text-xs text-mist">{item.orgName || item.company}</p>
                 <button
                   onClick={() => deleteOpportunity(item._id)}
-                  className="mt-3 rounded-full border border-white/10 px-3 py-1 text-xs uppercase tracking-wide text-sand hover:border-teal"
+                  className="mt-3 rounded-full border border-border px-3 py-1 text-xs uppercase tracking-wide text-sand hover:border-teal"
                 >
                   Delete
                 </button>
@@ -281,7 +281,7 @@ export default function Admin() {
               onChange={(event) =>
                 setUserFilters((prev) => ({ ...prev, search: event.target.value }))
               }
-              className="rounded-xl border border-white/10 bg-slate/40 px-4 py-2 text-sm text-sand md:col-span-2"
+              className="rounded-xl border border-border bg-white px-4 py-2 text-sm text-sand md:col-span-2"
               placeholder="Search by name or email"
             />
             <input
@@ -289,7 +289,7 @@ export default function Admin() {
               onChange={(event) =>
                 setUserFilters((prev) => ({ ...prev, region: event.target.value }))
               }
-              className="rounded-xl border border-white/10 bg-slate/40 px-4 py-2 text-sm text-sand"
+              className="rounded-xl border border-border bg-white px-4 py-2 text-sm text-sand"
               placeholder="Based in (country/city)"
             />
             <select
@@ -297,7 +297,7 @@ export default function Admin() {
               onChange={(event) =>
                 setUserFilters((prev) => ({ ...prev, userType: event.target.value }))
               }
-              className="rounded-xl border border-white/10 bg-slate/40 px-4 py-2 text-sm text-sand"
+              className="rounded-xl border border-border bg-white px-4 py-2 text-sm text-sand"
             >
               <option value="">All types</option>
               <option value="student">Student</option>
@@ -311,7 +311,7 @@ export default function Admin() {
                   verificationStatus: event.target.value
                 }))
               }
-              className="rounded-xl border border-white/10 bg-slate/40 px-4 py-2 text-sm text-sand"
+              className="rounded-xl border border-border bg-white px-4 py-2 text-sm text-sand"
             >
               <option value="">All verification</option>
               <option value="unverified">Unverified</option>
@@ -324,7 +324,7 @@ export default function Admin() {
               onChange={(event) =>
                 setUserFilters((prev) => ({ ...prev, banned: event.target.value }))
               }
-              className="rounded-xl border border-white/10 bg-slate/40 px-4 py-2 text-sm text-sand"
+              className="rounded-xl border border-border bg-white px-4 py-2 text-sm text-sand"
             >
               <option value="">All status</option>
               <option value="false">Active</option>
@@ -350,7 +350,7 @@ export default function Admin() {
                   setUserFilters(cleared);
                   loadUsers(cleared);
                 }}
-                className="rounded-full border border-white/10 px-4 py-2 text-xs uppercase tracking-wide text-sand hover:border-teal"
+                className="rounded-full border border-border px-4 py-2 text-xs uppercase tracking-wide text-sand hover:border-teal"
               >
                 Clear
               </button>
@@ -399,7 +399,7 @@ export default function Admin() {
                     ) : (
                       <button
                         onClick={() => openBanModal(item)}
-                        className="rounded-full border border-white/10 px-4 py-2 text-xs uppercase tracking-wide text-sand hover:border-coral"
+                        className="rounded-full border border-border px-4 py-2 text-xs uppercase tracking-wide text-sand hover:border-coral"
                         disabled={item.isAdmin}
                       >
                         Ban
@@ -407,25 +407,25 @@ export default function Admin() {
                     )}
                     <button
                       onClick={() => updateRoles(item._id, ["staffC"])}
-                      className="rounded-full border border-white/10 px-4 py-2 text-xs uppercase tracking-wide text-sand hover:border-teal"
+                      className="rounded-full border border-border px-4 py-2 text-xs uppercase tracking-wide text-sand hover:border-teal"
                     >
                       Set C
                     </button>
                     <button
                       onClick={() => updateRoles(item._id, ["staffB"])}
-                      className="rounded-full border border-white/10 px-4 py-2 text-xs uppercase tracking-wide text-sand hover:border-teal"
+                      className="rounded-full border border-border px-4 py-2 text-xs uppercase tracking-wide text-sand hover:border-teal"
                     >
                       Set B
                     </button>
                     <button
                       onClick={() => updateRoles(item._id, ["adminA"])}
-                      className="rounded-full border border-white/10 px-4 py-2 text-xs uppercase tracking-wide text-sand hover:border-teal"
+                      className="rounded-full border border-border px-4 py-2 text-xs uppercase tracking-wide text-sand hover:border-teal"
                     >
                       Set A
                     </button>
                     <button
                       onClick={() => updateRoles(item._id, [])}
-                      className="rounded-full border border-white/10 px-4 py-2 text-xs uppercase tracking-wide text-sand hover:border-teal"
+                      className="rounded-full border border-border px-4 py-2 text-xs uppercase tracking-wide text-sand hover:border-teal"
                     >
                       Clear roles
                     </button>
@@ -450,13 +450,13 @@ export default function Admin() {
               rows={3}
               value={banReason}
               onChange={(event) => setBanReason(event.target.value)}
-              className="w-full rounded-xl border border-white/10 bg-slate/40 px-3 py-2 text-sm text-sand"
+              className="w-full rounded-xl border border-border bg-white px-3 py-2 text-sm text-sand"
               placeholder="Reason (optional)"
             />
             <div className="flex justify-end gap-3">
               <button
                 onClick={closeBanModal}
-                className="rounded-full border border-white/10 px-4 py-2 text-xs uppercase tracking-wide text-sand hover:border-teal"
+                className="rounded-full border border-border px-4 py-2 text-xs uppercase tracking-wide text-sand hover:border-teal"
               >
                 Cancel
               </button>

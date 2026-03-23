@@ -61,7 +61,7 @@ export default function PostCard({ post, onLike }) {
         {post.content}
       </p>
       {attachmentUrl && (
-        <div className="mt-4 rounded-xl border border-white/10 bg-white/5 p-3 text-xs text-mist min-w-0 overflow-hidden">
+        <div className="mt-4 rounded-xl border border-border bg-charcoal p-3 text-xs text-mist min-w-0 overflow-hidden">
           {isImage ? (
             <img
               src={attachmentUrl}
@@ -82,14 +82,14 @@ export default function PostCard({ post, onLike }) {
                 <button
                   type="button"
                   onClick={() => seekVideoBy(-5)}
-                  className="rounded-full border border-white/10 px-3 py-1 text-[11px] uppercase tracking-wide text-mist hover:border-teal"
+                  className="rounded-full border border-border px-3 py-1 text-[11px] uppercase tracking-wide text-mist hover:border-teal"
                 >
                   ⟲ 5s
                 </button>
                 <button
                   type="button"
                   onClick={() => seekVideoBy(5)}
-                  className="rounded-full border border-white/10 px-3 py-1 text-[11px] uppercase tracking-wide text-mist hover:border-teal"
+                  className="rounded-full border border-border px-3 py-1 text-[11px] uppercase tracking-wide text-mist hover:border-teal"
                 >
                   5s ⟳
                 </button>
@@ -121,7 +121,7 @@ export default function PostCard({ post, onLike }) {
         </div>
       )}
       {comments.length > 0 && (
-        <div className="mt-4 space-y-2 rounded-xl border border-white/10 bg-white/5 p-3 text-xs text-mist">
+        <div className="mt-4 space-y-2 rounded-xl border border-border bg-charcoal p-3 text-xs text-mist">
           {shownReplies.map((comment) => (
             <div key={comment._id} className="space-y-1">
               <UserChip
@@ -149,14 +149,14 @@ export default function PostCard({ post, onLike }) {
           <button
             onClick={() => onLike?.(post._id)}
             className={`rounded-full border px-3 py-1 uppercase tracking-wide ${
-              liked ? "border-teal text-teal" : "border-white/10 hover:border-teal"
+              liked ? "border-teal text-teal" : "border-border hover:border-teal"
             }`}
           >
             {liked ? "Liked" : "Like"}
           </button>
           <button
             onClick={() => setShowShareSheet(true)}
-            className="rounded-full border border-white/10 px-3 py-1 uppercase tracking-wide hover:border-teal"
+            className="rounded-full border border-border px-3 py-1 uppercase tracking-wide hover:border-teal"
           >
             Share
           </button>

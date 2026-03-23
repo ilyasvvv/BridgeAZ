@@ -290,7 +290,7 @@ export default function Chats() {
         parts.push(<em key={tokenKey}>{token.slice(1, -1)}</em>);
       } else if (token.startsWith("`") && token.endsWith("`")) {
         parts.push(
-          <code key={tokenKey} className="rounded bg-white/10 px-1 py-0.5 text-[0.92em]">
+          <code key={tokenKey} className="rounded bg-surface-alt px-1 py-0.5 text-[0.92em]">
             {token.slice(1, -1)}
           </code>
         );
@@ -466,7 +466,7 @@ export default function Chats() {
                 />
               </button>
             ) : (
-              <div className="flex w-full items-center justify-between rounded-lg border border-white/10 px-2 py-1 text-[11px] hover:border-teal">
+              <div className="flex w-full items-center justify-between rounded-lg border border-border px-2 py-1 text-[11px] hover:border-teal">
                 <button
                   type="button"
                   onClick={() => openViewer(item)}
@@ -963,7 +963,7 @@ export default function Chats() {
       return (
         <Link
           to={share.url}
-          className="mt-2 block rounded-lg border border-white/10 bg-white/5 px-2 py-2 hover:border-teal"
+          className="mt-2 block rounded-lg border border-border bg-charcoal px-2 py-2 hover:border-teal"
         >
           {preview?.status === "loading" || !preview ? (
             <p className="text-xs text-mist">Loading preview...</p>
@@ -997,11 +997,11 @@ export default function Chats() {
                   className="max-h-36 w-full rounded-lg object-cover"
                 />
               ) : postAttachmentUrl ? (
-                <div className="rounded-md border border-white/10 px-2 py-1 text-[11px] text-mist">
+                <div className="rounded-md border border-border px-2 py-1 text-[11px] text-mist">
                   {attachmentKind === "pdf" ? "PDF attachment" : "File attachment"}
                 </div>
               ) : null}
-              <span className="inline-flex rounded-full border border-white/10 px-2 py-0.5 text-[10px] uppercase tracking-wide text-teal">
+              <span className="inline-flex rounded-full border border-border px-2 py-0.5 text-[10px] uppercase tracking-wide text-teal">
                 Open post
               </span>
             </div>
@@ -1009,7 +1009,7 @@ export default function Chats() {
             <div className="space-y-1">
               <p className="text-[10px] uppercase tracking-wide text-mist">Shared post</p>
               <p className="text-xs text-sand">{share.title || "Post"}</p>
-              <span className="inline-flex rounded-full border border-white/10 px-2 py-0.5 text-[10px] uppercase tracking-wide text-teal">
+              <span className="inline-flex rounded-full border border-border px-2 py-0.5 text-[10px] uppercase tracking-wide text-teal">
                 Open post
               </span>
             </div>
@@ -1022,12 +1022,12 @@ export default function Chats() {
       return (
         <Link
           to={share.url}
-          className="mt-2 block rounded-lg border border-white/10 bg-white/5 px-2 py-2 hover:border-teal"
+          className="mt-2 block rounded-lg border border-border bg-charcoal px-2 py-2 hover:border-teal"
         >
           <p className="text-[10px] uppercase tracking-wide text-mist">Shared opportunity</p>
           <p className="text-xs text-sand">{share.title || "Opportunity"}</p>
           {share.subtitle ? <p className="text-[11px] text-mist">{share.subtitle}</p> : null}
-          <span className="mt-1 inline-flex rounded-full border border-white/10 px-2 py-0.5 text-[10px] uppercase tracking-wide text-teal">
+          <span className="mt-1 inline-flex rounded-full border border-border px-2 py-0.5 text-[10px] uppercase tracking-wide text-teal">
             Open opportunity
           </span>
         </Link>
@@ -1043,7 +1043,7 @@ export default function Chats() {
       return (
         <Link
           to={share.url}
-          className="mt-2 block rounded-lg border border-white/10 bg-white/5 px-2 py-2 hover:border-teal"
+          className="mt-2 block rounded-lg border border-border bg-charcoal px-2 py-2 hover:border-teal"
         >
           <div className="flex items-center gap-2">
             <Avatar url={share.imageUrl} alt={`${share.title || "Profile"} avatar`} size={24} />
@@ -1057,7 +1057,7 @@ export default function Chats() {
               {tags.map((tag) => (
                 <span
                   key={tag}
-                  className="rounded-full border border-white/10 px-2 py-0.5 text-[10px] text-mist"
+                  className="rounded-full border border-border px-2 py-0.5 text-[10px] text-mist"
                 >
                   {tag}
                 </span>
@@ -1072,7 +1072,7 @@ export default function Chats() {
       return (
         <Link
           to={share.url}
-          className="mt-2 block rounded-lg border border-white/10 bg-white/5 px-2 py-2 hover:border-teal"
+          className="mt-2 block rounded-lg border border-border bg-charcoal px-2 py-2 hover:border-teal"
         >
           <p className="text-[10px] uppercase tracking-wide text-mist">Shared comment</p>
           <p
@@ -1086,7 +1086,7 @@ export default function Chats() {
           >
             {share.title || "Comment"}
           </p>
-          <span className="mt-1 inline-flex rounded-full border border-white/10 px-2 py-0.5 text-[10px] uppercase tracking-wide text-teal">
+          <span className="mt-1 inline-flex rounded-full border border-border px-2 py-0.5 text-[10px] uppercase tracking-wide text-teal">
             View in post
           </span>
         </Link>
@@ -1096,7 +1096,7 @@ export default function Chats() {
     return (
       <Link
         to={share.url}
-        className="mt-2 block rounded-lg border border-white/10 bg-white/5 px-2 py-2 hover:border-teal"
+        className="mt-2 block rounded-lg border border-border bg-charcoal px-2 py-2 hover:border-teal"
       >
         <p className="text-[10px] uppercase tracking-wide text-mist">
           Shared {share.entityType}
@@ -1129,7 +1129,7 @@ export default function Chats() {
                 className={`w-full rounded-xl border px-2.5 py-1.5 text-left text-sm ${
                   activeThread?._id === thread._id
                     ? "border-teal bg-teal/10 text-teal"
-                    : "border-white/10 text-mist hover:border-teal"
+                    : "border-border text-mist hover:border-teal"
                 }`}
               >
                 <div className="flex items-start justify-between gap-2">
@@ -1145,7 +1145,7 @@ export default function Chats() {
                     </p>
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className="rounded-full border border-white/10 px-2 py-0.5 text-[10px] uppercase tracking-wide text-mist">
+                    <span className="rounded-full border border-border px-2 py-0.5 text-[10px] uppercase tracking-wide text-mist">
                       {getRelationshipLabel(thread)}
                     </span>
                     {normalizeThreadStatus(thread) === "pending" && (
@@ -1185,7 +1185,7 @@ export default function Chats() {
         </div>
         {error && <p className="text-sm text-coral">{error}</p>}
         {activeThread && activeStatus !== "active" && (
-          <div className="rounded-2xl border border-white/10 bg-white/5 p-4 text-sm text-mist">
+          <div className="rounded-2xl border border-border bg-charcoal p-4 text-sm text-mist">
             {activeStatus === "pending" && activeThread.requestedBy === user?._id ? (
               <p>Request sent. Waiting for approval.</p>
             ) : activeStatus === "pending" ? (
@@ -1203,7 +1203,7 @@ export default function Chats() {
                   </button>
                   <button
                     onClick={handleReject}
-                    className="rounded-full border border-white/10 px-4 py-2 text-xs uppercase tracking-wide text-mist hover:border-teal"
+                    className="rounded-full border border-border px-4 py-2 text-xs uppercase tracking-wide text-mist hover:border-teal"
                   >
                     Decline
                   </button>
@@ -1242,12 +1242,12 @@ export default function Chats() {
                     className={`relative max-w-[70%] rounded-xl px-3 pr-10 py-2 text-sm ${
                       message.senderId === user?._id
                         ? "bg-teal/20 text-sand"
-                        : "border border-white/10 text-sand"
+                        : "border border-border text-sand"
                     }`}
                     data-chat-menu-root="true"
                   >
                     {quote?.messageId && (
-                      <div className="mb-2 rounded-lg border border-white/10 bg-white/5 px-2 py-1">
+                      <div className="mb-2 rounded-lg border border-border bg-charcoal px-2 py-1">
                         <p className="text-[10px] uppercase tracking-wide text-mist">
                           {getSenderName(quote.senderId)}
                         </p>
@@ -1268,7 +1268,7 @@ export default function Chats() {
                         href={toHref(previewUrl)}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="mt-2 block rounded-lg border border-white/10 bg-white/5 px-2 py-2 text-xs text-mist hover:border-teal"
+                        className="mt-2 block rounded-lg border border-border bg-charcoal px-2 py-2 text-xs text-mist hover:border-teal"
                       >
                         {previewData?.status === "loading" ? (
                           <p>Loading preview...</p>
@@ -1325,7 +1325,7 @@ export default function Chats() {
                         event.stopPropagation();
                         setOpenMenuMessageId((prev) => (prev === message._id ? "" : message._id));
                       }}
-                      className={`absolute right-2 top-2 rounded-full border border-white/10 px-1.5 py-0 text-xs text-mist transition ${
+                      className={`absolute right-2 top-2 rounded-full border border-border px-1.5 py-0 text-xs text-mist transition ${
                         isMenuOpen
                           ? "opacity-100"
                           : isCoarsePointer
@@ -1337,7 +1337,7 @@ export default function Chats() {
                       ⋯
                     </button>
                     {isMenuOpen && (
-                      <div className="absolute right-2 top-8 z-20 min-w-[140px] rounded-xl border border-white/10 bg-charcoal/95 p-1 shadow-xl">
+                      <div className="absolute right-2 top-8 z-20 min-w-[140px] rounded-xl border border-border bg-charcoal/95 p-1 shadow-xl">
                         <button
                           type="button"
                           onClick={(event) => {
@@ -1345,7 +1345,7 @@ export default function Chats() {
                             setActiveReactionMessageId(message._id);
                             setOpenMenuMessageId("");
                           }}
-                          className="block w-full rounded-lg px-3 py-1.5 text-left text-xs text-mist hover:bg-white/10"
+                          className="block w-full rounded-lg px-3 py-1.5 text-left text-xs text-mist hover:bg-gray-100"
                         >
                           React
                         </button>
@@ -1360,7 +1360,7 @@ export default function Chats() {
                             });
                             setOpenMenuMessageId("");
                           }}
-                          className="block w-full rounded-lg px-3 py-1.5 text-left text-xs text-mist hover:bg-white/10"
+                          className="block w-full rounded-lg px-3 py-1.5 text-left text-xs text-mist hover:bg-gray-100"
                         >
                           Reply
                         </button>
@@ -1380,7 +1380,7 @@ export default function Chats() {
                             key={emoji}
                             type="button"
                             onClick={() => handleToggleReaction(message._id, emoji)}
-                            className="rounded-full border border-white/10 px-2 py-0.5 text-xs hover:border-teal"
+                            className="rounded-full border border-border px-2 py-0.5 text-xs hover:border-teal"
                           >
                             {emoji}
                           </button>
@@ -1399,7 +1399,7 @@ export default function Chats() {
                               className={`rounded-full border px-2 py-0.5 text-[11px] ${
                                 mine
                                   ? "border-teal bg-teal/10 text-teal"
-                                  : "border-white/10 text-mist"
+                                  : "border-border text-mist"
                               }`}
                             >
                               {emoji} {normalizedUsers.length}
@@ -1426,11 +1426,11 @@ export default function Chats() {
           className={`rounded-xl border p-2 transition ${
             isDragOver
               ? "border-teal bg-teal/10"
-              : "border-white/10 bg-transparent"
+              : "border-border bg-transparent"
           }`}
         >
           {replyingTo && (
-            <div className="mb-2 flex items-start justify-between gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2">
+            <div className="mb-2 flex items-start justify-between gap-2 rounded-xl border border-border bg-charcoal px-3 py-2">
               <div className="min-w-0">
                 <p className="text-[10px] uppercase tracking-wide text-mist">
                   Replying to {getSenderName(replyingTo.senderId)}
@@ -1447,9 +1447,9 @@ export default function Chats() {
             </div>
           )}
           {attachments.length > 0 && (
-            <div className="mb-2 rounded-xl border border-white/10 bg-white/5 p-2 space-y-2">
+            <div className="mb-2 rounded-xl border border-border bg-charcoal p-2 space-y-2">
               {attachments.map((file, index) => (
-                <div key={`${file.name}-${file.size}-${index}`} className="rounded-lg border border-white/10 p-2">
+                <div key={`${file.name}-${file.size}-${index}`} className="rounded-lg border border-border p-2">
                   {attachmentPreviewUrls[index] ? (
                     <img
                       src={attachmentPreviewUrls[index]}
@@ -1484,28 +1484,28 @@ export default function Chats() {
             <button
               type="button"
               onClick={() => applyFormatting("bold")}
-              className="rounded-full border border-white/10 px-2 py-1 hover:border-teal"
+              className="rounded-full border border-border px-2 py-1 hover:border-teal"
             >
               Bold
             </button>
             <button
               type="button"
               onClick={() => applyFormatting("italic")}
-              className="rounded-full border border-white/10 px-2 py-1 hover:border-teal"
+              className="rounded-full border border-border px-2 py-1 hover:border-teal"
             >
               Italic
             </button>
             <button
               type="button"
               onClick={() => applyFormatting("code")}
-              className="rounded-full border border-white/10 px-2 py-1 hover:border-teal"
+              className="rounded-full border border-border px-2 py-1 hover:border-teal"
             >
               Code
             </button>
             <button
               type="button"
               onClick={() => applyFormatting("link")}
-              className="rounded-full border border-white/10 px-2 py-1 hover:border-teal"
+              className="rounded-full border border-border px-2 py-1 hover:border-teal"
             >
               Link
             </button>
@@ -1516,11 +1516,11 @@ export default function Chats() {
               value={body}
               onChange={(event) => setBody(event.target.value)}
               rows={2}
-              className="h-11 flex-1 resize-none rounded-xl border border-white/10 bg-slate/40 px-4 py-2 text-sm leading-tight text-sand"
+              className="h-11 flex-1 resize-none rounded-xl border border-border bg-white px-4 py-2 text-sm leading-tight text-sand"
               placeholder="Type a message..."
               disabled={!activeThread || activeStatus !== "active"}
             />
-            <label className="inline-flex h-11 cursor-pointer items-center rounded-full border border-white/10 px-3 text-xs uppercase tracking-wide text-mist hover:border-teal">
+            <label className="inline-flex h-11 cursor-pointer items-center rounded-full border border-border px-3 text-xs uppercase tracking-wide text-mist hover:border-teal">
               Attach
               <input
                 type="file"
@@ -1568,7 +1568,7 @@ export default function Chats() {
                     <button
                       type="button"
                       onClick={() => setViewerZoom((prev) => Math.max(0.5, Number((prev - 0.25).toFixed(2))))}
-                      className="rounded-full border border-white/10 px-3 py-1 text-xs uppercase tracking-wide text-sand hover:border-teal"
+                      className="rounded-full border border-border px-3 py-1 text-xs uppercase tracking-wide text-sand hover:border-teal"
                     >
                       -
                     </button>
@@ -1576,14 +1576,14 @@ export default function Chats() {
                     <button
                       type="button"
                       onClick={() => setViewerZoom((prev) => Math.min(3, Number((prev + 0.25).toFixed(2))))}
-                      className="rounded-full border border-white/10 px-3 py-1 text-xs uppercase tracking-wide text-sand hover:border-teal"
+                      className="rounded-full border border-border px-3 py-1 text-xs uppercase tracking-wide text-sand hover:border-teal"
                     >
                       +
                     </button>
                     <button
                       type="button"
                       onClick={() => setViewerZoom(1)}
-                      className="rounded-full border border-white/10 px-3 py-1 text-xs uppercase tracking-wide text-sand hover:border-teal"
+                      className="rounded-full border border-border px-3 py-1 text-xs uppercase tracking-wide text-sand hover:border-teal"
                     >
                       Reset
                     </button>
@@ -1599,14 +1599,14 @@ export default function Chats() {
                 <button
                   type="button"
                   onClick={() => setViewerAttachment(null)}
-                  className="rounded-full border border-white/10 px-3 py-1 text-xs uppercase tracking-wide text-sand hover:border-teal"
+                  className="rounded-full border border-border px-3 py-1 text-xs uppercase tracking-wide text-sand hover:border-teal"
                 >
                   Close
                 </button>
               </div>
             </div>
             {viewerAttachment.kind === "image" ? (
-              <div className="h-[72vh] overflow-auto rounded-xl border border-white/10 bg-black/20">
+              <div className="h-[72vh] overflow-auto rounded-xl border border-border bg-gray-100">
                 <img
                   src={viewerAttachment.url}
                   alt={viewerAttachment.name || "Attachment image"}
@@ -1618,10 +1618,10 @@ export default function Chats() {
               <iframe
                 src={viewerAttachment.url}
                 title={viewerAttachment.name || "PDF attachment"}
-                className="h-[72vh] w-full rounded-xl border border-white/10"
+                className="h-[72vh] w-full rounded-xl border border-border"
               />
             ) : (
-              <div className="space-y-3 rounded-xl border border-white/10 p-4">
+              <div className="space-y-3 rounded-xl border border-border p-4">
                 <p className="text-sm text-mist break-all">{viewerAttachment.name || "File attachment"}</p>
                 <p className="text-xs text-mist">Preview unavailable for this file type.</p>
               </div>

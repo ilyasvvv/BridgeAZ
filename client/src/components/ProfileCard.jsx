@@ -24,7 +24,7 @@ export default function ProfileCard({ user }) {
       </div>
       <Link
         to={`/profile/${user._id}`}
-        className="mt-4 inline-flex rounded-full border border-white/10 px-4 py-2 text-xs uppercase tracking-wide text-sand hover:border-teal"
+        className="mt-4 inline-flex rounded-full border border-border px-4 py-2 text-xs uppercase tracking-wide text-sand hover:border-teal"
       >
         View Profile
       </Link>

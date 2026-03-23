@@ -84,12 +84,12 @@ export default function CountryCombobox({ value = "", onChange, id = "country", 
         }}
         onFocus={() => setIsOpen(true)}
         onKeyDown={handleKeyDown}
-        className="mt-2 w-full rounded-xl border border-white/10 bg-slate/40 px-4 py-2 text-sand"
+        className="mt-2 w-full rounded-xl border border-border bg-white px-4 py-2 text-sand"
         placeholder="Type to search country"
         autoComplete="off"
       />
       {isOpen && matches.length > 0 && (
-        <ul className="absolute z-30 mt-2 max-h-64 w-full overflow-auto rounded-xl border border-white/10 bg-slate p-1 shadow-xl">
+        <ul className="absolute z-30 mt-2 max-h-64 w-full overflow-auto rounded-xl border border-border bg-slate p-1 shadow-xl">
           {matches.map((country, index) => (
             <li key={country}>
               <button
@@ -98,7 +98,7 @@ export default function CountryCombobox({ value = "", onChange, id = "country", 
                 className={`w-full rounded-lg px-3 py-2 text-left text-sm ${
                   index === activeIndex
                     ? "bg-teal/20 text-teal"
-                    : "text-sand hover:bg-white/10"
+                    : "text-sand hover:bg-gray-100"
                 }`}
               >
                 {country}

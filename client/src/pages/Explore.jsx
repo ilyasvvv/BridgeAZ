@@ -30,13 +30,13 @@ export default function Explore() {
           <input
             value={filters.region}
             onChange={(event) => setFilters((prev) => ({ ...prev, region: event.target.value }))}
-            className="rounded-xl border border-white/10 bg-slate/40 px-4 py-2 text-sm text-sand"
+            className="rounded-xl border border-border bg-white px-4 py-2 text-sm text-sand"
             placeholder="Based in (country/city)"
           />
           <select
             value={filters.userType}
             onChange={(event) => setFilters((prev) => ({ ...prev, userType: event.target.value }))}
-            className="rounded-xl border border-white/10 bg-slate/40 px-4 py-2 text-sm text-sand"
+            className="rounded-xl border border-border bg-white px-4 py-2 text-sm text-sand"
           >
             <option value="">All Types</option>
             <option value="student">Student</option>
@@ -47,7 +47,7 @@ export default function Explore() {
               type="checkbox"
               checked={filters.isMentor}
               onChange={(event) => setFilters((prev) => ({ ...prev, isMentor: event.target.checked }))}
-              className="h-4 w-4 rounded border-white/10 bg-slate/40"
+              className="h-4 w-4 rounded border-border bg-white"
             />
             Mentor only
           </label>

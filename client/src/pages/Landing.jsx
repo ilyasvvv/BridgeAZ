@@ -42,7 +42,7 @@ export default function Landing() {
             </Link>
             <Link
               to="/join"
-              className="rounded-full border border-white/20 px-6 py-3 text-sm font-semibold uppercase tracking-wide text-sand hover:border-teal"
+              className="rounded-full border border-border px-6 py-3 text-sm font-semibold uppercase tracking-wide text-sand hover:border-teal"
             >
               Join as Professional
             </Link>

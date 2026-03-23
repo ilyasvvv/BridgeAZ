@@ -259,14 +259,14 @@ export default function Profile() {
             <button
               type="button"
               onClick={() => setShowShareSheet(true)}
-              className="rounded-full border border-white/10 px-4 py-2 text-xs uppercase tracking-wide text-sand hover:border-teal"
+              className="rounded-full border border-border px-4 py-2 text-xs uppercase tracking-wide text-sand hover:border-teal"
             >
               Share
             </button>
             {isOwner && (
               <button
                 onClick={() => setEditMode((prev) => !prev)}
-                className="rounded-full border border-white/10 px-4 py-2 text-xs uppercase tracking-wide text-sand hover:border-teal"
+                className="rounded-full border border-border px-4 py-2 text-xs uppercase tracking-wide text-sand hover:border-teal"
               >
                 {editMode ? "Cancel" : "Edit Profile"}
               </button>
@@ -277,32 +277,32 @@ export default function Profile() {
         {editMode && (
           <div className="mt-6 grid gap-4 md:grid-cols-2">
             <input
-              className="rounded-xl border border-white/10 bg-slate/40 px-4 py-2 text-sand"
+              className="rounded-xl border border-border bg-white px-4 py-2 text-sand"
               value={form.name}
               onChange={(event) => setForm({ ...form, name: event.target.value })}
               placeholder="Name"
             />
             <input
-              className="rounded-xl border border-white/10 bg-slate/40 px-4 py-2 text-sand"
+              className="rounded-xl border border-border bg-white px-4 py-2 text-sand"
               value={form.headline}
               onChange={(event) => setForm({ ...form, headline: event.target.value })}
               placeholder="Headline"
             />
             <textarea
-              className="rounded-xl border border-white/10 bg-slate/40 px-4 py-2 text-sand md:col-span-2"
+              className="rounded-xl border border-border bg-white px-4 py-2 text-sand md:col-span-2"
               value={form.bio}
               onChange={(event) => setForm({ ...form, bio: event.target.value })}
               placeholder="Bio"
               rows={3}
             />
             <input
-              className="rounded-xl border border-white/10 bg-slate/40 px-4 py-2 text-sand"
+              className="rounded-xl border border-border bg-white px-4 py-2 text-sand"
               value={form.currentRegion}
               onChange={(event) => setForm({ ...form, currentRegion: event.target.value })}
               placeholder="Current Region"
             />
             <input
-              className="rounded-xl border border-white/10 bg-slate/40 px-4 py-2 text-sand"
+              className="rounded-xl border border-border bg-white px-4 py-2 text-sand"
               value={form.skills}
               onChange={(event) => setForm({ ...form, skills: event.target.value })}
               placeholder="Skills (comma separated)"
@@ -319,7 +319,7 @@ export default function Profile() {
                 <button
                   type="button"
                   onClick={handleAvatarUpload}
-                  className="rounded-full border border-white/10 px-3 py-1 text-xs uppercase tracking-wide text-sand hover:border-teal"
+                  className="rounded-full border border-border px-3 py-1 text-xs uppercase tracking-wide text-sand hover:border-teal"
                 >
                   Upload avatar
                 </button>
@@ -340,7 +340,7 @@ export default function Profile() {
                 <button
                   type="button"
                   onClick={handleResumeUpload}
-                  className="rounded-full border border-white/10 px-3 py-1 text-xs uppercase tracking-wide text-sand hover:border-teal"
+                  className="rounded-full border border-border px-3 py-1 text-xs uppercase tracking-wide text-sand hover:border-teal"
                 >
                   Upload resume
                 </button>
@@ -351,7 +351,7 @@ export default function Profile() {
             </div>
 
             <input
-              className="rounded-xl border border-white/10 bg-slate/40 px-4 py-2 text-sand"
+              className="rounded-xl border border-border bg-white px-4 py-2 text-sand"
               value={form.socialLinks?.linkedin || ""}
               onChange={(event) =>
                 setForm((prev) => ({
@@ -362,7 +362,7 @@ export default function Profile() {
               placeholder="LinkedIn URL"
             />
             <input
-              className="rounded-xl border border-white/10 bg-slate/40 px-4 py-2 text-sand"
+              className="rounded-xl border border-border bg-white px-4 py-2 text-sand"
               value={form.socialLinks?.github || ""}
               onChange={(event) =>
                 setForm((prev) => ({
@@ -373,7 +373,7 @@ export default function Profile() {
               placeholder="GitHub URL"
             />
             <input
-              className="rounded-xl border border-white/10 bg-slate/40 px-4 py-2 text-sand"
+              className="rounded-xl border border-border bg-white px-4 py-2 text-sand"
               value={form.socialLinks?.website || ""}
               onChange={(event) =>
                 setForm((prev) => ({
@@ -384,7 +384,7 @@ export default function Profile() {
               placeholder="Website URL"
             />
             <input
-              className="rounded-xl border border-white/10 bg-slate/40 px-4 py-2 text-sand"
+              className="rounded-xl border border-border bg-white px-4 py-2 text-sand"
               value={form.locationNow?.country || ""}
               onChange={(event) =>
                 setForm((prev) => ({
@@ -395,7 +395,7 @@ export default function Profile() {
               placeholder="Country"
             />
             <input
-              className="rounded-xl border border-white/10 bg-slate/40 px-4 py-2 text-sand"
+              className="rounded-xl border border-border bg-white px-4 py-2 text-sand"
               value={form.locationNow?.city || ""}
               onChange={(event) =>
                 setForm((prev) => ({
@@ -422,27 +422,27 @@ export default function Profile() {
                 <button
                   type="button"
                   onClick={addExperience}
-                  className="rounded-full border border-white/10 px-3 py-1 text-xs uppercase tracking-wide text-mist hover:border-teal"
+                  className="rounded-full border border-border px-3 py-1 text-xs uppercase tracking-wide text-mist hover:border-teal"
                 >
                   Add
                 </button>
               </div>
               {(form.experience || []).map((exp, index) => (
-                <div key={index} className="space-y-2 rounded-xl border border-white/10 p-3">
+                <div key={index} className="space-y-2 rounded-xl border border-border p-3">
                   <input
-                    className="w-full rounded-xl border border-white/10 bg-slate/40 px-3 py-2 text-sm text-sand"
+                    className="w-full rounded-xl border border-border bg-white px-3 py-2 text-sm text-sand"
                     value={exp.company || ""}
                     onChange={(event) => updateExperience(index, "company", event.target.value)}
                     placeholder="Company"
                   />
                   <input
-                    className="w-full rounded-xl border border-white/10 bg-slate/40 px-3 py-2 text-sm text-sand"
+                    className="w-full rounded-xl border border-border bg-white px-3 py-2 text-sm text-sand"
                     value={exp.role || ""}
                     onChange={(event) => updateExperience(index, "role", event.target.value)}
                     placeholder="Role"
                   />
                   <textarea
-                    className="w-full rounded-xl border border-white/10 bg-slate/40 px-3 py-2 text-sm text-sand"
+                    className="w-full rounded-xl border border-border bg-white px-3 py-2 text-sm text-sand"
                     value={exp.description || ""}
                     onChange={(event) => updateExperience(index, "description", event.target.value)}
                     placeholder="Description"
@@ -451,7 +451,7 @@ export default function Profile() {
                   <button
                     type="button"
                     onClick={() => removeExperience(index)}
-                    className="rounded-full border border-white/10 px-3 py-1 text-xs uppercase tracking-wide text-mist hover:border-teal"
+                    className="rounded-full border border-border px-3 py-1 text-xs uppercase tracking-wide text-mist hover:border-teal"
                   >
                     Remove
                   </button>
@@ -489,7 +489,7 @@ export default function Profile() {
             key={tab}
             onClick={() => setActiveTab(tab)}
             className={`rounded-full border px-4 py-2 text-xs uppercase tracking-wide ${
-              activeTab === tab ? "border-teal bg-teal/20 text-teal" : "border-white/10 text-mist"
+              activeTab === tab ? "border-teal bg-teal/20 text-teal" : "border-border text-mist"
             }`}
           >
             {tab}
@@ -543,7 +543,7 @@ export default function Profile() {
               <div className="mt-2 flex flex-wrap gap-2">
                 {skills.length ? (
                   skills.map((skill) => (
-                    <span key={skill} className="rounded-full bg-white/10 px-3 py-1 text-xs">
+                    <span key={skill} className="rounded-full bg-surface-alt px-3 py-1 text-xs">
                       {skill}
                     </span>
                   ))
@@ -559,7 +559,7 @@ export default function Profile() {
             {profile.experience?.length ? (
               <div className="space-y-3">
                 {profile.experience.map((item, index) => (
-                  <div key={index} className="rounded-xl border border-white/10 p-4">
+                  <div key={index} className="rounded-xl border border-border p-4">
                     <p className="text-sm text-sand">{item.role || "Role"}</p>
                     <p className="text-xs text-mist">{item.company || item.org}</p>
                     {item.description && (
@@ -626,7 +626,7 @@ export default function Profile() {
           ) : (
             <div className="space-y-3">
               <input
-                className="w-full rounded-xl border border-white/10 bg-slate/40 px-4 py-2 text-sand"
+                className="w-full rounded-xl border border-border bg-white px-4 py-2 text-sand"
                 placeholder="University email (optional)"
                 value={mentorInfo.universityEmail}
                 onChange={(event) =>
@@ -634,7 +634,7 @@ export default function Profile() {
                 }
               />
               <input
-                className="w-full rounded-xl border border-white/10 bg-slate/40 px-4 py-2 text-sand"
+                className="w-full rounded-xl border border-border bg-white px-4 py-2 text-sand"
                 placeholder="LinkedIn URL (optional)"
                 value={mentorInfo.linkedinUrl}
                 onChange={(event) =>
@@ -642,7 +642,7 @@ export default function Profile() {
                 }
               />
               <textarea
-                className="w-full rounded-xl border border-white/10 bg-slate/40 px-4 py-2 text-sand"
+                className="w-full rounded-xl border border-border bg-white px-4 py-2 text-sand"
                 rows={2}
                 placeholder="Short note for admin"
                 value={mentorInfo.note}

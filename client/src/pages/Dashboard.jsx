@@ -99,7 +99,7 @@ export default function Dashboard() {
           {user.userType === "professional" ? (
             <button
               onClick={handleMentorToggle}
-              className="mt-4 rounded-full border border-white/10 px-4 py-2 text-xs uppercase tracking-wide text-sand hover:border-teal"
+              className="mt-4 rounded-full border border-border px-4 py-2 text-xs uppercase tracking-wide text-sand hover:border-teal"
             >
               {user.isMentor ? "Mentor mode on" : "Become a mentor"}
             </button>

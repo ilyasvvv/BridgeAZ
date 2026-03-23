@@ -45,7 +45,7 @@ export default function Register() {
             name="name"
             value={form.name}
             onChange={handleChange}
-            className="mt-2 w-full rounded-xl border border-white/10 bg-slate/40 px-4 py-2 text-sand"
+            className="mt-2 w-full rounded-xl border border-border bg-white px-4 py-2 text-sand"
             required
           />
         </div>
@@ -56,7 +56,7 @@ export default function Register() {
             type="email"
             value={form.email}
             onChange={handleChange}
-            className="mt-2 w-full rounded-xl border border-white/10 bg-slate/40 px-4 py-2 text-sand"
+            className="mt-2 w-full rounded-xl border border-border bg-white px-4 py-2 text-sand"
             required
           />
         </div>
@@ -67,7 +67,7 @@ export default function Register() {
             type="password"
             value={form.password}
             onChange={handleChange}
-            className="mt-2 w-full rounded-xl border border-white/10 bg-slate/40 px-4 py-2 text-sand"
+            className="mt-2 w-full rounded-xl border border-border bg-white px-4 py-2 text-sand"
             required
           />
         </div>
@@ -80,7 +80,7 @@ export default function Register() {
                 className={`cursor-pointer rounded-full border px-4 py-2 text-xs uppercase tracking-wide ${
                   form.userType === type
                     ? "border-teal bg-teal/20 text-teal"
-                    : "border-white/10 text-mist"
+                    : "border-border text-mist"
                 }`}
               >
                 <input

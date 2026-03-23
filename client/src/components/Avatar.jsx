@@ -18,7 +18,7 @@ export default function Avatar({ url, alt, size = 24, className = "" }) {
 
   return (
     <span
-      className={`inline-flex shrink-0 items-center justify-center overflow-hidden rounded-full border border-white/10 bg-slate/70 text-mist ${className}`}
+      className={`inline-flex shrink-0 items-center justify-center overflow-hidden rounded-full border border-border bg-gray-100 text-mist ${className}`}
       style={dimensions}
       aria-hidden="true"
     >

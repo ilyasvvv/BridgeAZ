@@ -49,7 +49,7 @@ export default function UserChip({
       </span>
       {role ? (
         <span
-          className={`rounded-full border border-white/10 px-2 py-0.5 text-[10px] uppercase tracking-wide text-mist ${roleClassName}`}
+          className={`rounded-full border border-border px-2 py-0.5 text-[10px] uppercase tracking-wide text-mist ${roleClassName}`}
         >
           {role}
         </span>
