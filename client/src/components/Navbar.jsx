@@ -3,10 +3,7 @@ import { useEffect, useState, useRef, useCallback, useLayoutEffect } from "react
 import { useAuth } from "../utils/auth";
 import { apiClient } from "../api/client";
 
-const LOGGED_OUT_LINKS = [
-  { to: "/", label: "About" },
-  { to: "/contact", label: "Contact" },
-];
+const LOGGED_OUT_LINKS = [];
 
 const LOGGED_IN_LINKS = [
   { to: "/dashboard", label: "Home" },
@@ -181,12 +178,20 @@ export default function Navbar() {
               </button>
             </>
           ) : (
-            <Link
-              to="/join"
-              className="rounded-full bg-coral px-5 py-2 text-xs font-semibold uppercase tracking-wide text-charcoal"
-            >
-              Join
-            </Link>
+            <>
+              <Link
+                to="/login"
+                className="text-[13px] font-medium uppercase tracking-widest text-mist transition-colors hover:text-sand"
+              >
+                Log in
+              </Link>
+              <Link
+                to="/join"
+                className="rounded-full bg-coral px-5 py-2 text-xs font-semibold uppercase tracking-wide text-charcoal"
+              >
+                Join
+              </Link>
+            </>
           )}
 
           {/* Mobile hamburger */}
