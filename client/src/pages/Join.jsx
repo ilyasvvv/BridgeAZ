@@ -5,7 +5,7 @@ import { useAuth } from "../utils/auth";
 import CountryCombobox from "../components/CountryCombobox";
 
 export default function Join() {
-  const [mode, setMode] = useState("login");
+  const [mode, setMode] = useState("register");
   const [loginForm, setLoginForm] = useState({ email: "", password: "" });
   const [registerForm, setRegisterForm] = useState({
     name: "",
