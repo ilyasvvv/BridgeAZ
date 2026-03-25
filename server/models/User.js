@@ -63,7 +63,11 @@ const userSchema = new mongoose.Schema(
     headline: String,
     bio: String,
     studentVerified: { type: Boolean, default: false },
+    studentVerifiedAt: Date,
+    studentVerificationExpiresAt: Date,
     mentorVerified: { type: Boolean, default: false },
+    mentorVerifiedAt: Date,
+    mentorVerificationExpiresAt: Date,
     studentVerificationStatus: {
       type: String,
       enum: ["none", "pending", "approved", "rejected"],

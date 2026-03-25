@@ -35,7 +35,8 @@ const verificationRequestSchema = new mongoose.Schema(
     adminNotes: [adminNoteSchema],
     reviewedAt: Date,
     decidedBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
-    decisionAt: Date
+    decisionAt: Date,
+    expiresAt: Date
   },
   { timestamps: true }
 );

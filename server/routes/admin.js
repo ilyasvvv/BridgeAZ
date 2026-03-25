@@ -159,6 +159,11 @@ router.patch(
       request.decidedBy = req.user._id;
       request.decisionAt = new Date();
       request.reviewedAt = new Date();
+      // Set expiry: use user-requested expiresAt if valid, otherwise default to 1 year
+      if (!request.expiresAt) {
+        const { DEFAULT_VERIFICATION_DURATION_MS } = require("../utils/verification");
+        request.expiresAt = new Date(Date.now() + DEFAULT_VERIFICATION_DURATION_MS);
+      }
       if (request.adminComment) {
         request.adminNotes = request.adminNotes || [];
         request.adminNotes.push({

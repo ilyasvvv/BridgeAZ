@@ -23,6 +23,8 @@ export default function Profile() {
   const [avatarFile, setAvatarFile] = useState(null);
   const [resumeFile, setResumeFile] = useState(null);
   const [mentorInfo, setMentorInfo] = useState({ universityEmail: "", linkedinUrl: "", note: "" });
+  const [verificationForm, setVerificationForm] = useState(null); // null | "student" | "mentor"
+  const [expiresAt, setExpiresAt] = useState("");
   const [message, setMessage] = useState("");
   const [showShareSheet, setShowShareSheet] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -171,12 +173,13 @@ export default function Profile() {
         return;
       }
       const presign = await uploadViaPresign({ file: docFile, purpose: "verification" }, token);
-      await apiClient.post(
-        "/verification/student",
-        { documentUrl: presign.documentUrl, objectKey: presign.objectKey },
-        token
-      );
+      const payload = { documentUrl: presign.documentUrl, objectKey: presign.objectKey };
+      if (expiresAt) payload.expiresAt = new Date(expiresAt).toISOString();
+      await apiClient.post("/verification/student", payload, token);
       setMessage("Student verification request submitted.");
+      setVerificationForm(null);
+      setExpiresAt("");
+      setDocFile(null);
       loadProfile();
     } catch (error) {
       setMessage(error.message || "Failed to submit verification");
@@ -195,19 +198,32 @@ export default function Profile() {
         return;
       }
       const presign = await uploadViaPresign({ file: docFile, purpose: "verification" }, token);
-      await apiClient.post(
-        "/verification/mentor",
-        {
-          documentUrl: presign.documentUrl,
-          objectKey: presign.objectKey,
-          ...mentorInfo
-        },
-        token
-      );
+      const payload = {
+        documentUrl: presign.documentUrl,
+        objectKey: presign.objectKey,
+        ...mentorInfo
+      };
+      if (expiresAt) payload.expiresAt = new Date(expiresAt).toISOString();
+      await apiClient.post("/verification/mentor", payload, token);
       setMessage("Mentor verification request submitted.");
+      setVerificationForm(null);
+      setExpiresAt("");
+      setDocFile(null);
+      setMentorInfo({ universityEmail: "", linkedinUrl: "", note: "" });
       loadProfile();
     } catch (error) {
       setMessage(error.message || "Failed to submit mentor verification");
+    }
+  };
+
+  const handleTerminateVerification = async (type) => {
+    setMessage("");
+    try {
+      await apiClient.post("/verification/terminate", { type }, token);
+      setMessage(`${type === "student" ? "Student" : "Mentor"} verification terminated.`);
+      loadProfile();
+    } catch (error) {
+      setMessage(error.message || "Failed to terminate verification");
     }
   };
 
@@ -526,12 +542,13 @@ export default function Profile() {
 
         {activeTab === "Verification" && (
           <div className="max-w-3xl mx-auto space-y-8">
+            {/* ── Status Overview ── */}
             <section className="apple-card p-8 text-center">
-              <h3 className="text-2xl font-bold text-sand">Build Trust with Verification</h3>
+              <h3 className="text-2xl font-bold text-sand">Verification Status</h3>
               <p className="mt-3 text-mist">
-                Verified badges increase your credibility by 3x and help you stand out to mentors and employers.
+                Verified badges increase your credibility and help you stand out to mentors and employers.
               </p>
-              
+
               <div className="mt-8 flex justify-center items-center gap-12">
                 <div className="flex flex-col items-center">
                   <div className={`h-16 w-16 rounded-full flex items-center justify-center text-2xl mb-2 ${profile.studentVerified ? 'bg-accent-success/10 text-accent-success' : 'bg-charcoal text-mist border border-border'}`}>
@@ -547,45 +564,124 @@ export default function Profile() {
                   <span className="text-xs font-bold uppercase tracking-tight text-mist">Mentor</span>
                 </div>
               </div>
+            </section>
 
-              <div className="mt-12 p-6 rounded-md bg-charcoal border border-border">
-                <p className="text-sm font-semibold mb-4 text-sand">Current Status: 
-                  <span className="ml-2">
-                    <StatusBadge 
-                      label={profile.userType === "student" ? studentStatus : mentorStatus} 
-                      tone={
-                        (profile.userType === "student" ? studentStatus : mentorStatus) === "approved" ? "success" :
-                        (profile.userType === "student" ? studentStatus : mentorStatus) === "pending" ? "warning" : "slate"
-                      }
-                    />
-                  </span>
-                </p>
+            {/* ── Student Verification Status Card ── */}
+            <section className="apple-card p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h4 className="text-lg font-bold text-sand">Student Verification</h4>
+                <StatusBadge
+                  label={studentStatus}
+                  tone={studentStatus === "approved" ? "success" : studentStatus === "pending" ? "warning" : studentStatus === "rejected" ? "danger" : "slate"}
+                />
+              </div>
 
-                {profile.userType === "student" ? (
-                  <div className="space-y-4">
-                    <div className="flex flex-col items-center gap-4">
-                      <input
-                        type="file"
-                        id="verification-doc"
-                        onChange={(e) => setDocFile(e.target.files?.[0] || null)}
-                        className="hidden"
-                        accept="image/*,.pdf"
-                      />
-                      <label htmlFor="verification-doc" className="apple-button-secondary cursor-pointer">
-                        {docFile ? docFile.name : "Select Student ID or Enrollment Doc"}
-                      </label>
-                      <button
-                        onClick={handleStudentVerification}
-                        disabled={isPendingVerification || profile.studentVerified}
-                        className="apple-button-primary disabled:opacity-50"
-                      >
-                        {isPendingVerification ? "Review in progress..." : profile.studentVerified ? "Verified" : "Submit for Review"}
-                      </button>
-                    </div>
+              {profile.studentVerified ? (
+                <div className="space-y-3">
+                  <div className="flex items-center gap-6 text-sm text-mist">
+                    {profile.studentVerifiedAt && (
+                      <span>Verified: <span className="text-sand">{new Date(profile.studentVerifiedAt).toLocaleDateString()}</span></span>
+                    )}
+                    {profile.studentVerificationExpiresAt && (
+                      <span>Expires: <span className="text-sand">{new Date(profile.studentVerificationExpiresAt).toLocaleDateString()}</span></span>
+                    )}
                   </div>
-                ) : (
-                  <div className="space-y-6 max-w-md mx-auto text-left">
-                    <div className="space-y-4">
+                  <button
+                    onClick={() => { if (window.confirm("Are you sure you want to terminate your student verification?")) handleTerminateVerification("student"); }}
+                    className="text-sm text-red-400 hover:text-red-300 underline"
+                  >
+                    Terminate student verification early
+                  </button>
+                </div>
+              ) : studentStatus === "pending" ? (
+                <p className="text-sm text-mist">Your student verification is under review. We'll notify you when it's decided.</p>
+              ) : (
+                <>
+                  {verificationForm !== "student" ? (
+                    <button
+                      onClick={() => { setVerificationForm("student"); setExpiresAt(""); setDocFile(null); }}
+                      className="apple-button-secondary"
+                    >
+                      {studentStatus === "rejected" ? "Re-apply as Student" : "Become a Verified Student"}
+                    </button>
+                  ) : (
+                    <div className="space-y-4 mt-2">
+                      <div className="flex flex-col items-center gap-4">
+                        <input
+                          type="file"
+                          id="verification-doc-student"
+                          onChange={(e) => setDocFile(e.target.files?.[0] || null)}
+                          className="hidden"
+                          accept="image/*,.pdf"
+                        />
+                        <label htmlFor="verification-doc-student" className="apple-button-secondary cursor-pointer">
+                          {docFile ? docFile.name : "Select Student ID or Enrollment Doc"}
+                        </label>
+                        <div className="w-full max-w-xs">
+                          <label className="block text-xs text-mist mb-1">End date (optional — e.g. graduation)</label>
+                          <input
+                            type="date"
+                            value={expiresAt}
+                            onChange={(e) => setExpiresAt(e.target.value)}
+                            min={new Date().toISOString().split("T")[0]}
+                            className="w-full rounded-md border border-border bg-slate px-4 py-2 text-sm text-sand"
+                          />
+                        </div>
+                        <div className="flex gap-3">
+                          <button onClick={handleStudentVerification} className="apple-button-primary">
+                            Submit for Review
+                          </button>
+                          <button onClick={() => { setVerificationForm(null); setDocFile(null); setExpiresAt(""); }} className="apple-button-secondary">
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
+            </section>
+
+            {/* ── Mentor Verification Status Card ── */}
+            <section className="apple-card p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h4 className="text-lg font-bold text-sand">Mentor Verification</h4>
+                <StatusBadge
+                  label={mentorStatus}
+                  tone={mentorStatus === "approved" ? "success" : mentorStatus === "pending" ? "warning" : mentorStatus === "rejected" ? "danger" : "slate"}
+                />
+              </div>
+
+              {profile.mentorVerified ? (
+                <div className="space-y-3">
+                  <div className="flex items-center gap-6 text-sm text-mist">
+                    {profile.mentorVerifiedAt && (
+                      <span>Verified: <span className="text-sand">{new Date(profile.mentorVerifiedAt).toLocaleDateString()}</span></span>
+                    )}
+                    {profile.mentorVerificationExpiresAt && (
+                      <span>Expires: <span className="text-sand">{new Date(profile.mentorVerificationExpiresAt).toLocaleDateString()}</span></span>
+                    )}
+                  </div>
+                  <button
+                    onClick={() => { if (window.confirm("Are you sure you want to terminate your mentor verification?")) handleTerminateVerification("mentor"); }}
+                    className="text-sm text-red-400 hover:text-red-300 underline"
+                  >
+                    Terminate mentor verification early
+                  </button>
+                </div>
+              ) : mentorStatus === "pending" ? (
+                <p className="text-sm text-mist">Your mentor verification is under review. We'll notify you when it's decided.</p>
+              ) : (
+                <>
+                  {verificationForm !== "mentor" ? (
+                    <button
+                      onClick={() => { setVerificationForm("mentor"); setExpiresAt(""); setDocFile(null); setMentorInfo({ universityEmail: "", linkedinUrl: "", note: "" }); }}
+                      className="apple-button-secondary"
+                    >
+                      {mentorStatus === "rejected" ? "Re-apply as Mentor" : "Become a Verified Mentor"}
+                    </button>
+                  ) : (
+                    <div className="space-y-4 mt-2 max-w-md mx-auto text-left">
                       <input
                         className="w-full rounded-md border border-border bg-slate px-4 py-2 text-sm text-sand"
                         placeholder="University or Professional Email"
@@ -605,20 +701,31 @@ export default function Profile() {
                         onChange={(e) => setMentorInfo(prev => ({ ...prev, note: e.target.value }))}
                         rows={2}
                       />
-                      <div className="flex flex-col items-center gap-4 border-t border-border pt-4">
-                        <input type="file" onChange={(e) => setDocFile(e.target.files?.[0] || null)} className="text-xs text-mist" />
-                        <button
-                          onClick={handleMentorVerification}
-                          disabled={isPendingVerification || profile.mentorVerified}
-                          className="apple-button-primary w-full"
-                        >
-                          {isPendingVerification ? "Request Pending" : profile.mentorVerified ? "Verified" : "Request Mentor Status"}
-                        </button>
+                      <div className="border-t border-border pt-4 space-y-4">
+                        <input type="file" onChange={(e) => setDocFile(e.target.files?.[0] || null)} className="text-xs text-mist" accept="image/*,.pdf" />
+                        <div>
+                          <label className="block text-xs text-mist mb-1">End date (optional — when should this expire?)</label>
+                          <input
+                            type="date"
+                            value={expiresAt}
+                            onChange={(e) => setExpiresAt(e.target.value)}
+                            min={new Date().toISOString().split("T")[0]}
+                            className="w-full rounded-md border border-border bg-slate px-4 py-2 text-sm text-sand"
+                          />
+                        </div>
+                        <div className="flex gap-3 justify-center">
+                          <button onClick={handleMentorVerification} className="apple-button-primary">
+                            Request Mentor Status
+                          </button>
+                          <button onClick={() => { setVerificationForm(null); setDocFile(null); setExpiresAt(""); }} className="apple-button-secondary">
+                            Cancel
+                          </button>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                )}
-              </div>
+                  )}
+                </>
+              )}
             </section>
           </div>
         )}

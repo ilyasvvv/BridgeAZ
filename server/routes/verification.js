@@ -2,7 +2,7 @@ const express = require("express");
 const VerificationRequest = require("../models/VerificationRequest");
 const User = require("../models/User");
 const { authMiddleware, blockBanned } = require("../middleware/auth");
-const { syncVerificationStatus } = require("../utils/verification");
+const { syncVerificationStatus, DEFAULT_VERIFICATION_DURATION_MS } = require("../utils/verification");
 
 const router = express.Router();
 
@@ -26,12 +26,29 @@ const validateDocumentUrl = (documentUrl) => {
   return { ok: true };
 };
 
+const computeExpiresAt = (expiresAt) => {
+  if (expiresAt) {
+    const date = new Date(expiresAt);
+    if (isNaN(date.getTime()) || date <= new Date()) return null;
+    return date;
+  }
+  return null;
+};
+
 router.post("/student", authMiddleware, blockBanned, async (req, res) => {
   try {
-    const { documentUrl } = req.body || {};
+    const { documentUrl, expiresAt } = req.body || {};
     const validation = validateDocumentUrl(documentUrl);
     if (!validation.ok) {
       return res.status(validation.status).json({ message: validation.message });
+    }
+
+    const user = await User.findById(req.user._id).select("studentVerified studentVerificationExpiresAt");
+    if (user.studentVerified) {
+      const now = new Date();
+      if (!user.studentVerificationExpiresAt || user.studentVerificationExpiresAt > now) {
+        return res.status(409).json({ message: "You are already verified as a student." });
+      }
     }
 
     const existing = await VerificationRequest.findOne({
@@ -50,7 +67,8 @@ router.post("/student", authMiddleware, blockBanned, async (req, res) => {
         user: req.user._id,
         requestType: "student",
         documentUrl,
-        status: "pending"
+        status: "pending",
+        expiresAt: computeExpiresAt(expiresAt)
       });
     } catch (error) {
       if (error && error.code === 11000) {
@@ -70,7 +88,7 @@ router.post("/student", authMiddleware, blockBanned, async (req, res) => {
 
 router.post("/mentor", authMiddleware, blockBanned, async (req, res) => {
   try {
-    const { documentUrl, universityEmail, linkedinUrl, note } = req.body || {};
+    const { documentUrl, universityEmail, linkedinUrl, note, expiresAt } = req.body || {};
     const validation = validateDocumentUrl(documentUrl);
     if (!validation.ok) {
       return res.status(validation.status).json({ message: validation.message });
@@ -79,6 +97,14 @@ router.post("/mentor", authMiddleware, blockBanned, async (req, res) => {
       return res
         .status(400)
         .json({ message: "Provide at least one mentor detail." });
+    }
+
+    const user = await User.findById(req.user._id).select("mentorVerified mentorVerificationExpiresAt");
+    if (user.mentorVerified) {
+      const now = new Date();
+      if (!user.mentorVerificationExpiresAt || user.mentorVerificationExpiresAt > now) {
+        return res.status(409).json({ message: "You are already verified as a mentor." });
+      }
     }
 
     const existing = await VerificationRequest.findOne({
@@ -102,7 +128,8 @@ router.post("/mentor", authMiddleware, blockBanned, async (req, res) => {
           universityEmail,
           linkedinUrl,
           note
-        }
+        },
+        expiresAt: computeExpiresAt(expiresAt)
       });
     } catch (error) {
       if (error && error.code === 11000) {
@@ -118,6 +145,35 @@ router.post("/mentor", authMiddleware, blockBanned, async (req, res) => {
     res.status(201).json(request);
   } catch (error) {
     res.status(500).json({ message: "Failed to submit mentor verification" });
+  }
+});
+
+// Terminate an active verification early (user-initiated)
+router.post("/terminate", authMiddleware, blockBanned, async (req, res) => {
+  try {
+    const { type } = req.body || {};
+    if (!["student", "mentor"].includes(type)) {
+      return res.status(400).json({ message: "type must be 'student' or 'mentor'" });
+    }
+
+    const latestRequest = await VerificationRequest.findOne({
+      user: req.user._id,
+      requestType: type,
+      status: "approved"
+    }).sort({ createdAt: -1 });
+
+    if (!latestRequest) {
+      return res.status(404).json({ message: `No active ${type} verification found.` });
+    }
+
+    // Set expiry to now to terminate immediately
+    latestRequest.expiresAt = new Date();
+    await latestRequest.save();
+
+    await syncVerificationStatus(req.user._id);
+    res.json({ message: `${type} verification terminated.` });
+  } catch (error) {
+    res.status(500).json({ message: "Failed to terminate verification" });
   }
 });
 
