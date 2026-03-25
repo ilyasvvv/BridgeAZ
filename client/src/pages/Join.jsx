@@ -45,7 +45,7 @@ export default function Join() {
   };
 
   return (
-    <div className="mx-auto flex max-w-2xl flex-col gap-6">
+    <div className="mx-auto flex max-w-2xl flex-col gap-6" style={{ "--accent": "29 29 68", "--accent-soft": "95 96 116" }}>
       <div className="flex items-center justify-between">
         <h1 className="font-display text-3xl">Join BridgeAZ</h1>
         <div className="flex gap-2 text-xs uppercase tracking-wide">
@@ -58,8 +58,8 @@ export default function Join() {
               onClick={() => setMode(item.value)}
               className={`rounded-full border px-3 py-1 ${
                 mode === item.value
-                  ? "border-teal bg-teal/20 text-teal"
-                  : "border-border text-mist hover:border-teal"
+                  ? "border-sand/30 bg-sand/5 text-sand"
+                  : "border-border text-mist hover:border-sand/30"
               }`}
             >
               {item.label}
@@ -100,7 +100,7 @@ export default function Join() {
           </div>
           <button
             type="submit"
-            className="w-full rounded-full bg-teal px-6 py-3 text-xs font-semibold uppercase tracking-wide text-charcoal"
+            className="w-full rounded-full bg-sand px-6 py-3 text-xs font-semibold uppercase tracking-wide text-white"
           >
             Log in
           </button>
@@ -172,7 +172,7 @@ export default function Join() {
           </div>
           <button
             type="submit"
-            className="w-full rounded-full bg-coral px-6 py-3 text-xs font-semibold uppercase tracking-wide text-charcoal"
+            className="w-full rounded-full bg-sand px-6 py-3 text-xs font-semibold uppercase tracking-wide text-white"
           >
             Create account
           </button>

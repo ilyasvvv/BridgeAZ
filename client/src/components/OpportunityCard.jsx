@@ -19,7 +19,7 @@ export default function OpportunityCard({
   };
 
   return (
-    <div className="glass group relative overflow-hidden rounded-2xl border border-border bg-white p-5 transition-all hover:border-accent/30 hover:bg-white">
+    <div className="glass group relative overflow-hidden rounded-2xl border border-border bg-white p-5 transition-all hover:border-sand/30 hover:bg-white">
       <div className="flex flex-col gap-4">
         <div className="flex items-start justify-between gap-4">
           <div className="space-y-1.5">
@@ -32,7 +32,7 @@ export default function OpportunityCard({
                 {formatRelativeTime(opportunity.createdAt)}
               </span>
             </div>
-            <h3 className="font-display text-xl leading-tight text-sand decoration-teal/30 decoration-1 underline-offset-4 group-hover:underline">
+            <h3 className="font-display text-xl leading-tight text-sand decoration-accent/30 decoration-1 underline-offset-4 group-hover:underline">
               {opportunity.title}
             </h3>
           </div>
@@ -88,7 +88,7 @@ export default function OpportunityCard({
           <div className="flex items-center gap-2">
             <button
               onClick={onShare}
-              className="flex h-8 w-8 items-center justify-center rounded-full border border-border text-mist hover:border-accent/50 hover:text-accent transition-colors"
+              className="flex h-8 w-8 items-center justify-center rounded-full border border-border text-mist hover:border-sand/30 hover:text-accent transition-colors"
               title="Share"
             >
               <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">

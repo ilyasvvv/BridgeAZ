@@ -226,7 +226,7 @@ export default function ShareSheet({ open, onClose, shareInput }) {
           <button
             type="button"
             onClick={onClose}
-            className="rounded-full border border-border px-3 py-1 text-xs uppercase tracking-wide text-mist hover:border-accent"
+            className="rounded-full border border-border px-3 py-1 text-xs uppercase tracking-wide text-mist hover:border-sand/30"
           >
             Close
           </button>
@@ -281,7 +281,7 @@ export default function ShareSheet({ open, onClose, shareInput }) {
                 key={selected._id}
                 type="button"
                 onClick={() => toggleRecipient(selected)}
-                className="rounded-full border border-border bg-charcoal px-3 py-1 text-xs text-sand hover:border-accent"
+                className="rounded-full border border-border bg-charcoal px-3 py-1 text-xs text-sand hover:border-sand/30"
               >
                 {selected.name} ×
               </button>
@@ -304,7 +304,7 @@ export default function ShareSheet({ open, onClose, shareInput }) {
             type="button"
             onClick={onClose}
             disabled={sending}
-            className="rounded-full border border-border px-4 py-2 text-xs uppercase tracking-wide text-mist hover:border-accent disabled:opacity-60"
+            className="rounded-full border border-border px-4 py-2 text-xs uppercase tracking-wide text-mist hover:border-sand/30 disabled:opacity-60"
           >
             Cancel
           </button>

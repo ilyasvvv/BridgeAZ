@@ -129,8 +129,8 @@ export default function Navbar() {
           <span
             style={{
               ...pillStyle,
-              background: "rgba(21, 101, 163, 0.1)",
-              border: "1.5px solid rgba(21, 101, 163, 0.25)",
+              background: "rgba(27, 31, 35, 0.05)",
+              border: "1.5px solid rgba(27, 31, 35, 0.1)",
             }}
           />
 
@@ -143,7 +143,7 @@ export default function Navbar() {
                 to={link.to}
                 end={link.to === "/"}
                 className={`relative z-10 px-4 py-1.5 text-[13px] font-medium uppercase tracking-widest transition-colors duration-200 ${
-                  active ? "text-brand" : "text-mist hover:text-sand"
+                  active ? "text-sand" : "text-mist hover:text-sand"
                 }`}
               >
                 {link.label}
@@ -166,13 +166,13 @@ export default function Navbar() {
               </Link>
               <Link
                 to={`/profile/${user._id}/edit`}
-                className="text-sm text-mist transition-colors duration-200 hover:text-brand"
+                className="text-sm text-mist transition-colors duration-200 hover:text-accent"
               >
                 {user.name.split(" ")[0]}
               </Link>
               <button
                 onClick={logout}
-                className="hidden rounded-full border border-border px-4 py-2 text-xs uppercase tracking-wide text-sand hover:border-teal md:block"
+                className="hidden rounded-full border border-border px-4 py-2 text-xs uppercase tracking-wide text-sand hover:border-sand/30 md:block"
               >
                 Log out
               </button>
@@ -187,7 +187,7 @@ export default function Navbar() {
               </Link>
               <Link
                 to="/join"
-                className="rounded-full bg-coral px-5 py-2 text-xs font-semibold uppercase tracking-wide text-charcoal"
+                className="rounded-full border border-coral/30 bg-coral/8 px-5 py-2 text-xs font-semibold uppercase tracking-wide text-coral/90 transition-all duration-300 hover:bg-coral/15 hover:border-coral/50"
               >
                 Join
               </Link>
@@ -223,8 +223,8 @@ export default function Navbar() {
                 end={link.to === "/"}
                 className={`rounded-xl px-4 py-2.5 text-sm font-medium uppercase tracking-widest transition-colors duration-200 ${
                   active
-                    ? "bg-brand/10 text-brand"
-                    : "text-mist hover:bg-brand/5 hover:text-sand"
+                    ? "bg-sand/5 text-sand"
+                    : "text-mist hover:bg-sand/5 hover:text-sand"
                 }`}
               >
                 {link.label}
@@ -234,7 +234,7 @@ export default function Navbar() {
           {user && (
             <button
               onClick={logout}
-              className="mt-2 rounded-xl border border-border px-4 py-2.5 text-left text-sm uppercase tracking-widest text-mist hover:border-teal"
+              className="mt-2 rounded-xl border border-border px-4 py-2.5 text-left text-sm uppercase tracking-widest text-mist hover:border-sand/30"
             >
               Log out
             </button>

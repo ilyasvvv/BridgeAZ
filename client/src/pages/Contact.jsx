@@ -18,7 +18,7 @@ export default function Contact() {
   };
 
   return (
-    <div className="mx-auto flex max-w-2xl flex-col gap-6">
+    <div className="mx-auto flex max-w-2xl flex-col gap-6" style={{ "--accent": "29 29 68", "--accent-soft": "95 96 116" }}>
       <h1 className="font-display text-3xl">Contact BridgeAZ</h1>
       <p className="text-sm text-mist">
         Have questions or ideas? Send us a note and we will follow up.
@@ -56,7 +56,7 @@ export default function Contact() {
         {status && <p className="text-sm text-mist">{status}</p>}
         <button
           type="submit"
-          className="rounded-full bg-teal px-6 py-2 text-xs font-semibold uppercase tracking-wide text-charcoal"
+          className="rounded-full bg-sand px-6 py-2 text-xs font-semibold uppercase tracking-wide text-white"
         >
           Send message
         </button>

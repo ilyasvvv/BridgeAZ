@@ -33,7 +33,7 @@ export default function Register() {
   };
 
   return (
-    <div className="mx-auto flex max-w-lg flex-col gap-6">
+    <div className="mx-auto flex max-w-lg flex-col gap-6" style={{ "--accent": "29 29 68", "--accent-soft": "95 96 116" }}>
       <h1 className="font-display text-3xl">Join BridgeAZ</h1>
       <p className="text-sm text-mist">
         Students get access to verified mentorship. Professionals can opt-in to become mentors.
@@ -79,7 +79,7 @@ export default function Register() {
                 key={type}
                 className={`cursor-pointer rounded-full border px-4 py-2 text-xs uppercase tracking-wide ${
                   form.userType === type
-                    ? "border-teal bg-teal/20 text-teal"
+                    ? "border-sand/30 bg-sand/5 text-sand"
                     : "border-border text-mist"
                 }`}
               >
@@ -109,13 +109,13 @@ export default function Register() {
         {error && <p className="text-sm text-coral">{error}</p>}
         <button
           type="submit"
-          className="w-full rounded-full bg-coral px-6 py-3 text-xs font-semibold uppercase tracking-wide text-charcoal"
+          className="w-full rounded-full bg-sand px-6 py-3 text-xs font-semibold uppercase tracking-wide text-white"
         >
           Create account
         </button>
       </form>
       <p className="text-sm text-mist">
-        Already part of BridgeAZ? <Link to="/join" className="text-teal">Log in</Link>
+        Already part of BridgeAZ? <Link to="/join" className="text-accent">Log in</Link>
       </p>
     </div>
   );

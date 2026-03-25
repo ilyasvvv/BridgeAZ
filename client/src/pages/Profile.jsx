@@ -239,7 +239,7 @@ export default function Profile() {
   }
 
   return (
-    <div className="mx-auto max-w-5xl space-y-8 py-6" style={{ "--accent": "70 100 140", "--accent-soft": "209 207 201" }}>
+    <div className="mx-auto max-w-5xl space-y-8 py-6" style={{ "--accent": "29 29 68", "--accent-soft": "95 96 116" }}>
       {/* Top Profile Card */}
       <div className="apple-card overflow-hidden">
         <div className="h-32 bg-gradient-to-r from-accent-soft/40 to-accent-soft/10 md:h-48" />
@@ -373,7 +373,7 @@ export default function Profile() {
             onClick={() => setActiveTab(tab)}
             className={`whitespace-nowrap px-6 py-4 text-sm font-bold transition-colors ${
               activeTab === tab 
-                ? "border-b-2 border-accent text-accent" 
+                ? "border-b-2 border-sand text-sand"
                 : "text-mist hover:text-sand"
             }`}
           >

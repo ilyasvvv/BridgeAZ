@@ -98,7 +98,7 @@ export default function Network() {
             ref={(el) => { tabRefs.current[tab] = el; }}
             onClick={() => setActiveTab(tab)}
             className={`relative z-10 rounded-lg px-5 py-2.5 text-sm font-medium tracking-wide transition-colors duration-200 ${
-              activeTab === tab ? "text-brand font-semibold" : "text-mist hover:text-sand"
+              activeTab === tab ? "text-sand font-semibold" : "text-mist hover:text-sand"
             }`}
           >
             {tab}
@@ -106,7 +106,7 @@ export default function Network() {
         ))}
         {/* Sliding pill */}
         <span
-          className="pointer-events-none absolute rounded-lg bg-brand/10"
+          className="pointer-events-none absolute rounded-lg bg-sand/5"
           style={{
             left: tabPill.left,
             width: tabPill.width,
@@ -174,7 +174,7 @@ export default function Network() {
                   {isPending && (
                     <button
                       onClick={() => handleAccept(conn._id)}
-                      className="rounded-full border border-border px-3 py-1 text-xs uppercase tracking-wide text-mist hover:border-teal"
+                      className="rounded-full border border-border px-3 py-1 text-xs uppercase tracking-wide text-mist hover:border-sand/30"
                     >
                       Accept
                     </button>
@@ -200,7 +200,7 @@ export default function Network() {
                 </span>
                 <button
                   onClick={() => handleEnd(item._id)}
-                  className="rounded-full border border-border px-3 py-1 text-xs uppercase tracking-wide text-mist hover:border-teal"
+                  className="rounded-full border border-border px-3 py-1 text-xs uppercase tracking-wide text-mist hover:border-sand/30"
                 >
                   End
                 </button>

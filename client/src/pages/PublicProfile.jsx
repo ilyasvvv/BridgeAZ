@@ -81,7 +81,7 @@ export default function PublicProfile() {
     <div className="mx-auto max-w-5xl space-y-8 py-6">
       {/* Header Card */}
       <div className="apple-card overflow-hidden">
-        <div className="h-32 bg-gradient-to-r from-brand/20 to-brand/5 md:h-48" />
+        <div className="h-32 bg-gradient-to-r from-accent/20 to-accent/5 md:h-48" />
         <div className="relative px-6 pb-8 md:px-10">
           <div className="relative -mt-12 flex flex-col items-start justify-between gap-6 md:-mt-16 md:flex-row md:items-end">
             <div className="flex flex-col items-start gap-4 md:flex-row md:items-end">
@@ -194,7 +194,7 @@ export default function PublicProfile() {
                   href={link.url}
                   target="_blank"
                   rel="noreferrer"
-                  className="flex items-center gap-3 text-sm font-medium text-sand hover:text-brand transition-colors"
+                  className="flex items-center gap-3 text-sm font-medium text-sand hover:text-accent transition-colors"
                 >
                   <span className="flex h-8 w-8 items-center justify-center rounded-md bg-charcoal text-sm border border-border">
                     {link.icon}

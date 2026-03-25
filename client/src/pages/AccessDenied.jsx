@@ -9,7 +9,7 @@ export default function AccessDenied() {
       </p>
       <Link
         to="/fyp"
-        className="mx-auto rounded-full bg-teal px-5 py-2 text-xs font-semibold uppercase tracking-wide text-charcoal"
+        className="mx-auto rounded-full bg-sand px-5 py-2 text-xs font-semibold uppercase tracking-wide text-white"
       >
         Back to For You
       </Link>

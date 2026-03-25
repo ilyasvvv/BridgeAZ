@@ -82,14 +82,14 @@ export default function PostCard({ post, onLike }) {
                 <button
                   type="button"
                   onClick={() => seekVideoBy(-5)}
-                  className="rounded-full border border-border px-3 py-1 text-[11px] uppercase tracking-wide text-mist hover:border-teal"
+                  className="rounded-full border border-border px-3 py-1 text-[11px] uppercase tracking-wide text-mist hover:border-sand/30"
                 >
                   ⟲ 5s
                 </button>
                 <button
                   type="button"
                   onClick={() => seekVideoBy(5)}
-                  className="rounded-full border border-border px-3 py-1 text-[11px] uppercase tracking-wide text-mist hover:border-teal"
+                  className="rounded-full border border-border px-3 py-1 text-[11px] uppercase tracking-wide text-mist hover:border-sand/30"
                 >
                   5s ⟳
                 </button>
@@ -102,7 +102,7 @@ export default function PostCard({ post, onLike }) {
                 href={attachmentUrl}
                 target="_blank"
                 rel="noreferrer"
-                className="text-teal underline"
+                className="text-accent underline"
               >
                 View
               </a>
@@ -112,7 +112,7 @@ export default function PostCard({ post, onLike }) {
               href={attachmentUrl}
               target="_blank"
               rel="noreferrer"
-              className="block truncate text-teal underline"
+              className="block truncate text-accent underline"
               title={attachmentLabel || attachmentUrl}
             >
               {attachmentLabel || "View attachment"}
@@ -136,7 +136,7 @@ export default function PostCard({ post, onLike }) {
             <button
               type="button"
               onClick={() => setVisibleReplies((prev) => prev + 10)}
-              className="text-xs uppercase tracking-wide text-teal"
+              className="text-xs uppercase tracking-wide text-accent"
             >
               View more
             </button>
@@ -149,14 +149,14 @@ export default function PostCard({ post, onLike }) {
           <button
             onClick={() => onLike?.(post._id)}
             className={`rounded-full border px-3 py-1 uppercase tracking-wide ${
-              liked ? "border-teal text-teal" : "border-border hover:border-teal"
+              liked ? "border-sand/30 text-sand" : "border-border hover:border-sand/30"
             }`}
           >
             {liked ? "Liked" : "Like"}
           </button>
           <button
             onClick={() => setShowShareSheet(true)}
-            className="rounded-full border border-border px-3 py-1 uppercase tracking-wide hover:border-teal"
+            className="rounded-full border border-border px-3 py-1 uppercase tracking-wide hover:border-sand/30"
           >
             Share
           </button>

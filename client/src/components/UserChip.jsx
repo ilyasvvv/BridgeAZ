@@ -37,7 +37,7 @@ export default function UserChip({
       <Avatar url={resolveAvatarUrl(user)} alt={`${name} avatar`} size={size} />
       <span className="min-w-0">
         <span
-          className={`block truncate text-[15px] font-semibold text-text-main transition-colors group-hover:text-brand-blue ${nameClassName}`}
+          className={`block truncate text-[15px] font-semibold text-text-main transition-colors group-hover:text-accent ${nameClassName}`}
         >
           {name}
         </span>

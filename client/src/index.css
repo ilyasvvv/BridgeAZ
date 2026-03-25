@@ -5,7 +5,8 @@
 @layer base {
   :root {
     color-scheme: light;
-    --accent: 21 101 163; /* default brand blue fallback */
+    --accent: 29 29 68; /* deep navy/indigo — matches Chats page */
+    --accent-soft: 95 96 116;
   }
   
   body {
@@ -28,7 +29,7 @@
   }
 
   .apple-button-primary {
-    @apply bg-accent text-white font-semibold py-2.5 px-6 rounded-md hover:opacity-90 transition-all active:scale-[0.98] shadow-sm;
+    @apply bg-sand text-white font-semibold py-2.5 px-6 rounded-md hover:opacity-90 transition-all active:scale-[0.98] shadow-sm;
   }
 
   .apple-button-secondary {

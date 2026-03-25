@@ -182,8 +182,8 @@ export default function Admin() {
                 onClick={() => setActiveTab(tab.id)}
                 className={`rounded-full px-4 py-2 text-xs font-semibold uppercase tracking-wide ${
                   activeTab === tab.id
-                    ? "bg-teal text-charcoal"
-                    : "border border-border text-sand hover:border-teal"
+                    ? "bg-sand text-white"
+                    : "border border-border text-sand hover:border-sand/30"
                 }`}
               >
                 {tab.label}
@@ -195,12 +195,12 @@ export default function Admin() {
 
       {activeTab === "verifications" && (
         <div className="space-y-4">
-          {message && <p className="text-sm text-teal">{message}</p>}
+          {message && <p className="text-sm text-accent">{message}</p>}
           <div className="grid gap-4 md:grid-cols-2">
             {requests.map((request) => (
               <div key={request._id} className="glass rounded-2xl p-5">
                 <p className="text-sm text-mist">{request.user?.name}</p>
-                <p className="text-xs uppercase tracking-wide text-teal">
+                <p className="text-xs uppercase tracking-wide text-accent">
                   {request.requestType}
                 </p>
                 <p className="mt-2 text-xs text-mist">
@@ -229,7 +229,7 @@ export default function Admin() {
                   <button
                     onClick={() => handleAction(request._id, "approve")}
                     disabled={!!actionLoading[request._id]}
-                    className="rounded-full bg-teal px-4 py-2 text-xs font-semibold uppercase tracking-wide text-charcoal"
+                    className="rounded-full bg-sand px-4 py-2 text-xs font-semibold uppercase tracking-wide text-white"
                   >
                     {actionLoading[request._id] === "approve" ? "Approving..." : "Approve"}
                   </button>
@@ -249,7 +249,7 @@ export default function Admin() {
 
       {activeTab === "jobs" && (
         <div className="space-y-4">
-          {opportunityMessage && <p className="text-sm text-teal">{opportunityMessage}</p>}
+          {opportunityMessage && <p className="text-sm text-accent">{opportunityMessage}</p>}
           <div className="grid gap-4 md:grid-cols-2">
             {opportunities.map((item) => (
               <div key={item._id} className="glass rounded-2xl p-5">
@@ -257,7 +257,7 @@ export default function Admin() {
                 <p className="text-xs text-mist">{item.orgName || item.company}</p>
                 <button
                   onClick={() => deleteOpportunity(item._id)}
-                  className="mt-3 rounded-full border border-border px-3 py-1 text-xs uppercase tracking-wide text-sand hover:border-teal"
+                  className="mt-3 rounded-full border border-border px-3 py-1 text-xs uppercase tracking-wide text-sand hover:border-sand/30"
                 >
                   Delete
                 </button>
@@ -333,7 +333,7 @@ export default function Admin() {
             <div className="md:col-span-5 flex flex-wrap gap-3">
               <button
                 type="submit"
-                className="rounded-full bg-teal px-4 py-2 text-xs font-semibold uppercase tracking-wide text-charcoal"
+                className="rounded-full bg-sand px-4 py-2 text-xs font-semibold uppercase tracking-wide text-white"
               >
                 Apply filters
               </button>
@@ -350,14 +350,14 @@ export default function Admin() {
                   setUserFilters(cleared);
                   loadUsers(cleared);
                 }}
-                className="rounded-full border border-border px-4 py-2 text-xs uppercase tracking-wide text-sand hover:border-teal"
+                className="rounded-full border border-border px-4 py-2 text-xs uppercase tracking-wide text-sand hover:border-sand/30"
               >
                 Clear
               </button>
             </div>
           </form>
 
-          {userMessage && <p className="text-sm text-teal">{userMessage}</p>}
+          {userMessage && <p className="text-sm text-accent">{userMessage}</p>}
           {userLoading ? (
             <p className="text-sm text-mist">Loading users...</p>
           ) : (
@@ -380,7 +380,7 @@ export default function Admin() {
                     </p>
                     <p>
                       Status:{" "}
-                      <span className={item.banned ? "text-coral" : "text-teal"}>
+                      <span className={item.banned ? "text-coral" : "text-accent"}>
                         {item.banned ? "Banned" : "Active"}
                       </span>
                     </p>
@@ -392,7 +392,7 @@ export default function Admin() {
                     {item.banned ? (
                       <button
                         onClick={() => unbanUser(item)}
-                        className="rounded-full bg-teal px-4 py-2 text-xs font-semibold uppercase tracking-wide text-charcoal"
+                        className="rounded-full bg-sand px-4 py-2 text-xs font-semibold uppercase tracking-wide text-white"
                       >
                         Unban
                       </button>
@@ -407,25 +407,25 @@ export default function Admin() {
                     )}
                     <button
                       onClick={() => updateRoles(item._id, ["staffC"])}
-                      className="rounded-full border border-border px-4 py-2 text-xs uppercase tracking-wide text-sand hover:border-teal"
+                      className="rounded-full border border-border px-4 py-2 text-xs uppercase tracking-wide text-sand hover:border-sand/30"
                     >
                       Set C
                     </button>
                     <button
                       onClick={() => updateRoles(item._id, ["staffB"])}
-                      className="rounded-full border border-border px-4 py-2 text-xs uppercase tracking-wide text-sand hover:border-teal"
+                      className="rounded-full border border-border px-4 py-2 text-xs uppercase tracking-wide text-sand hover:border-sand/30"
                     >
                       Set B
                     </button>
                     <button
                       onClick={() => updateRoles(item._id, ["adminA"])}
-                      className="rounded-full border border-border px-4 py-2 text-xs uppercase tracking-wide text-sand hover:border-teal"
+                      className="rounded-full border border-border px-4 py-2 text-xs uppercase tracking-wide text-sand hover:border-sand/30"
                     >
                       Set A
                     </button>
                     <button
                       onClick={() => updateRoles(item._id, [])}
-                      className="rounded-full border border-border px-4 py-2 text-xs uppercase tracking-wide text-sand hover:border-teal"
+                      className="rounded-full border border-border px-4 py-2 text-xs uppercase tracking-wide text-sand hover:border-sand/30"
                     >
                       Clear roles
                     </button>
@@ -456,7 +456,7 @@ export default function Admin() {
             <div className="flex justify-end gap-3">
               <button
                 onClick={closeBanModal}
-                className="rounded-full border border-border px-4 py-2 text-xs uppercase tracking-wide text-sand hover:border-teal"
+                className="rounded-full border border-border px-4 py-2 text-xs uppercase tracking-wide text-sand hover:border-sand/30"
               >
                 Cancel
               </button>

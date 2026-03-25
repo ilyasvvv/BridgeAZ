@@ -114,14 +114,14 @@ export default function CommunityPostCard({
                 <button
                   type="button"
                   onClick={() => seekVideoBy(-5)}
-                  className="rounded-full border border-border px-3 py-1 text-[11px] uppercase tracking-wide text-mist hover:border-teal"
+                  className="rounded-full border border-border px-3 py-1 text-[11px] uppercase tracking-wide text-mist hover:border-sand/30"
                 >
                   ⟲ 5s
                 </button>
                 <button
                   type="button"
                   onClick={() => seekVideoBy(5)}
-                  className="rounded-full border border-border px-3 py-1 text-[11px] uppercase tracking-wide text-mist hover:border-teal"
+                  className="rounded-full border border-border px-3 py-1 text-[11px] uppercase tracking-wide text-mist hover:border-sand/30"
                 >
                   5s ⟳
                 </button>
@@ -134,7 +134,7 @@ export default function CommunityPostCard({
                 href={attachmentUrl}
                 target="_blank"
                 rel="noreferrer"
-                className="text-teal underline"
+                className="text-accent underline"
               >
                 View
               </a>
@@ -144,7 +144,7 @@ export default function CommunityPostCard({
               href={attachmentUrl}
               target="_blank"
               rel="noreferrer"
-              className="block truncate text-teal underline"
+              className="block truncate text-accent underline"
               title={attachmentLabel || attachmentUrl}
             >
               {attachmentLabel || "View attachment"}
@@ -160,34 +160,34 @@ export default function CommunityPostCard({
         <button
           onClick={() => onLike?.(post._id)}
           className={`rounded-full border px-3 py-1 uppercase tracking-wide ${
-            liked ? "border-teal text-teal" : "border-border hover:border-teal"
+            liked ? "border-sand/30 text-sand" : "border-border hover:border-sand/30"
           }`}
         >
           {liked ? "Liked" : "Like"}
         </button>
         <button
           onClick={() => setShareTarget(postSharePayload)}
-          className="rounded-full border border-border px-3 py-1 uppercase tracking-wide hover:border-teal"
+          className="rounded-full border border-border px-3 py-1 uppercase tracking-wide hover:border-sand/30"
         >
           Share
         </button>
         <button
           onClick={onRespond}
-          className="rounded-full border border-border px-3 py-1 uppercase tracking-wide hover:border-teal"
+          className="rounded-full border border-border px-3 py-1 uppercase tracking-wide hover:border-sand/30"
         >
           Respond
         </button>
         <button
           onClick={onSave}
           className={`rounded-full border px-3 py-1 uppercase tracking-wide ${
-            isSaved ? "border-teal text-teal" : "border-border hover:border-teal"
+            isSaved ? "border-sand/30 text-sand" : "border-border hover:border-sand/30"
           }`}
         >
           {isSaved ? "Saved" : "Save"}
         </button>
         <button
           onClick={onFollow}
-          className="rounded-full border border-border px-3 py-1 uppercase tracking-wide hover:border-teal"
+          className="rounded-full border border-border px-3 py-1 uppercase tracking-wide hover:border-sand/30"
         >
           Follow
         </button>
@@ -195,13 +195,13 @@ export default function CommunityPostCard({
           <>
             <button
               onClick={onEdit}
-              className="rounded-full border border-border px-3 py-1 uppercase tracking-wide hover:border-teal"
+              className="rounded-full border border-border px-3 py-1 uppercase tracking-wide hover:border-sand/30"
             >
               Edit
             </button>
             <button
               onClick={onDelete}
-              className="rounded-full border border-border px-3 py-1 uppercase tracking-wide hover:border-teal"
+              className="rounded-full border border-border px-3 py-1 uppercase tracking-wide hover:border-sand/30"
             >
               Delete
             </button>
@@ -232,7 +232,7 @@ export default function CommunityPostCard({
                       })
                     )
                   }
-                  className="rounded-full border border-border px-2 py-0.5 text-[10px] uppercase tracking-wide text-mist hover:border-teal"
+                  className="rounded-full border border-border px-2 py-0.5 text-[10px] uppercase tracking-wide text-mist hover:border-sand/30"
                 >
                   Share
                 </button>
@@ -244,7 +244,7 @@ export default function CommunityPostCard({
             <button
               type="button"
               onClick={handleMoreReplies}
-              className="text-xs uppercase tracking-wide text-teal"
+              className="text-xs uppercase tracking-wide text-accent"
             >
               {loadingReplies ? "Loading..." : "View more"}
             </button>
@@ -263,7 +263,7 @@ export default function CommunityPostCard({
           />
           <button
             type="submit"
-            className="rounded-full bg-teal px-4 py-2 text-xs font-semibold uppercase tracking-wide text-charcoal"
+            className="rounded-full bg-sand px-4 py-2 text-xs font-semibold uppercase tracking-wide text-white"
           >
             Send response
           </button>

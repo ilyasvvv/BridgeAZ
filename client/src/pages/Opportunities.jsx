@@ -380,7 +380,7 @@ export default function Opportunities() {
         <div className="flex flex-wrap items-center gap-3">
           <button
             onClick={() => setShowNotifyModal(true)}
-            className="flex items-center gap-2 rounded-full border border-border bg-charcoal px-5 py-2.5 font-sans text-[10px] font-bold uppercase tracking-widest text-mist transition-all hover:border-accent/40 hover:text-accent"
+            className="flex items-center gap-2 rounded-full border border-border bg-charcoal px-5 py-2.5 font-sans text-[10px] font-bold uppercase tracking-widest text-mist transition-all hover:border-sand/30/40 hover:text-accent"
           >
             <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
@@ -782,7 +782,7 @@ export default function Opportunities() {
                       <h4 className="font-sans text-[11px] font-bold uppercase tracking-[0.25em] text-mist/60 border-b border-border pb-2">Requirements</h4>
                       <ul className="grid gap-3 md:grid-cols-2">
                         {selectedOpportunityForPane.requirements.map((item) => (
-                          <li key={item} className="flex items-start gap-3 rounded-xl border border-border bg-charcoal p-4 transition-all hover:border-accent/20">
+                          <li key={item} className="flex items-start gap-3 rounded-xl border border-border bg-charcoal p-4 transition-all hover:border-sand/30/20">
                             <span className="mt-1 h-1 w-1 shrink-0 rounded-full bg-accent" />
                             <span className="font-sans text-sm text-sand/80">{item}</span>
                           </li>

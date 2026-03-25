@@ -40,7 +40,7 @@ export default function OpportunityDetail() {
 
   return (
     <div className="mx-auto max-w-4xl space-y-6">
-      <Link to="/opportunities" className="text-xs uppercase tracking-wide text-teal">
+      <Link to="/opportunities" className="text-xs uppercase tracking-wide text-accent">
         Back to opportunities
       </Link>
 
@@ -93,7 +93,7 @@ export default function OpportunityDetail() {
           <button
             type="button"
             onClick={() => setShowShareSheet(true)}
-            className="rounded-full border border-border px-4 py-2 text-center text-xs uppercase tracking-wide text-sand hover:border-teal"
+            className="rounded-full border border-border px-4 py-2 text-center text-xs uppercase tracking-wide text-sand hover:border-sand/30"
           >
             Share
           </button>
@@ -102,7 +102,7 @@ export default function OpportunityDetail() {
               href={opportunity.applyUrl}
               target="_blank"
               rel="noreferrer"
-              className="rounded-full bg-teal px-4 py-2 text-center text-xs font-semibold uppercase tracking-wide text-charcoal"
+              className="rounded-full bg-sand px-4 py-2 text-center text-xs font-semibold uppercase tracking-wide text-white"
             >
               Apply link
             </a>
@@ -110,7 +110,7 @@ export default function OpportunityDetail() {
           {opportunity.contactEmail && (
             <a
               href={`mailto:${opportunity.contactEmail}`}
-              className="rounded-full border border-border px-4 py-2 text-center text-xs uppercase tracking-wide text-sand hover:border-teal"
+              className="rounded-full border border-border px-4 py-2 text-center text-xs uppercase tracking-wide text-sand hover:border-sand/30"
             >
               Contact via email
             </a>

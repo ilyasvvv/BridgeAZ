@@ -376,14 +376,14 @@ export default function ForYou() {
                   setNewPostAttachmentPreviewUrl("");
                   setNewPostVisibility("public");
                 }}
-                className="rounded-full border border-border px-4 py-2 text-xs uppercase tracking-wide text-mist hover:border-teal"
+                className="rounded-full border border-border px-4 py-2 text-xs uppercase tracking-wide text-mist hover:border-sand/30"
               >
                 Clear
               </button>
               <button
                 type="button"
                 onClick={handleCreatePost}
-                className="rounded-full bg-teal px-5 py-2 text-xs font-semibold uppercase tracking-wide text-charcoal"
+                className="rounded-full bg-sand px-5 py-2 text-xs font-semibold uppercase tracking-wide text-white"
               >
                 Post update
               </button>
@@ -418,7 +418,7 @@ export default function ForYou() {
               <button
                 type="button"
                 onClick={() => setShowFilters((prev) => !prev)}
-                className="rounded-full border border-border px-3 py-1 text-xs uppercase tracking-wide text-sand hover:border-teal"
+                className="rounded-full border border-border px-3 py-1 text-xs uppercase tracking-wide text-sand hover:border-sand/30"
               >
                 Filters
               </button>
@@ -521,14 +521,14 @@ export default function ForYou() {
                   <button
                     type="button"
                     onClick={handleApplyFilters}
-                    className="rounded-full bg-teal px-4 py-1.5 text-xs font-semibold uppercase tracking-wide text-charcoal"
+                    className="rounded-full bg-sand px-4 py-1.5 text-xs font-semibold uppercase tracking-wide text-white"
                   >
                     Apply filters
                   </button>
                   <button
                     type="button"
                     onClick={handleResetFilters}
-                    className="rounded-full border border-border px-4 py-1.5 text-xs uppercase tracking-wide text-mist hover:border-teal"
+                    className="rounded-full border border-border px-4 py-1.5 text-xs uppercase tracking-wide text-mist hover:border-sand/30"
                   >
                     Reset
                   </button>
@@ -583,13 +583,13 @@ export default function ForYou() {
               <div className="flex gap-2">
                 <button
                   onClick={() => handleEditSave(editingPostId)}
-                  className="rounded-full bg-teal px-4 py-2 text-xs font-semibold uppercase tracking-wide text-charcoal"
+                  className="rounded-full bg-sand px-4 py-2 text-xs font-semibold uppercase tracking-wide text-white"
                 >
                   Save
                 </button>
                 <button
                   onClick={() => setEditingPostId(null)}
-                  className="rounded-full border border-border px-4 py-2 text-xs uppercase tracking-wide text-mist hover:border-teal"
+                  className="rounded-full border border-border px-4 py-2 text-xs uppercase tracking-wide text-mist hover:border-sand/30"
                 >
                   Cancel
                 </button>
@@ -696,7 +696,7 @@ export default function ForYou() {
           <section className="glass rounded-2xl p-5 space-y-3">
             <div className="flex items-center justify-between">
               <h3 className="font-display text-xl">Quiet opportunities</h3>
-              <Link to="/opportunities" className="text-xs uppercase tracking-wide text-teal">
+              <Link to="/opportunities" className="text-xs uppercase tracking-wide text-accent">
                 View all
               </Link>
             </div>
@@ -706,7 +706,7 @@ export default function ForYou() {
                   <Link
                     key={opportunity._id}
                     to={`/opportunities/${opportunity._id}`}
-                    className="block rounded-xl border border-border bg-white p-3 hover:border-teal"
+                    className="block rounded-xl border border-border bg-white p-3 hover:border-sand/30"
                   >
                     <p className="text-sm text-sand">{opportunity.title}</p>
                     <p className="text-xs text-mist">

@@ -28,7 +28,7 @@ export default function Login() {
   };
 
   return (
-    <div className="mx-auto flex max-w-md flex-col gap-6">
+    <div className="mx-auto flex max-w-md flex-col gap-6" style={{ "--accent": "29 29 68", "--accent-soft": "95 96 116" }}>
       <h1 className="font-display text-3xl">Welcome back</h1>
       <p className="text-sm text-mist">Log in to stay connected with BridgeAZ.</p>
       <form onSubmit={handleSubmit} className="glass rounded-2xl p-6 space-y-4">
@@ -57,13 +57,13 @@ export default function Login() {
         {error && <p className="text-sm text-coral">{error}</p>}
         <button
           type="submit"
-          className="w-full rounded-full bg-teal px-6 py-3 text-xs font-semibold uppercase tracking-wide text-charcoal"
+          className="w-full rounded-full bg-sand px-6 py-3 text-xs font-semibold uppercase tracking-wide text-white"
         >
           Log in
         </button>
       </form>
       <p className="text-sm text-mist">
-        New here? <Link to="/join" className="text-teal">Create an account</Link>
+        New here? <Link to="/join" className="text-accent">Create an account</Link>
       </p>
     </div>
   );
