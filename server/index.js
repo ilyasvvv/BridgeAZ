@@ -16,6 +16,7 @@ const contactRoutes = require("./routes/contact");
 const notificationRoutes = require("./routes/notifications");
 const chatRoutes = require("./routes/chats");
 const networkRoutes = require("./routes/network");
+const searchRoutes = require("./routes/search");
 
 const app = express();
 
@@ -84,6 +85,7 @@ app.use("/api/opportunities", opportunityRoutes);
 app.use("/api/contact", contactRoutes);
 app.use("/api/notifications", notificationRoutes);
 app.use("/api/chats", chatRoutes);
+app.use("/api/search", searchRoutes);
 app.use("/api", networkRoutes);
 
 const PORT = process.env.PORT || 5001;

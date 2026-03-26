@@ -2,6 +2,7 @@ import { Link, NavLink, useLocation } from "react-router-dom";
 import { useEffect, useState, useRef, useCallback, useLayoutEffect } from "react";
 import { useAuth } from "../utils/auth";
 import { apiClient } from "../api/client";
+import { useSearch } from "../utils/SearchContext";
 
 const LOGGED_OUT_LINKS = [];
 
@@ -84,6 +85,7 @@ function useNavPill(activeKey) {
 /* ─── Navbar ─── */
 export default function Navbar() {
   const { user, token, logout } = useAuth();
+  const { open: openSearch } = useSearch();
   const [unreadCount, setUnreadCount] = useState(0);
   const [mobileOpen, setMobileOpen] = useState(false);
   const location = useLocation();
@@ -156,6 +158,19 @@ export default function Navbar() {
         <div className="flex items-center gap-3">
           {user ? (
             <>
+              <button
+                onClick={openSearch}
+                className="flex items-center gap-1.5 rounded-xl border border-border bg-charcoal/50 px-2.5 py-1.5 text-mist/50 transition-colors hover:border-sand/30 hover:text-sand"
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="11" cy="11" r="8" />
+                  <path d="m21 21-4.3-4.3" />
+                </svg>
+                <span className="hidden text-xs sm:inline">Search</span>
+                <kbd className="hidden rounded border border-border bg-white/80 px-1 py-0.5 text-[10px] font-medium text-mist/40 sm:inline">
+                  &#8984;K
+                </kbd>
+              </button>
               <Link to="/notifications" className="relative text-mist hover:text-sand">
                 <span className="text-lg">🔔</span>
                 {unreadCount > 0 && (

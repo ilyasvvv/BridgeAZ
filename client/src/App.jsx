@@ -6,6 +6,7 @@ import Login from "./pages/Login";
 import Register from "./pages/Register";
 import Join from "./pages/Join";
 import Contact from "./pages/Contact";
+import ForgotPassword from "./pages/ForgotPassword";
 import Dashboard from "./pages/Dashboard";
 import Profile from "./pages/Profile";
 import PublicProfile from "./pages/PublicProfile";
@@ -19,6 +20,8 @@ import OpportunityDetail from "./pages/OpportunityDetail";
 import Notifications from "./pages/Notifications";
 import Chats from "./pages/Chats";
 import Network from "./pages/Network";
+import ResetPassword from "./pages/ResetPassword";
+import Search from "./pages/Search";
 
 const ProtectedRoute = ({ children }) => {
   const { user, loading } = useAuth();
@@ -45,6 +48,8 @@ export default function App() {
         <Route path="/join" element={<Join />} />
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
         <Route path="/contact" element={<Contact />} />
         <Route
           path="/fyp"
@@ -115,6 +120,14 @@ export default function App() {
           element={
             <ProtectedRoute>
               <Chats />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/search"
+          element={
+            <ProtectedRoute>
+              <Search />
             </ProtectedRoute>
           }
         />

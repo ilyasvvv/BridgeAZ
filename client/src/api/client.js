@@ -8,7 +8,7 @@ if (!API_BASE) {
 }
 export const API_ORIGIN = API_BASE.replace(/\/api\/?$/, "");
 
-const request = async (path, options = {}, token) => {
+const request = async (path, options = {}, token, { signal } = {}) => {
   const headers = {
     "Content-Type": "application/json",
     ...(options.headers || {})
@@ -20,7 +20,8 @@ const request = async (path, options = {}, token) => {
 
   const response = await fetch(`${API_BASE}${path}`, {
     ...options,
-    headers
+    headers,
+    ...(signal ? { signal } : {})
   });
 
   if (!response.ok) {
@@ -32,7 +33,7 @@ const request = async (path, options = {}, token) => {
 };
 
 export const apiClient = {
-  get: (path, token) => request(path, { method: "GET" }, token),
+  get: (path, token, opts) => request(path, { method: "GET" }, token, opts),
   post: (path, body, token) =>
     request(
       path,
