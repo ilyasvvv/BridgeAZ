@@ -51,6 +51,7 @@ export default function Chats() {
   const previousMessageCountRef = useRef(0);
   const forceScrollToBottomRef = useRef(false);
   const fetchedSharePostIdsRef = useRef(new Set());
+  const newMessageThresholdRef = useRef(0);
   const requestedThreadId = useMemo(() => {
     const params = new URLSearchParams(location.search);
     return params.get("thread");
@@ -377,6 +378,7 @@ export default function Chats() {
   const loadMessages = async (threadId) => {
     try {
       const data = await apiClient.get(`/chats/threads/${threadId}/messages`, token);
+      newMessageThresholdRef.current = data.length;
       setMessages(data);
     } catch (err) {
       setError(err.message || "Failed to load messages");
@@ -1108,505 +1110,588 @@ export default function Chats() {
 
   return (
     <div className="mx-auto grid max-w-6xl gap-4 md:h-[calc(100vh-72px)] md:grid-cols-[minmax(280px,360px)_minmax(0,1fr)] md:overflow-hidden" style={{ "--accent": "29 29 68", "--accent-soft": "95 96 116" }}>
-      <section className="glass rounded-2xl p-3 md:flex md:min-h-0 md:flex-col">
-        <h2 className="font-display text-xl">Threads</h2>
-        <div className="mt-2 space-y-2 md:min-h-0 md:flex-1 md:overflow-y-auto md:pr-1">
+
+      {/* ── Thread list sidebar ── */}
+      <section className="rounded-2xl bg-white/80 backdrop-blur-md border border-white/40 shadow-card p-4 md:flex md:min-h-0 md:flex-col">
+        <h2 className="font-display text-lg tracking-tight text-sand">Threads</h2>
+        <div className="mb-3 mt-2 h-px bg-border/60" />
+        <div className="space-y-1 md:min-h-0 md:flex-1 md:overflow-y-auto md:pr-1">
           {threads.length === 0 ? (
-            <p className="text-sm text-mist">No conversations yet.</p>
+            <div className="flex flex-col items-center justify-center py-12 text-center">
+              <svg className="mb-4 h-16 w-16 text-mist/25" viewBox="0 0 64 64" fill="none" stroke="currentColor" strokeWidth="1.5">
+                <rect x="10" y="16" width="44" height="28" rx="6" />
+                <path d="M10 38l14-9 8 6 8-6 14 9" />
+                <circle cx="32" cy="10" r="2.5" fill="currentColor" opacity="0.3" />
+              </svg>
+              <p className="text-sm font-medium text-mist">No conversations yet</p>
+              <p className="mt-1 text-xs text-mist/60">Start a conversation from someone&apos;s profile</p>
+            </div>
           ) : (
-            threads.map((thread) => (
-              <div
-                key={thread._id}
-                onClick={() => setActiveThread(thread)}
-                onKeyDown={(event) => {
-                  if (event.key === "Enter" || event.key === " ") {
-                    event.preventDefault();
-                    setActiveThread(thread);
-                  }
-                }}
-                role="button"
-                tabIndex={0}
-                className={`w-full rounded-xl border px-2.5 py-1.5 text-left text-sm ${
-                  activeThread?._id === thread._id
-                    ? "border-accent bg-accent/10 text-accent"
-                    : "border-border text-mist hover:border-accent"
-                }`}
-              >
-                <div className="flex items-start justify-between gap-2">
-                  <div className="min-w-0 flex-1">
-                    <UserChip
-                      user={thread.otherParticipant}
-                      size={USER_CHIP_SIZES.THREAD_LIST}
-                      showRole={false}
-                      onClick={(event) => event.stopPropagation()}
-                    />
-                    <p className="mt-1 truncate text-xs text-mist">
-                      {threadPreviews[thread._id] || "Loading preview..."}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="rounded-full border border-border px-2 py-0.5 text-[10px] uppercase tracking-wide text-mist">
-                      {getRelationshipLabel(thread)}
-                    </span>
-                    {normalizeThreadStatus(thread) === "pending" && (
-                      <span className="rounded-full border border-amber/40 px-2 py-0.5 text-[10px] uppercase tracking-wide text-amber">
-                        {thread.requestedBy === user?._id ? "Pending" : "Incoming"}
-                      </span>
-                    )}
-                    {normalizeThreadStatus(thread) === "rejected" && (
-                      <span className="rounded-full border border-coral/40 px-2 py-0.5 text-[10px] uppercase tracking-wide text-coral">
-                        Declined
-                      </span>
-                    )}
-                    {thread.lastMessageAt &&
-                      (!thread.myLastReadAt ||
-                        new Date(thread.myLastReadAt) < new Date(thread.lastMessageAt)) && (
-                        <span className="h-2 w-2 rounded-full bg-accent" aria-label="Unread" />
-                      )}
-                  </div>
-                </div>
-              </div>
-            ))
-          )}
-        </div>
-      </section>
-      <section className="glass rounded-2xl p-4 md:flex md:min-h-0 md:flex-col">
-        <div className="flex items-center justify-between gap-3">
-          {activeThread ? (
-            <UserChip
-              user={activeThread.otherParticipant}
-              size={USER_CHIP_SIZES.CHAT_HEADER}
-              showRole={false}
-              nameClassName="font-display text-xl text-sand"
-            />
-          ) : (
-            <h2 className="font-display text-xl">Messages</h2>
-          )}
-        </div>
-        {error && <p className="text-sm text-coral">{error}</p>}
-        {activeThread && activeStatus !== "active" && (
-          <div className="rounded-2xl border border-border bg-charcoal p-4 text-sm text-mist">
-            {activeStatus === "pending" && activeThread.requestedBy === user?._id ? (
-              <p>Request sent. Waiting for approval.</p>
-            ) : activeStatus === "pending" ? (
-              <div className="space-y-3">
-                <p>
-                  Do you want to start a conversation with{" "}
-                  {activeThread.otherParticipant?.name || "this member"}?
-                </p>
-                <div className="flex flex-wrap gap-2">
-                  <button
-                    onClick={handleAccept}
-                    className="rounded-full bg-accent px-4 py-2 text-xs font-semibold uppercase tracking-wide text-charcoal"
-                  >
-                    Accept
-                  </button>
-                  <button
-                    onClick={handleReject}
-                    className="rounded-full border border-border px-4 py-2 text-xs uppercase tracking-wide text-mist hover:border-accent"
-                  >
-                    Decline
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <p>This request was declined.</p>
-            )}
-          </div>
-        )}
-        <div
-          ref={messagesScrollRef}
-          onScroll={updateNearBottomFlag}
-          className="mt-4 min-h-[200px] space-y-2 md:min-h-0 md:flex-1 md:overflow-y-auto md:pr-1"
-        >
-          {messages.length === 0 ? (
-            <p className="text-sm text-mist">Select a thread to view messages.</p>
-          ) : (
-            messages.map((message) => {
-              const reactions = normalizeReactions(message.reactions);
-              const reactionEntries = Object.entries(reactions).filter(
-                ([, users]) => Array.isArray(users) && users.length > 0
-              );
-              const myId = String(user?._id || "");
-              const quote = message.replyTo;
-              const isMenuOpen = openMenuMessageId === message._id;
-              const previewUrl = extractUrlsFromText(message.body || "")[0];
-              const previewData = previewUrl ? linkPreviews[previewUrl] : null;
+            threads.map((thread) => {
+              const isActive = activeThread?._id === thread._id;
+              const threadStatus = normalizeThreadStatus(thread);
+              const isUnread = thread.lastMessageAt && (!thread.myLastReadAt || new Date(thread.myLastReadAt) < new Date(thread.lastMessageAt));
+
+              const statusLabel = (() => {
+                if (threadStatus === "pending") return thread.requestedBy === user?._id ? "Pending" : "Incoming";
+                if (threadStatus === "rejected") return "Declined";
+                return getRelationshipLabel(thread);
+              })();
+              const statusColor = (() => {
+                if (threadStatus === "pending" && thread.requestedBy !== user?._id) return "text-amber-600 bg-amber-50 border-amber-200";
+                if (threadStatus === "rejected") return "text-coral bg-coral/5 border-coral/20";
+                return "text-mist bg-charcoal border-border/60";
+              })();
 
               return (
                 <div
-                  key={message._id}
-                  className={`group flex ${message.senderId === user?._id ? "justify-end" : "justify-start"}`}
+                  key={thread._id}
+                  onClick={() => setActiveThread(thread)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter" || event.key === " ") {
+                      event.preventDefault();
+                      setActiveThread(thread);
+                    }
+                  }}
+                  role="button"
+                  tabIndex={0}
+                  className={`relative w-full cursor-pointer rounded-xl px-3 py-3 text-left text-sm transition-all duration-200 ${
+                    isActive
+                      ? "border border-accent/25 bg-accent/[0.06] shadow-sm"
+                      : isUnread
+                        ? "border border-transparent bg-white shadow-card"
+                        : "border border-transparent hover:bg-white/60 hover:shadow-sm"
+                  }`}
                 >
-                  <div
-                    className={`relative max-w-[70%] rounded-xl px-3 pr-10 py-2 text-sm ${
-                      message.senderId === user?._id
-                        ? "bg-accent/20 text-sand"
-                        : "border border-border text-sand"
-                    }`}
-                    data-chat-menu-root="true"
-                  >
-                    {quote?.messageId && (
-                      <div className="mb-2 rounded-lg border border-border bg-charcoal px-2 py-1">
-                        <p className="text-[10px] uppercase tracking-wide text-mist">
-                          {getSenderName(quote.senderId)}
-                        </p>
-                        <p className="truncate text-xs text-mist">
-                          {quote.body || "Attachment"}
-                        </p>
+                  <div className="flex items-start gap-3">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2">
+                        <UserChip
+                          user={thread.otherParticipant}
+                          size={USER_CHIP_SIZES.THREAD_LIST}
+                          showRole={false}
+                          onClick={(event) => event.stopPropagation()}
+                        />
+                        <span className={`shrink-0 rounded-full border px-2 py-0.5 text-[10px] uppercase tracking-wide ${statusColor}`}>
+                          {statusLabel}
+                        </span>
                       </div>
-                    )}
-                    {message.body && (
-                      <p className="whitespace-pre-wrap break-words">
-                        {renderFormattedBody(message.body, message._id)}
+                      <p className={`mt-1 truncate text-[13px] leading-snug ${isUnread && !isActive ? "font-medium text-sand/80" : "text-mist/80"}`}>
+                        {threadPreviews[thread._id] || "Loading preview..."}
                       </p>
-                    )}
-                    {renderShareCard(message)}
-                    {renderAttachmentBlock(message)}
-                    {previewUrl && (
-                      <a
-                        href={toHref(previewUrl)}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="mt-2 block rounded-lg border border-border bg-charcoal px-2 py-2 text-xs text-mist hover:border-accent"
-                      >
-                        {previewData?.status === "loading" ? (
-                          <p>Loading preview...</p>
-                        ) : (
-                          <div className="space-y-1">
-                            <p className="text-[10px] uppercase tracking-wide text-mist/80">
-                              {previewData?.hostname || previewUrl}
-                            </p>
-                            <p className="text-xs text-sand">
-                              {previewData?.title || previewData?.hostname || previewUrl}
-                            </p>
-                            {previewData?.description && (
-                              <p
-                                className="text-[11px] text-mist"
-                                style={{
-                                  display: "-webkit-box",
-                                  WebkitLineClamp: 2,
-                                  WebkitBoxOrient: "vertical",
-                                  overflow: "hidden"
-                                }}
-                              >
-                                {previewData.description}
-                              </p>
-                            )}
-                          </div>
-                        )}
-                      </a>
-                    )}
-                    <div className="mt-1 flex items-center gap-2">
-                      <p className="text-[10px] text-mist">
-                        {formatTime(message.createdAt)}
-                      </p>
-                      {isCoarsePointer && (
-                        <>
-                          <button
-                            type="button"
-                            onClick={() =>
-                              setReplyingTo({
-                                messageId: message._id,
-                                body: getReplySnippet(message),
-                                senderId: message.senderId
-                              })
-                            }
-                            className="text-[10px] uppercase tracking-wide text-mist hover:text-sand"
-                          >
-                            Reply
-                          </button>
-                        </>
-                      )}
                     </div>
-                    <button
-                      type="button"
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        setOpenMenuMessageId((prev) => (prev === message._id ? "" : message._id));
-                      }}
-                      className={`absolute right-2 top-2 rounded-full border border-border px-1.5 py-0 text-xs text-mist transition ${
-                        isMenuOpen
-                          ? "opacity-100"
-                          : isCoarsePointer
-                            ? "opacity-100"
-                            : "opacity-0 group-hover:opacity-100"
-                      }`}
-                      aria-label="Message options"
-                    >
-                      ⋯
-                    </button>
-                    {isMenuOpen && (
-                      <div className="absolute right-2 top-8 z-20 min-w-[140px] rounded-xl border border-border bg-charcoal/95 p-1 shadow-xl">
-                        <button
-                          type="button"
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            setActiveReactionMessageId(message._id);
-                            setOpenMenuMessageId("");
-                          }}
-                          className="block w-full rounded-lg px-3 py-1.5 text-left text-xs text-mist hover:bg-gray-100"
-                        >
-                          React
-                        </button>
-                        <button
-                          type="button"
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            setReplyingTo({
-                              messageId: message._id,
-                              body: getReplySnippet(message),
-                              senderId: message.senderId
-                            });
-                            setOpenMenuMessageId("");
-                          }}
-                          className="block w-full rounded-lg px-3 py-1.5 text-left text-xs text-mist hover:bg-gray-100"
-                        >
-                          Reply
-                        </button>
-                        <p className="block rounded-lg px-3 py-1.5 text-left text-[11px] text-mist/80">
-                          Sent {formatTime(message.createdAt)}
-                        </p>
-                      </div>
+                    {isUnread && (
+                      <span className="mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full bg-accent chat-unread-pulse" aria-label="Unread" />
                     )}
-                    <div
-                      data-chat-reaction-root="true"
-                      className={`mt-1 flex-wrap gap-1 ${
-                        activeReactionMessageId === message._id ? "flex" : "hidden"
-                      }`}
-                    >
-                        {quickReactions.map((emoji) => (
-                          <button
-                            key={emoji}
-                            type="button"
-                            onClick={() => handleToggleReaction(message._id, emoji)}
-                            className="rounded-full border border-border px-2 py-0.5 text-xs hover:border-accent"
-                          >
-                            {emoji}
-                          </button>
-                        ))}
-                    </div>
-                    {reactionEntries.length > 0 && (
-                      <div className="mt-1 flex flex-wrap gap-1">
-                        {reactionEntries.map(([emoji, users]) => {
-                          const normalizedUsers = users.map((id) => String(id));
-                          const mine = normalizedUsers.includes(myId);
-                          return (
-                            <button
-                              key={emoji}
-                              type="button"
-                              onClick={() => handleToggleReaction(message._id, emoji)}
-                              className={`rounded-full border px-2 py-0.5 text-[11px] ${
-                                mine
-                                  ? "border-accent bg-accent/10 text-accent"
-                                  : "border-border text-mist"
-                              }`}
-                            >
-                              {emoji} {normalizedUsers.length}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    )}
-                    {message._id === seenMessageId && <p className="text-[10px] text-mist">Seen</p>}
                   </div>
                 </div>
               );
             })
           )}
         </div>
-        <div
-          onDragOver={(event) => {
-            event.preventDefault();
-            if (!activeThread || activeStatus !== "active") return;
-            setIsDragOver(true);
-          }}
-          onDragLeave={() => setIsDragOver(false)}
-          onDrop={handleDrop}
-          className={`rounded-xl border p-2 transition ${
-            isDragOver
-              ? "border-accent bg-accent/10"
-              : "border-border bg-transparent"
-          }`}
-        >
-          {replyingTo && (
-            <div className="mb-2 flex items-start justify-between gap-2 rounded-xl border border-border bg-charcoal px-3 py-2">
-              <div className="min-w-0">
-                <p className="text-[10px] uppercase tracking-wide text-mist">
-                  Replying to {getSenderName(replyingTo.senderId)}
-                </p>
-                <p className="truncate text-xs text-mist">{replyingTo.body}</p>
+      </section>
+
+      {/* ── Message panel ── */}
+      <section className="rounded-2xl bg-white/80 backdrop-blur-md border border-white/40 shadow-card p-4 md:flex md:min-h-0 md:flex-col">
+        {!activeThread ? (
+          <div className="flex flex-1 flex-col items-center justify-center text-center py-16">
+            <svg className="mb-5 h-20 w-20 text-mist/15" viewBox="0 0 80 80" fill="none" stroke="currentColor" strokeWidth="1.2">
+              <path d="M20 56V24a8 8 0 018-8h24a8 8 0 018 8v20a8 8 0 01-8 8H34l-10 8v-4z" />
+              <circle cx="36" cy="34" r="2" fill="currentColor" opacity="0.3" />
+              <circle cx="44" cy="34" r="2" fill="currentColor" opacity="0.3" />
+              <circle cx="52" cy="34" r="2" fill="currentColor" opacity="0.3" />
+            </svg>
+            <p className="font-display text-lg text-sand/70">Select a conversation</p>
+            <p className="mt-1 text-sm text-mist/50">Choose a thread from the left to start messaging</p>
+          </div>
+        ) : (
+          <>
+            {/* Header */}
+            <div className="flex items-center justify-between gap-3 pb-3 border-b border-border/50">
+              <div className="flex items-center gap-3">
+                <UserChip
+                  user={activeThread.otherParticipant}
+                  size={USER_CHIP_SIZES.CHAT_HEADER}
+                  showRole={false}
+                  nameClassName="font-display text-xl text-sand"
+                />
+                <span className="rounded-full bg-accent/[0.08] px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-accent/60">
+                  {getRelationshipLabel(activeThread)}
+                </span>
               </div>
-              <button
-                type="button"
-                onClick={() => setReplyingTo(null)}
-                className="text-xs uppercase tracking-wide text-coral"
-              >
-                ×
-              </button>
             </div>
-          )}
-          {attachments.length > 0 && (
-            <div className="mb-2 rounded-xl border border-border bg-charcoal p-2 space-y-2">
-              {attachments.map((file, index) => (
-                <div key={`${file.name}-${file.size}-${index}`} className="rounded-lg border border-border p-2">
-                  {attachmentPreviewUrls[index] ? (
-                    <img
-                      src={attachmentPreviewUrls[index]}
-                      alt={file.name}
-                      className="max-h-28 rounded-lg object-contain"
-                    />
-                  ) : (
-                    <div className="flex items-center gap-2 text-xs text-mist">
-                      <span>{file.type === "application/pdf" ? "PDF" : "File"}</span>
-                      <span className="truncate">{file.name}</span>
+
+            {error && <p className="mt-2 text-sm text-coral">{error}</p>}
+
+            {/* Status banner */}
+            {activeStatus !== "active" && (
+              <div className="mt-3 rounded-xl border border-border/60 bg-charcoal/50 p-4 text-sm text-mist">
+                {activeStatus === "pending" && activeThread.requestedBy === user?._id ? (
+                  <p>Request sent. Waiting for approval.</p>
+                ) : activeStatus === "pending" ? (
+                  <div className="space-y-3">
+                    <p>
+                      Do you want to start a conversation with{" "}
+                      {activeThread.otherParticipant?.name || "this member"}?
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      <button
+                        onClick={handleAccept}
+                        className="rounded-full bg-accent px-5 py-2 text-xs font-semibold uppercase tracking-wide text-white transition-all hover:opacity-90 active:scale-[0.98]"
+                      >
+                        Accept
+                      </button>
+                      <button
+                        onClick={handleReject}
+                        className="rounded-full border border-border px-5 py-2 text-xs uppercase tracking-wide text-mist transition-all hover:border-accent hover:text-sand active:scale-[0.98]"
+                      >
+                        Decline
+                      </button>
                     </div>
-                  )}
+                  </div>
+                ) : (
+                  <p>This request was declined.</p>
+                )}
+              </div>
+            )}
+
+            {/* Messages */}
+            <div
+              ref={messagesScrollRef}
+              onScroll={updateNearBottomFlag}
+              className="mt-4 min-h-[200px] space-y-3 md:min-h-0 md:flex-1 md:overflow-y-auto md:pr-1"
+            >
+              {messages.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-12 text-center">
+                  <p className="text-sm text-mist/60">No messages yet. Say hello!</p>
+                </div>
+              ) : (
+                messages.map((message, msgIndex) => {
+                  const reactions = normalizeReactions(message.reactions);
+                  const reactionEntries = Object.entries(reactions).filter(
+                    ([, users]) => Array.isArray(users) && users.length > 0
+                  );
+                  const myId = String(user?._id || "");
+                  const quote = message.replyTo;
+                  const isMenuOpen = openMenuMessageId === message._id;
+                  const isOwn = message.senderId === user?._id;
+                  const previewUrl = extractUrlsFromText(message.body || "")[0];
+                  const previewData = previewUrl ? linkPreviews[previewUrl] : null;
+                  const isNewMessage = msgIndex >= newMessageThresholdRef.current;
+
+                  return (
+                    <div
+                      key={message._id}
+                      className={`group flex ${isOwn ? "justify-end" : "justify-start"} ${isNewMessage ? "chat-msg-in" : ""}`}
+                    >
+                      <div
+                        className={`relative max-w-[75%] rounded-2xl px-4 py-2.5 text-[14px] leading-relaxed ${
+                          isOwn
+                            ? "bg-accent/[0.08] text-sand"
+                            : "bg-white border border-border/50 text-sand shadow-[0_1px_2px_rgba(0,0,0,0.04)]"
+                        }`}
+                        data-chat-menu-root="true"
+                      >
+                        {/* Hover action bar (desktop) */}
+                        <div className={`absolute ${isOwn ? "left-0" : "right-0"} -top-9 z-10 flex items-center gap-0.5 rounded-lg border border-border/50 bg-white p-0.5 shadow-elevated transition-all duration-150 ${isCoarsePointer ? "hidden" : "pointer-events-none opacity-0 scale-95 group-hover:pointer-events-auto group-hover:opacity-100 group-hover:scale-100"}`}>
+                          <button type="button" onClick={(e) => { e.stopPropagation(); setActiveReactionMessageId((prev) => prev === message._id ? "" : message._id); }} className="rounded-md p-1.5 text-mist hover:bg-charcoal hover:text-sand transition-colors" aria-label="React">
+                            <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><circle cx="12" cy="12" r="9" /><path d="M8 14s1.5 2 4 2 4-2 4-2" /><circle cx="9" cy="10" r="0.8" fill="currentColor" /><circle cx="15" cy="10" r="0.8" fill="currentColor" /></svg>
+                          </button>
+                          <button type="button" onClick={(e) => { e.stopPropagation(); setReplyingTo({ messageId: message._id, body: getReplySnippet(message), senderId: message.senderId }); }} className="rounded-md p-1.5 text-mist hover:bg-charcoal hover:text-sand transition-colors" aria-label="Reply">
+                            <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M9 14L4 9l5-5" /><path d="M4 9h10a5 5 0 015 5v2" /></svg>
+                          </button>
+                          <button type="button" onClick={(e) => { e.stopPropagation(); setOpenMenuMessageId((prev) => prev === message._id ? "" : message._id); }} className="rounded-md p-1.5 text-mist hover:bg-charcoal hover:text-sand transition-colors" aria-label="More options">
+                            <svg className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.5" /><circle cx="12" cy="12" r="1.5" /><circle cx="19" cy="12" r="1.5" /></svg>
+                          </button>
+                        </div>
+
+                        {/* Coarse pointer menu toggle */}
+                        {isCoarsePointer && (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setOpenMenuMessageId((prev) => (prev === message._id ? "" : message._id));
+                            }}
+                            className="absolute right-2 top-2 rounded-full border border-border/50 bg-white/80 px-1.5 py-0 text-xs text-mist shadow-sm"
+                            aria-label="Message options"
+                          >
+                            ⋯
+                          </button>
+                        )}
+
+                        {/* Dropdown menu (touch / more options) */}
+                        {isMenuOpen && (
+                          <div className="absolute right-0 -top-[4.5rem] z-20 min-w-[140px] rounded-xl border border-border/50 bg-white p-1 shadow-elevated chat-reaction-in">
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setActiveReactionMessageId(message._id);
+                                setOpenMenuMessageId("");
+                              }}
+                              className="flex w-full items-center gap-2 rounded-lg px-3 py-1.5 text-left text-xs text-mist hover:bg-charcoal"
+                            >
+                              <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><circle cx="12" cy="12" r="9" /><path d="M8 14s1.5 2 4 2 4-2 4-2" /></svg>
+                              React
+                            </button>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setReplyingTo({
+                                  messageId: message._id,
+                                  body: getReplySnippet(message),
+                                  senderId: message.senderId
+                                });
+                                setOpenMenuMessageId("");
+                              }}
+                              className="flex w-full items-center gap-2 rounded-lg px-3 py-1.5 text-left text-xs text-mist hover:bg-charcoal"
+                            >
+                              <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M9 14L4 9l5-5" /><path d="M4 9h10a5 5 0 015 5v2" /></svg>
+                              Reply
+                            </button>
+                            <p className="rounded-lg px-3 py-1.5 text-[11px] text-mist/60">
+                              Sent {formatTime(message.createdAt)}
+                            </p>
+                          </div>
+                        )}
+
+                        {/* Reply quote */}
+                        {quote?.messageId && (
+                          <div className="mb-2 rounded-lg bg-accent/[0.04] border border-accent/10 px-2.5 py-1.5">
+                            <p className="text-[10px] font-semibold uppercase tracking-wide text-accent/50">
+                              {getSenderName(quote.senderId)}
+                            </p>
+                            <p className="truncate text-xs text-mist">
+                              {quote.body || "Attachment"}
+                            </p>
+                          </div>
+                        )}
+
+                        {/* Body */}
+                        {message.body && (
+                          <p className="whitespace-pre-wrap break-words">
+                            {renderFormattedBody(message.body, message._id)}
+                          </p>
+                        )}
+
+                        {renderShareCard(message)}
+                        {renderAttachmentBlock(message)}
+
+                        {/* Link preview */}
+                        {previewUrl && (
+                          <a
+                            href={toHref(previewUrl)}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="mt-2 block rounded-lg border border-border/50 bg-charcoal/40 px-2.5 py-2 text-xs text-mist transition-colors hover:border-accent/30"
+                          >
+                            {previewData?.status === "loading" ? (
+                              <p className="text-mist/60">Loading preview...</p>
+                            ) : (
+                              <div className="space-y-0.5">
+                                <p className="text-[10px] uppercase tracking-wide text-mist/50">
+                                  {previewData?.hostname || previewUrl}
+                                </p>
+                                <p className="text-xs font-medium text-sand">
+                                  {previewData?.title || previewData?.hostname || previewUrl}
+                                </p>
+                                {previewData?.description && (
+                                  <p
+                                    className="text-[11px] text-mist/70"
+                                    style={{
+                                      display: "-webkit-box",
+                                      WebkitLineClamp: 2,
+                                      WebkitBoxOrient: "vertical",
+                                      overflow: "hidden"
+                                    }}
+                                  >
+                                    {previewData.description}
+                                  </p>
+                                )}
+                              </div>
+                            )}
+                          </a>
+                        )}
+
+                        {/* Timestamp + coarse pointer actions */}
+                        <div className="mt-1.5 flex items-center gap-2">
+                          <p className="text-[10px] text-mist/50">
+                            {formatTime(message.createdAt)}
+                          </p>
+                          {isCoarsePointer && (
+                            <>
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setReplyingTo({
+                                    messageId: message._id,
+                                    body: getReplySnippet(message),
+                                    senderId: message.senderId
+                                  })
+                                }
+                                className="text-[10px] uppercase tracking-wide text-mist/50 hover:text-sand"
+                              >
+                                Reply
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setActiveReactionMessageId(message._id)}
+                                className="text-[10px] uppercase tracking-wide text-mist/50 hover:text-sand"
+                              >
+                                React
+                              </button>
+                            </>
+                          )}
+                        </div>
+
+                        {/* Reaction picker */}
+                        {activeReactionMessageId === message._id && (
+                          <div
+                            data-chat-reaction-root="true"
+                            className="absolute -top-11 left-0 z-20 flex items-center gap-1 rounded-full border border-border/50 bg-white px-2 py-1 shadow-elevated chat-reaction-in"
+                          >
+                            {quickReactions.map((emoji) => (
+                              <button
+                                key={emoji}
+                                type="button"
+                                onClick={() => handleToggleReaction(message._id, emoji)}
+                                className="rounded-full p-1 text-base transition-transform duration-150 hover:scale-125 hover:bg-charcoal"
+                              >
+                                {emoji}
+                              </button>
+                            ))}
+                          </div>
+                        )}
+
+                        {/* Reaction display */}
+                        {reactionEntries.length > 0 && (
+                          <div className="mt-1.5 flex flex-wrap gap-1">
+                            {reactionEntries.map(([emoji, users]) => {
+                              const normalizedUsers = users.map((id) => String(id));
+                              const mine = normalizedUsers.includes(myId);
+                              return (
+                                <button
+                                  key={emoji}
+                                  type="button"
+                                  onClick={() => handleToggleReaction(message._id, emoji)}
+                                  className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[12px] transition-all duration-150 ${
+                                    mine
+                                      ? "bg-accent/10 text-accent shadow-[inset_0_0_0_1px_rgb(var(--accent)/0.2)]"
+                                      : "bg-charcoal text-mist hover:bg-charcoal/80"
+                                  }`}
+                                >
+                                  {emoji} {normalizedUsers.length}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        )}
+
+                        {message._id === seenMessageId && (
+                          <p className="mt-0.5 text-[10px] text-mist/40">Seen</p>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+
+            {/* ── Composer ── */}
+            <div
+              onDragOver={(e) => {
+                e.preventDefault();
+                if (!activeThread || activeStatus !== "active") return;
+                setIsDragOver(true);
+              }}
+              onDragLeave={() => setIsDragOver(false)}
+              onDrop={handleDrop}
+              className={`mt-3 transition-colors ${
+                isDragOver ? "rounded-xl ring-2 ring-accent/30 bg-accent/[0.03]" : ""
+              }`}
+            >
+              {/* Reply indicator */}
+              {replyingTo && (
+                <div className="mb-2 flex items-start justify-between gap-2 rounded-lg bg-accent/[0.04] border border-accent/15 px-3 py-2">
+                  <div className="min-w-0">
+                    <p className="text-[10px] font-semibold uppercase tracking-wide text-accent/50">
+                      Replying to {getSenderName(replyingTo.senderId)}
+                    </p>
+                    <p className="truncate text-xs text-mist">{replyingTo.body}</p>
+                  </div>
                   <button
                     type="button"
-                    onClick={() => removeAttachment(index)}
-                    className="mt-2 text-xs uppercase tracking-wide text-coral"
+                    onClick={() => setReplyingTo(null)}
+                    className="shrink-0 rounded-full p-0.5 text-mist hover:bg-charcoal hover:text-sand transition-colors"
+                    aria-label="Cancel reply"
                   >
-                    × Remove
+                    <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
                   </button>
                 </div>
-              ))}
-              <button
-                type="button"
-                onClick={() => setAttachments([])}
-                className="text-xs uppercase tracking-wide text-mist hover:text-sand"
-              >
-                Clear all
-              </button>
+              )}
+
+              {/* Attachment previews */}
+              {attachments.length > 0 && (
+                <div className="mb-2 flex gap-2 overflow-x-auto rounded-lg border border-border/50 bg-charcoal/30 p-2">
+                  {attachments.map((file, index) => (
+                    <div key={`${file.name}-${file.size}-${index}`} className="group/att relative shrink-0 w-24 rounded-lg border border-border/50 bg-white p-1.5">
+                      {attachmentPreviewUrls[index] ? (
+                        <img
+                          src={attachmentPreviewUrls[index]}
+                          alt={file.name}
+                          className="h-16 w-full rounded object-cover"
+                        />
+                      ) : (
+                        <div className="flex h-16 flex-col items-center justify-center text-center">
+                          <svg className="h-5 w-5 text-mist/40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" /><polyline points="14 2 14 8 20 8" /></svg>
+                          <span className="mt-1 text-[9px] text-mist/60 truncate w-full px-1">{file.name}</span>
+                        </div>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => removeAttachment(index)}
+                        className="absolute -right-1.5 -top-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-sand text-white text-[10px] opacity-0 group-hover/att:opacity-100 transition-opacity shadow-sm"
+                        aria-label="Remove attachment"
+                      >
+                        <svg className="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+                      </button>
+                    </div>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={() => setAttachments([])}
+                    className="shrink-0 self-center rounded-full px-3 py-1 text-[10px] uppercase tracking-wide text-mist/60 hover:text-sand transition-colors"
+                  >
+                    Clear all
+                  </button>
+                </div>
+              )}
+
+              {/* Unified composer box */}
+              <div className="rounded-xl border border-border/60 bg-white transition-all focus-within:border-accent/30 focus-within:shadow-[0_0_0_3px_rgb(var(--accent)/0.05)]">
+                <form onSubmit={handleSend}>
+                  <textarea
+                    ref={composerRef}
+                    value={body}
+                    onChange={(event) => setBody(event.target.value)}
+                    rows={2}
+                    className="w-full resize-none rounded-t-xl border-0 bg-transparent px-4 pt-3 pb-1 text-sm leading-relaxed text-sand placeholder:text-mist/40 focus:outline-none focus:ring-0"
+                    placeholder="Type a message..."
+                    disabled={!activeThread || activeStatus !== "active"}
+                  />
+                  <div className="flex items-center gap-0.5 border-t border-border/30 px-2 py-1.5">
+                    <button type="button" onClick={() => applyFormatting("bold")} className="rounded-md p-1.5 text-mist/50 transition-colors hover:bg-charcoal hover:text-sand" title="Bold">
+                      <svg className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor"><path d="M6 4h8a4 4 0 012.69 6.97A4 4 0 0115 20H6V4zm2 8h6a2 2 0 000-4H8v4zm0 2v4h7a2 2 0 000-4H8z" /></svg>
+                    </button>
+                    <button type="button" onClick={() => applyFormatting("italic")} className="rounded-md p-1.5 text-mist/50 transition-colors hover:bg-charcoal hover:text-sand" title="Italic">
+                      <svg className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor"><path d="M10 4h8l-1 2h-2.5l-4 12H13l-1 2H4l1-2h2.5l4-12H9l1-2z" /></svg>
+                    </button>
+                    <button type="button" onClick={() => applyFormatting("code")} className="rounded-md p-1.5 text-mist/50 transition-colors hover:bg-charcoal hover:text-sand" title="Code">
+                      <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="16 18 22 12 16 6" /><polyline points="8 6 2 12 8 18" /></svg>
+                    </button>
+                    <button type="button" onClick={() => applyFormatting("link")} className="rounded-md p-1.5 text-mist/50 transition-colors hover:bg-charcoal hover:text-sand" title="Link">
+                      <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71" /><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71" /></svg>
+                    </button>
+
+                    <div className="mx-1 h-4 w-px bg-border/40" />
+
+                    <label className="cursor-pointer rounded-md p-1.5 text-mist/50 transition-colors hover:bg-charcoal hover:text-sand" title="Attach file">
+                      <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48" /></svg>
+                      <input
+                        type="file"
+                        className="hidden"
+                        multiple
+                        onChange={(event) => {
+                          addAttachments(Array.from(event.target.files || []));
+                          event.target.value = "";
+                        }}
+                        accept="image/png,image/jpeg,image/webp,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv"
+                        disabled={!activeThread || activeStatus !== "active"}
+                      />
+                    </label>
+
+                    <div className="flex-1" />
+
+                    <button
+                      type="submit"
+                      className="flex h-8 w-8 items-center justify-center rounded-full bg-accent text-white transition-all duration-150 hover:opacity-90 active:scale-95 disabled:bg-mist/20 disabled:text-mist/40"
+                      disabled={!activeThread || activeStatus !== "active"}
+                      aria-label="Send message"
+                    >
+                      <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="12" y1="19" x2="12" y2="5" /><polyline points="5 12 12 5 19 12" /></svg>
+                    </button>
+                  </div>
+                </form>
+              </div>
             </div>
-          )}
-          <div className="mb-2 flex flex-wrap items-center gap-2 text-[11px] uppercase tracking-wide text-mist">
-            <button
-              type="button"
-              onClick={() => applyFormatting("bold")}
-              className="rounded-full border border-border px-2 py-1 hover:border-accent"
-            >
-              Bold
-            </button>
-            <button
-              type="button"
-              onClick={() => applyFormatting("italic")}
-              className="rounded-full border border-border px-2 py-1 hover:border-accent"
-            >
-              Italic
-            </button>
-            <button
-              type="button"
-              onClick={() => applyFormatting("code")}
-              className="rounded-full border border-border px-2 py-1 hover:border-accent"
-            >
-              Code
-            </button>
-            <button
-              type="button"
-              onClick={() => applyFormatting("link")}
-              className="rounded-full border border-border px-2 py-1 hover:border-accent"
-            >
-              Link
-            </button>
-          </div>
-          <form onSubmit={handleSend} className="flex items-center gap-2">
-            <textarea
-              ref={composerRef}
-              value={body}
-              onChange={(event) => setBody(event.target.value)}
-              rows={2}
-              className="h-11 flex-1 resize-none rounded-xl border border-border bg-white px-4 py-2 text-sm leading-tight text-sand"
-              placeholder="Type a message..."
-              disabled={!activeThread || activeStatus !== "active"}
-            />
-            <label className="inline-flex h-11 cursor-pointer items-center rounded-full border border-border px-3 text-xs uppercase tracking-wide text-mist hover:border-accent">
-              Attach
-              <input
-                type="file"
-                className="hidden"
-                multiple
-                onChange={(event) => {
-                  addAttachments(Array.from(event.target.files || []));
-                  event.target.value = "";
-                }}
-                accept="image/png,image/jpeg,image/webp,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv"
-                disabled={!activeThread || activeStatus !== "active"}
-              />
-            </label>
-            <button
-              type="submit"
-              className="inline-flex h-11 items-center rounded-full bg-accent px-4 text-xs font-semibold uppercase tracking-wide text-charcoal disabled:opacity-60"
-              disabled={!activeThread || activeStatus !== "active"}
-            >
-              Send
-            </button>
-          </form>
-          {attachments.length === 0 && (
-            <p className="mt-2 text-[11px] text-mist">
-              Drag and drop files here, or use Attach.
-            </p>
-          )}
-        </div>
+          </>
+        )}
       </section>
+
+      {/* ── Attachment viewer modal ── */}
       {viewerAttachment && (
         <div
-          className="fixed inset-0 z-40 flex items-center justify-center bg-charcoal/60 px-4"
+          className="fixed inset-0 z-40 flex items-center justify-center bg-sand/40 backdrop-blur-sm px-4 chat-overlay-in"
           onClick={() => setViewerAttachment(null)}
         >
           <div
-            className="glass w-full max-w-5xl max-h-[85vh] overflow-hidden rounded-2xl p-4 space-y-3"
+            className="w-full max-w-5xl max-h-[85vh] overflow-hidden rounded-2xl bg-white p-5 shadow-floating space-y-4 chat-modal-in"
             onClick={(event) => event.stopPropagation()}
           >
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <p className="truncate text-sm text-sand max-w-[60%]">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <p className="truncate text-sm font-medium text-sand max-w-[50%]">
                 {viewerAttachment.name || "Attachment"}
               </p>
-              <div className="flex flex-wrap items-center gap-2">
+              <div className="flex flex-wrap items-center gap-1.5">
                 {viewerAttachment.kind === "image" && (
                   <>
                     <button
                       type="button"
                       onClick={() => setViewerZoom((prev) => Math.max(0.5, Number((prev - 0.25).toFixed(2))))}
-                      className="rounded-full border border-border px-3 py-1 text-xs uppercase tracking-wide text-sand hover:border-accent"
+                      className="rounded-lg border border-border/50 p-2 text-mist transition-colors hover:bg-charcoal hover:text-sand"
+                      aria-label="Zoom out"
                     >
-                      -
+                      <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="11" cy="11" r="8" /><line x1="8" y1="11" x2="14" y2="11" /></svg>
                     </button>
-                    <span className="text-xs text-mist">{Math.round(viewerZoom * 100)}%</span>
+                    <span className="min-w-[3rem] text-center text-xs tabular-nums text-mist">{Math.round(viewerZoom * 100)}%</span>
                     <button
                       type="button"
                       onClick={() => setViewerZoom((prev) => Math.min(3, Number((prev + 0.25).toFixed(2))))}
-                      className="rounded-full border border-border px-3 py-1 text-xs uppercase tracking-wide text-sand hover:border-accent"
+                      className="rounded-lg border border-border/50 p-2 text-mist transition-colors hover:bg-charcoal hover:text-sand"
+                      aria-label="Zoom in"
                     >
-                      +
+                      <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="11" cy="11" r="8" /><line x1="11" y1="8" x2="11" y2="14" /><line x1="8" y1="11" x2="14" y2="11" /></svg>
                     </button>
                     <button
                       type="button"
                       onClick={() => setViewerZoom(1)}
-                      className="rounded-full border border-border px-3 py-1 text-xs uppercase tracking-wide text-sand hover:border-accent"
+                      className="rounded-lg border border-border/50 px-3 py-2 text-xs text-mist transition-colors hover:bg-charcoal hover:text-sand"
                     >
-                      Reset
+                      Fit
                     </button>
                   </>
                 )}
                 <a
                   href={viewerAttachment.url}
                   download
-                  className="rounded-full bg-accent px-3 py-1 text-xs font-semibold uppercase tracking-wide text-charcoal"
+                  className="rounded-lg bg-accent px-3 py-2 text-xs font-semibold text-white transition-opacity hover:opacity-90"
                 >
                   Download
                 </a>
                 <button
                   type="button"
                   onClick={() => setViewerAttachment(null)}
-                  className="rounded-full border border-border px-3 py-1 text-xs uppercase tracking-wide text-sand hover:border-accent"
+                  className="rounded-lg border border-border/50 p-2 text-mist transition-colors hover:bg-charcoal hover:text-sand"
+                  aria-label="Close viewer"
                 >
-                  Close
+                  <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
                 </button>
               </div>
             </div>
             {viewerAttachment.kind === "image" ? (
-              <div className="h-[72vh] overflow-auto rounded-xl border border-border bg-gray-100">
+              <div className="h-[72vh] overflow-auto rounded-xl border border-border/50 bg-charcoal/30">
                 <img
                   src={viewerAttachment.url}
                   alt={viewerAttachment.name || "Attachment image"}
@@ -1618,12 +1703,13 @@ export default function Chats() {
               <iframe
                 src={viewerAttachment.url}
                 title={viewerAttachment.name || "PDF attachment"}
-                className="h-[72vh] w-full rounded-xl border border-border"
+                className="h-[72vh] w-full rounded-xl border border-border/50"
               />
             ) : (
-              <div className="space-y-3 rounded-xl border border-border p-4">
-                <p className="text-sm text-mist break-all">{viewerAttachment.name || "File attachment"}</p>
-                <p className="text-xs text-mist">Preview unavailable for this file type.</p>
+              <div className="space-y-3 rounded-xl border border-border/50 bg-charcoal/30 p-6">
+                <svg className="mx-auto h-12 w-12 text-mist/30" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" /><polyline points="14 2 14 8 20 8" /></svg>
+                <p className="text-center text-sm text-mist break-all">{viewerAttachment.name || "File attachment"}</p>
+                <p className="text-center text-xs text-mist/60">Preview unavailable for this file type.</p>
               </div>
             )}
           </div>

@@ -13,7 +13,9 @@ export const USER_CHIP_SIZES = Object.freeze({
   SM: 32,
   MD: 40,
   LG: 56,
-  XL: 96
+  XL: 96,
+  THREAD_LIST: 44,
+  CHAT_HEADER: 48
 });
 
 export default function UserChip({
