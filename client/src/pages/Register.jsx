@@ -1,7 +1,9 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { apiClient } from "../api/client";
+import GoogleAuthButton from "../components/GoogleAuthButton";
 import { useAuth } from "../utils/auth";
+import { resolvePostLoginPath } from "../utils/authFlow";
 import CountryCombobox from "../components/CountryCombobox";
 
 export default function Register() {
@@ -26,7 +28,7 @@ export default function Register() {
     try {
       const data = await apiClient.post("/auth/register", form);
       login(data.token, data.user);
-      navigate("/fyp");
+      navigate(resolvePostLoginPath(data.user));
     } catch (err) {
       setError(err.message || "Registration failed");
     }
@@ -68,6 +70,7 @@ export default function Register() {
             value={form.password}
             onChange={handleChange}
             className="mt-2 w-full rounded-xl border border-border bg-white px-4 py-2 text-sand"
+            minLength={8}
             required
           />
         </div>
@@ -113,6 +116,20 @@ export default function Register() {
         >
           Create account
         </button>
+
+        <div className="space-y-4 border-t border-border pt-4">
+          <p className="text-xs uppercase tracking-wide text-mist">Or create your account with Google</p>
+          <GoogleAuthButton
+            text="signup_with"
+            userType={form.userType}
+            currentRegion={form.currentRegion}
+            onSuccess={(data) => {
+              login(data.token, data.user);
+              navigate(resolvePostLoginPath(data.user));
+            }}
+            onError={(message) => setError(message)}
+          />
+        </div>
       </form>
       <p className="text-sm text-mist">
         Already part of BridgeAZ? <Link to="/join" className="text-accent">Log in</Link>

@@ -1,7 +1,9 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { apiClient } from "../api/client";
+import GoogleAuthButton from "../components/GoogleAuthButton";
 import { useAuth } from "../utils/auth";
+import { resolvePostLoginPath } from "../utils/authFlow";
 import CountryCombobox from "../components/CountryCombobox";
 
 export default function Join() {
@@ -24,9 +26,7 @@ export default function Join() {
     try {
       const data = await apiClient.post("/auth/login", loginForm);
       login(data.token, data.user);
-      const roles = Array.isArray(data.user.roles) ? data.user.roles : [];
-      const canAdmin = data.user.isAdmin || roles.some((role) => ["staffC", "staffB", "adminA"].includes(role));
-      navigate(canAdmin ? "/admin" : "/fyp");
+      navigate(resolvePostLoginPath(data.user));
     } catch (err) {
       setError(err.message || "Login failed");
     }
@@ -98,12 +98,36 @@ export default function Join() {
               required
             />
           </div>
+          <div className="flex justify-end">
+            <Link to="/forgot-password" className="text-xs uppercase tracking-wide text-accent">
+              Forgot password?
+            </Link>
+          </div>
           <button
             type="submit"
             className="w-full rounded-full bg-sand px-6 py-3 text-xs font-semibold uppercase tracking-wide text-white"
           >
             Log in
           </button>
+
+          <div className="space-y-4 border-t border-border pt-4">
+            <div className="space-y-2">
+              <p className="text-xs uppercase tracking-wide text-mist">Or continue with Google</p>
+              <p className="text-sm text-mist">
+                First time with Google? Your selected sign-up role will be used to create the account.
+              </p>
+            </div>
+            <GoogleAuthButton
+              text="signin_with"
+              userType={registerForm.userType}
+              currentRegion={registerForm.currentRegion}
+              onSuccess={(data) => {
+                login(data.token, data.user);
+                navigate(resolvePostLoginPath(data.user));
+              }}
+              onError={(message) => setError(message)}
+            />
+          </div>
         </form>
       ) : (
         <form onSubmit={handleRegister} className="glass rounded-2xl p-6 space-y-4">
@@ -142,6 +166,7 @@ export default function Join() {
                 setRegisterForm((prev) => ({ ...prev, password: event.target.value }))
               }
               className="mt-2 w-full rounded-xl border border-border bg-white px-4 py-2 text-sand"
+              minLength={8}
               required
             />
           </div>
@@ -176,6 +201,20 @@ export default function Join() {
           >
             Create account
           </button>
+
+          <div className="space-y-4 border-t border-border pt-4">
+            <p className="text-xs uppercase tracking-wide text-mist">Or create your account with Google</p>
+            <GoogleAuthButton
+              text="signup_with"
+              userType={registerForm.userType}
+              currentRegion={registerForm.currentRegion}
+              onSuccess={(data) => {
+                login(data.token, data.user);
+                navigate(resolvePostLoginPath(data.user));
+              }}
+              onError={(message) => setError(message)}
+            />
+          </div>
         </form>
       )}
     </div>

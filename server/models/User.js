@@ -46,7 +46,13 @@ const userSchema = new mongoose.Schema(
   {
     name: { type: String, required: true },
     email: { type: String, required: true, unique: true, lowercase: true },
-    passwordHash: { type: String, required: true },
+    passwordHash: { type: String },
+    googleId: { type: String, unique: true, sparse: true },
+    authProviders: {
+      type: [String],
+      enum: ["password", "google"],
+      default: []
+    },
     userType: { type: String, enum: ["student", "professional"], required: true },
     currentRegion: { type: String, trim: true },
     roles: {
@@ -89,6 +95,8 @@ const userSchema = new mongoose.Schema(
     banned: { type: Boolean, default: false },
     bannedReason: String,
     bannedAt: Date,
+    passwordResetTokenHash: String,
+    passwordResetExpiresAt: Date,
     education: [educationSchema],
     experience: [experienceSchema],
     projects: [projectSchema],
