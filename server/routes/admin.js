@@ -150,6 +150,11 @@ router.patch(
         return res.status(400).json({ message: "Verification is not pending" });
       }
 
+      // Prevent self-approval
+      if (request.user.equals(req.user._id)) {
+        return res.status(403).json({ message: "You cannot approve your own verification request" });
+      }
+
       request.status = "approved";
       request.adminReviewer = req.user._id;
       request.adminComment = req.body.adminComment || "";
@@ -206,6 +211,11 @@ router.patch(
       }
       if (request.status !== "pending") {
         return res.status(400).json({ message: "Verification is not pending" });
+      }
+
+      // Prevent self-rejection
+      if (request.user.equals(req.user._id)) {
+        return res.status(403).json({ message: "You cannot review your own verification request" });
       }
 
       request.status = "rejected";

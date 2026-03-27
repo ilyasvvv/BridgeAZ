@@ -30,16 +30,37 @@ router.get("/me/mentorships", authMiddleware, blockBanned, async (req, res) => {
 
 router.post("/connections/request", authMiddleware, blockBanned, async (req, res) => {
   try {
-    const { recipientId } = req.body || {};
+    const { recipientId, message } = req.body || {};
     if (!recipientId) {
       return res.status(400).json({ message: "recipientId is required" });
     }
 
-    const connection = await Connection.create({
+    // Block self-connection
+    if (req.user._id.equals(recipientId)) {
+      return res.status(400).json({ message: "You cannot connect with yourself" });
+    }
+
+    // Bidirectional uniqueness check
+    const existingConnection = await Connection.findOne({
+      $or: [
+        { requesterId: req.user._id, addresseeId: recipientId },
+        { requesterId: recipientId, addresseeId: req.user._id }
+      ]
+    });
+    if (existingConnection) {
+      return res.status(409).json({ message: "Connection already exists" });
+    }
+
+    const connectionData = {
       requesterId: req.user._id,
       addresseeId: recipientId,
       status: "pending"
-    });
+    };
+    if (message && typeof message === "string") {
+      connectionData.message = message.slice(0, 500);
+    }
+
+    const connection = await Connection.create(connectionData);
     res.status(201).json(connection);
   } catch (error) {
     if (error && error.code === 11000) {
@@ -60,6 +81,7 @@ router.post("/connections/:id/accept", authMiddleware, blockBanned, async (req, 
     }
 
     connection.status = "accepted";
+    connection.acceptedAt = new Date();
     await connection.save();
     res.json(connection);
   } catch (error) {
@@ -67,26 +89,8 @@ router.post("/connections/:id/accept", authMiddleware, blockBanned, async (req, 
   }
 });
 
-router.post("/mentorships/request", authMiddleware, blockBanned, async (req, res) => {
-  try {
-    const { mentorId } = req.body || {};
-    if (!mentorId) {
-      return res.status(400).json({ message: "mentorId is required" });
-    }
-
-    const mentorship = await Mentorship.create({
-      mentorId,
-      menteeId: req.user._id,
-      status: "active"
-    });
-    res.status(201).json(mentorship);
-  } catch (error) {
-    if (error && error.code === 11000) {
-      return res.status(409).json({ message: "Mentorship already exists" });
-    }
-    res.status(500).json({ message: "Failed to request mentorship" });
-  }
-});
+// System A direct mentorship creation removed — use /api/mentorship-requests instead.
+// This endpoint is kept only for listing and ending mentorships.
 
 router.post("/mentorships/:id/end", authMiddleware, blockBanned, async (req, res) => {
   try {

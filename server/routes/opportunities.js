@@ -168,7 +168,8 @@ router.get("/", authMiddleware, blockBanned, async (req, res) => {
 
     if (type) query.type = type;
     if (country) query.country = country;
-    if (status) query.status = status;
+    // Default to open if no status filter specified
+    query.status = status || "open";
 
     if (search) {
       const searchRegex = new RegExp(search, "i");
@@ -291,6 +292,9 @@ router.patch("/:id", authMiddleware, blockBanned, async (req, res) => {
     }
     if (!ensureOwner(opportunity, req.user._id)) {
       return res.status(403).json({ message: "Not authorized" });
+    }
+    if (opportunity.status === "closed") {
+      return res.status(400).json({ message: "Cannot edit a closed opportunity. Reopen it first." });
     }
 
     const updates = { ...req.body };

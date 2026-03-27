@@ -17,6 +17,14 @@ const notificationRoutes = require("./routes/notifications");
 const chatRoutes = require("./routes/chats");
 const networkRoutes = require("./routes/network");
 const searchRoutes = require("./routes/search");
+const {
+  authLimiter,
+  postLimiter,
+  searchLimiter,
+  connectionLimiter,
+  chatLimiter,
+  generalLimiter
+} = require("./middleware/rateLimiter");
 
 const app = express();
 
@@ -73,20 +81,20 @@ app.get("/api/health", (req, res) => {
   res.json({ ok: true });
 });
 
-app.use("/api/auth", authRoutes);
-app.use("/api/users", userRoutes);
-app.use("/api/posts", postRoutes);
-app.use("/api/verification", verificationRoutes);
-app.use("/api/admin", adminRoutes);
-app.use("/api/upload", uploadRoutes);
-app.use("/api/uploads", uploadsRoutes);
-app.use("/api/mentorship-requests", mentorshipRoutes);
-app.use("/api/opportunities", opportunityRoutes);
-app.use("/api/contact", contactRoutes);
-app.use("/api/notifications", notificationRoutes);
-app.use("/api/chats", chatRoutes);
-app.use("/api/search", searchRoutes);
-app.use("/api", networkRoutes);
+app.use("/api/auth", authLimiter, authRoutes);
+app.use("/api/users", generalLimiter, userRoutes);
+app.use("/api/posts", postLimiter, postRoutes);
+app.use("/api/verification", generalLimiter, verificationRoutes);
+app.use("/api/admin", generalLimiter, adminRoutes);
+app.use("/api/upload", generalLimiter, uploadRoutes);
+app.use("/api/uploads", generalLimiter, uploadsRoutes);
+app.use("/api/mentorship-requests", connectionLimiter, mentorshipRoutes);
+app.use("/api/opportunities", generalLimiter, opportunityRoutes);
+app.use("/api/contact", generalLimiter, contactRoutes);
+app.use("/api/notifications", generalLimiter, notificationRoutes);
+app.use("/api/chats", chatLimiter, chatRoutes);
+app.use("/api/search", searchLimiter, searchRoutes);
+app.use("/api", connectionLimiter, networkRoutes);
 
 const PORT = process.env.PORT || 5001;
 

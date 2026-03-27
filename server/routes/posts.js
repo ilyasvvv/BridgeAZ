@@ -4,11 +4,12 @@ const Post = require("../models/Post");
 const Comment = require("../models/Comment");
 const Notification = require("../models/Notification");
 const { authMiddleware, blockBanned } = require("../middleware/auth");
+const { sanitizeString, FIELD_LIMITS } = require("../middleware/sanitize");
 
 const router = express.Router();
 const normalizeToken = (value) => (typeof value === "string" ? value.trim() : "");
 const authorSelect =
-  "name avatarUrl photoUrl profilePhoto profilePhotoUrl profilePictureUrl currentRegion userType role";
+  "name avatarUrl photoUrl profilePhoto profilePhotoUrl profilePictureUrl currentRegion userType role studentVerified mentorVerified isMentor";
 const commentAuthorSelect =
   "name avatarUrl photoUrl profilePhoto profilePhotoUrl profilePictureUrl";
 
@@ -43,7 +44,12 @@ router.get("/", authMiddleware, blockBanned, async (req, res) => {
 
 router.post("/", authMiddleware, blockBanned, async (req, res) => {
   try {
-    const { content, attachmentUrl, attachmentContentType, visibilityRegion } = req.body;
+    const rawContent = req.body.content;
+    const { attachmentUrl, attachmentContentType, visibilityRegion } = req.body;
+    if (!rawContent) {
+      return res.status(400).json({ message: "Post content is required" });
+    }
+    const content = sanitizeString(rawContent, FIELD_LIMITS.content);
     if (!content) {
       return res.status(400).json({ message: "Post content is required" });
     }
@@ -101,6 +107,17 @@ router.post("/:id/like", authMiddleware, blockBanned, async (req, res) => {
     }
 
     await post.save();
+
+    // Remove notification on unlike
+    if (alreadyLiked) {
+      await Notification.deleteOne({
+        type: "post_like",
+        userId: post.author,
+        actorId: req.user._id,
+        postId: post._id
+      });
+    }
+
     if (!alreadyLiked && !post.author.equals(req.user._id)) {
       const preview = post.content ? post.content.slice(0, 140) : "";
       await Notification.findOneAndUpdate(
@@ -161,7 +178,11 @@ router.get("/:id", authMiddleware, blockBanned, async (req, res) => {
 
 const handleCreateComment = async (req, res) => {
   try {
-    const { content } = req.body;
+    const rawContent = req.body.content;
+    if (!rawContent) {
+      return res.status(400).json({ message: "Comment content is required" });
+    }
+    const content = sanitizeString(rawContent, FIELD_LIMITS.comment);
     if (!content) {
       return res.status(400).json({ message: "Comment content is required" });
     }
@@ -220,7 +241,11 @@ router.get("/:id/comments", authMiddleware, blockBanned, async (req, res) => {
 
 router.patch("/:id", authMiddleware, blockBanned, async (req, res) => {
   try {
-    const { content } = req.body || {};
+    const rawContent = (req.body || {}).content;
+    if (!rawContent) {
+      return res.status(400).json({ message: "Post content is required" });
+    }
+    const content = sanitizeString(rawContent, FIELD_LIMITS.content);
     if (!content) {
       return res.status(400).json({ message: "Post content is required" });
     }

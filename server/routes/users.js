@@ -2,6 +2,14 @@ const express = require("express");
 const mongoose = require("mongoose");
 const User = require("../models/User");
 const { authMiddleware, blockBanned } = require("../middleware/auth");
+const {
+  sanitizeString,
+  sanitizeStringArray,
+  sanitizeEducationArray,
+  sanitizeExperienceArray,
+  sanitizeProjectsArray,
+  FIELD_LIMITS
+} = require("../middleware/sanitize");
 
 const router = express.Router();
 
@@ -40,6 +48,23 @@ router.put("/me", authMiddleware, blockBanned, async (req, res) => {
       }
     });
 
+    // Sanitize string fields
+    if (updates.name !== undefined) updates.name = sanitizeString(updates.name, FIELD_LIMITS.name);
+    if (updates.headline !== undefined) updates.headline = sanitizeString(updates.headline, FIELD_LIMITS.headline);
+    if (updates.bio !== undefined) updates.bio = sanitizeString(updates.bio, FIELD_LIMITS.bio);
+    if (updates.currentRegion !== undefined) updates.currentRegion = sanitizeString(updates.currentRegion, 100);
+
+    // Validate name is not empty after sanitization
+    if (updates.name !== undefined && !updates.name) {
+      return res.status(400).json({ message: "Name cannot be empty" });
+    }
+
+    // Sanitize arrays
+    if (updates.skills !== undefined) updates.skills = sanitizeStringArray(updates.skills, FIELD_LIMITS.skill, 50);
+    if (updates.education !== undefined) updates.education = sanitizeEducationArray(updates.education);
+    if (updates.experience !== undefined) updates.experience = sanitizeExperienceArray(updates.experience);
+    if (updates.projects !== undefined) updates.projects = sanitizeProjectsArray(updates.projects);
+
     if (updates.isPrivate !== undefined) {
       updates.profileVisibility = updates.isPrivate ? "private" : "public";
     }
@@ -62,12 +87,23 @@ router.get("/search", authMiddleware, blockBanned, async (req, res) => {
     const query = { _id: { $ne: req.user._id } };
 
     if (q) {
-      query.name = { $regex: q, $options: "i" };
+      const escapedQ = q.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      const regex = { $regex: escapedQ, $options: "i" };
+      query.$or = [
+        { name: regex },
+        { headline: regex },
+        { skills: regex },
+        { "education.institution": regex },
+        { "education.fieldOfStudy": regex },
+        { "experience.company": regex },
+        { "experience.org": regex },
+        { "experience.title": regex }
+      ];
     }
 
     const users = await User.find(query)
       .select(
-        "name avatarUrl profilePhotoUrl profilePictureUrl currentRegion locationNow education experience"
+        "name avatarUrl profilePhotoUrl profilePictureUrl currentRegion locationNow education experience headline userType studentVerified mentorVerified isMentor"
       )
       .sort({ updatedAt: -1 })
       .limit(limit);
@@ -101,7 +137,7 @@ router.get("/:id/public", authMiddleware, blockBanned, async (req, res) => {
       return res.status(400).json({ message: "Invalid user id" });
     }
     const user = await User.findById(req.params.id).select(
-      "name userType currentRegion profilePhotoUrl avatarUrl headline bio education experience skills links socialLinks createdAt"
+      "name userType currentRegion profilePhotoUrl avatarUrl headline bio education experience skills links socialLinks createdAt studentVerified mentorVerified isMentor verificationStatus"
     );
     if (!user) {
       return res.status(404).json({ message: "User not found" });
@@ -130,7 +166,13 @@ router.get("/:id", authMiddleware, blockBanned, async (req, res) => {
         currentRegion: user.currentRegion
       });
     }
-    res.json(user);
+
+    // Hide email from non-owner, non-admin views
+    const userObj = user.toObject();
+    if (!isOwner && !isAdmin) {
+      delete userObj.email;
+    }
+    res.json(userObj);
   } catch (error) {
     res.status(500).json({ message: "Failed to load user" });
   }

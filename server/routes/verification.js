@@ -37,6 +37,11 @@ const computeExpiresAt = (expiresAt) => {
 
 router.post("/student", authMiddleware, blockBanned, async (req, res) => {
   try {
+    // Only students can submit student verification
+    if (req.user.userType !== "student") {
+      return res.status(403).json({ message: "Only students can submit student verification" });
+    }
+
     const { documentUrl, expiresAt } = req.body || {};
     const validation = validateDocumentUrl(documentUrl);
     if (!validation.ok) {
@@ -88,6 +93,11 @@ router.post("/student", authMiddleware, blockBanned, async (req, res) => {
 
 router.post("/mentor", authMiddleware, blockBanned, async (req, res) => {
   try {
+    // Only professionals can submit mentor verification
+    if (req.user.userType !== "professional") {
+      return res.status(403).json({ message: "Only professionals can submit mentor verification" });
+    }
+
     const { documentUrl, universityEmail, linkedinUrl, note, expiresAt } = req.body || {};
     const validation = validateDocumentUrl(documentUrl);
     if (!validation.ok) {

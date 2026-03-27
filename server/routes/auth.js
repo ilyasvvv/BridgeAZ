@@ -5,6 +5,7 @@ const https = require("https");
 const jwt = require("jsonwebtoken");
 const User = require("../models/User");
 const { authMiddleware, blockBanned } = require("../middleware/auth");
+const { sanitizeString, FIELD_LIMITS } = require("../middleware/sanitize");
 
 const router = express.Router();
 const PASSWORD_MIN_LENGTH = 8;
@@ -141,7 +142,9 @@ const signToken = (user) => {
 
 router.post("/register", async (req, res) => {
   try {
-    const { name, email, password, userType, currentRegion } = req.body;
+    const rawName = req.body.name;
+    const { email, password, userType, currentRegion } = req.body;
+    const name = sanitizeString(rawName, FIELD_LIMITS.name);
     const normalizedEmail = normalizeEmail(email);
     const normalizedUserType = normalizeUserType(userType);
 
@@ -317,8 +320,9 @@ router.post("/forgot-password", async (req, res) => {
     }
 
     const payload = { message: genericMessage };
+    // Never expose resetUrl in API response (log it for dev instead)
     if (!deliveryConfigured && process.env.NODE_ENV !== "production") {
-      payload.resetUrl = resetUrl;
+      console.log("[DEV] Password reset URL:", resetUrl);
     }
 
     return res.json(payload);
