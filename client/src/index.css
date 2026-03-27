@@ -139,3 +139,40 @@
 .chat-modal-in {
   animation: chat-modal-in 0.25s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
+
+/* For You page animations */
+@keyframes fyp-card-in {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.fyp-card-in {
+  animation: fyp-card-in 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes fyp-heart {
+  0% { transform: scale(1); }
+  15% { transform: scale(1.25); }
+  30% { transform: scale(0.95); }
+  45% { transform: scale(1.1); }
+  100% { transform: scale(1); }
+}
+
+.fyp-heart-pop {
+  animation: fyp-heart 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes fyp-overlay-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes fyp-modal-in {
+  from { opacity: 0; transform: translateY(16px) scale(0.97); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes fyp-menu-in {
+  from { opacity: 0; transform: scale(0.92) translateY(-4px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
