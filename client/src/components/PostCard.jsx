@@ -55,7 +55,12 @@ export default function PostCard({ post, onLike }) {
             <span className="text-xs text-mist">{formatRelativeTime(post.createdAt)}</span>
           </div>
         </div>
-        <StatusBadge label={post.author?.userType || "member"} tone="slate" />
+        <div className="flex items-center gap-1.5">
+          {(post.author?.studentVerified || post.author?.mentorVerified) && (
+            <StatusBadge label="Verified" tone="success" />
+          )}
+          <StatusBadge label={post.author?.userType || "member"} tone="slate" />
+        </div>
       </div>
       <p className="mt-4 text-base text-sand/90 break-words whitespace-pre-wrap">
         {post.content}

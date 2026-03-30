@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { apiClient } from "../api/client";
 import { useAuth } from "../utils/auth";
 import { useNavigate } from "react-router-dom";
+import { formatRelativeTime } from "../utils/format";
 
 export default function Notifications() {
   const { token } = useAuth();
@@ -34,6 +35,15 @@ export default function Notifications() {
     }
   };
 
+  const markAllRead = async () => {
+    try {
+      await apiClient.patch("/notifications/read-all", {}, token);
+      setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+    } catch (err) {
+      setError(err.message || "Failed to mark all as read");
+    }
+  };
+
   const handleOpen = (note) => {
     if (note.link) {
       navigate(note.link);
@@ -44,7 +54,17 @@ export default function Notifications() {
 
   return (
     <div className="mx-auto max-w-3xl space-y-6">
-      <h1 className="font-display text-3xl">Notifications</h1>
+      <div className="flex items-center justify-between">
+        <h1 className="font-display text-3xl">Notifications</h1>
+        {notifications.some((n) => !n.read) && (
+          <button
+            onClick={markAllRead}
+            className="rounded-full border border-border px-4 py-2 text-xs uppercase tracking-wide text-sand hover:border-sand/30"
+          >
+            Mark all as read
+          </button>
+        )}
+      </div>
       {error && <p className="text-sm text-coral">{error}</p>}
       <div className="space-y-3">
         {notifications.length === 0 ? (
@@ -62,6 +82,9 @@ export default function Notifications() {
                 >
                   <p className="text-sm text-sand">{note.title}</p>
                   <p className="text-xs text-mist">{note.body}</p>
+                  {note.createdAt && (
+                    <p className="mt-1 text-[10px] text-mist/50">{formatRelativeTime(note.createdAt)}</p>
+                  )}
                 </button>
                 {!note.read && (
                   <button

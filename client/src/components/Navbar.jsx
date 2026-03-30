@@ -11,7 +11,7 @@ const LOGGED_IN_LINKS = [
   { to: "/fyp", label: "For You" },
   { to: "/opportunities", label: "Opportunities" },
   { to: "/network", label: "Network" },
-  { to: "/chats", label: "Chats" },
+  { to: "/chats", label: "Chats", exact: true },
 ];
 
 /* ─── Sliding pill hook ─── */
@@ -108,11 +108,15 @@ export default function Navbar() {
   const allLinks = adminVisible ? [...links, { to: "/admin", label: "Admin" }] : links;
 
   const isActive = useCallback(
-    (to) => (to === "/" ? location.pathname === "/" : location.pathname.startsWith(to)),
+    (to, exact) => {
+      if (to === "/") return location.pathname === "/";
+      if (exact) return location.pathname === to;
+      return location.pathname.startsWith(to);
+    },
     [location.pathname]
   );
 
-  const activeKey = allLinks.find((l) => isActive(l.to))?.to ?? null;
+  const activeKey = allLinks.find((l) => isActive(l.to, l.exact))?.to ?? null;
 
   // Desktop pill
   const { containerRef, setRef, pillStyle } = useNavPill(activeKey);
@@ -137,7 +141,7 @@ export default function Navbar() {
           />
 
           {allLinks.map((link) => {
-            const active = isActive(link.to);
+            const active = isActive(link.to, link.exact);
             return (
               <NavLink
                 key={link.to}
@@ -230,7 +234,7 @@ export default function Navbar() {
       >
         <div className="flex flex-col gap-1 px-6 py-3">
           {allLinks.map((link) => {
-            const active = isActive(link.to);
+            const active = isActive(link.to, link.exact);
             return (
               <NavLink
                 key={link.to}

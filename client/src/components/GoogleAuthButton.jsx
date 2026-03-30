@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { apiClient } from "../api/client";
 
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || "";
+export const isGoogleAuthAvailable = !!GOOGLE_CLIENT_ID;
 let googleScriptPromise;
 
 const loadGoogleScript = () => {
@@ -110,11 +111,7 @@ export default function GoogleAuthButton({
   }, [currentRegion, onError, onSuccess, text, userType]);
 
   if (unavailable) {
-    return (
-      <p className="rounded-xl border border-border bg-white/70 px-4 py-3 text-sm text-mist">
-        Google sign-in will appear here after `VITE_GOOGLE_CLIENT_ID` is configured.
-      </p>
-    );
+    return null;
   }
 
   return (

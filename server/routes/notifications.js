@@ -15,6 +15,18 @@ router.get("/", authMiddleware, blockBanned, async (req, res) => {
   }
 });
 
+router.patch("/read-all", authMiddleware, blockBanned, async (req, res) => {
+  try {
+    await Notification.updateMany(
+      { userId: req.user._id, read: false },
+      { read: true }
+    );
+    res.json({ message: "All notifications marked as read" });
+  } catch (error) {
+    res.status(500).json({ message: "Failed to mark all as read" });
+  }
+});
+
 router.patch("/:id/read", authMiddleware, blockBanned, async (req, res) => {
   try {
     const notification = await Notification.findOneAndUpdate(

@@ -196,6 +196,12 @@ export default function Admin() {
       {activeTab === "verifications" && (
         <div className="space-y-4">
           {message && <p className="text-sm text-accent">{message}</p>}
+          {requests.length === 0 && !message && (
+            <div className="flex flex-col items-center py-12 text-center">
+              <p className="text-sm font-medium text-sand/80">No pending verification requests</p>
+              <p className="mt-1 text-xs text-mist/50">New requests will appear here when users submit verification documents.</p>
+            </div>
+          )}
           <div className="grid gap-4 md:grid-cols-2">
             {requests.map((request) => (
               <div key={request._id} className="glass rounded-2xl p-5">
@@ -366,7 +372,7 @@ export default function Admin() {
                 <div key={item._id} className="glass rounded-2xl p-5 space-y-3">
                   <div>
                     <p className="text-lg text-sand">{item.name}</p>
-                    <p className="text-xs uppercase tracking-wide text-mist">{item.email}</p>
+                    <p className="text-xs tracking-wide text-mist">{item.email}</p>
                   </div>
                   <div className="text-xs text-mist space-y-1">
                     <p>

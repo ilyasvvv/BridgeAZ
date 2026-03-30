@@ -4,7 +4,10 @@ export default function StatusBadge({ label, tone = "blue" }) {
     success: "bg-accent-success/10 text-accent-success border-accent-success/20",
     warning: "bg-accent-warning/10 text-accent-warning border-accent-warning/20",
     error: "bg-accent-error/10 text-accent-error border-accent-error/20",
-    slate: "bg-bg-app text-text-secondary border-black/[0.05]"
+    slate: "bg-bg-app text-text-secondary border-black/[0.05]",
+    teal: "bg-teal/10 text-teal border-teal/20",
+    coral: "bg-coral/10 text-coral border-coral/20",
+    ember: "bg-amber-500/10 text-amber-600 border-amber-500/20",
   };
 
   const currentTone = tones[tone] || tones.blue;

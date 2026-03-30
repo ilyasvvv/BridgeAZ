@@ -53,11 +53,18 @@ function PersonCard({ user }) {
           )}
         </div>
       </div>
-      {user.userType && (
-        <span className="shrink-0 rounded-full border border-border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-mist">
-          {user.userType}
-        </span>
-      )}
+      <div className="flex shrink-0 flex-col items-end gap-1">
+        {user.userType && (
+          <span className="rounded-full border border-border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-mist">
+            {user.userType}
+          </span>
+        )}
+        {(user.studentVerified || user.mentorVerified) && (
+          <span className="rounded-full bg-accent-success/10 border border-accent-success/20 px-2 py-0.5 text-[9px] font-bold uppercase text-accent-success">
+            Verified
+          </span>
+        )}
+      </div>
     </button>
   );
 }

@@ -415,14 +415,14 @@ export default function Profile() {
               <section className="apple-card p-8">
                 <h3 className="text-xl font-bold text-sand">Social & Links</h3>
                 <div className="mt-6 grid gap-6 md:grid-cols-2">
-                  {Object.keys(form.socialLinks || {}).map((key) => (
+                  {Object.keys(form.socialLinks || {}).filter((key) => key !== "_id" && !key.startsWith("$")).map((key) => (
                     <div key={key} className="space-y-1">
                       <label className="text-[11px] font-bold uppercase tracking-tight text-mist capitalize opacity-70">{key}</label>
                       <input
                         className="w-full rounded-md border border-border bg-slate px-4 py-2 text-sm text-sand outline-none focus:border-accent"
                         value={form.socialLinks?.[key] || ""}
                         onChange={(e) => setForm({
-                          ...form, 
+                          ...form,
                           socialLinks: { ...form.socialLinks, [key]: e.target.value }
                         })}
                         placeholder={`Your ${key} URL`}

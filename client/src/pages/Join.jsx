@@ -1,7 +1,7 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { apiClient } from "../api/client";
-import GoogleAuthButton from "../components/GoogleAuthButton";
+import GoogleAuthButton, { isGoogleAuthAvailable } from "../components/GoogleAuthButton";
 import { useAuth } from "../utils/auth";
 import { resolvePostLoginPath } from "../utils/authFlow";
 import CountryCombobox from "../components/CountryCombobox";
@@ -18,7 +18,11 @@ export default function Join() {
   });
   const [error, setError] = useState("");
   const navigate = useNavigate();
-  const { login } = useAuth();
+  const { login, user } = useAuth();
+
+  useEffect(() => {
+    if (user) navigate("/fyp", { replace: true });
+  }, [user, navigate]);
 
   const handleLogin = async (event) => {
     event.preventDefault();
@@ -47,7 +51,7 @@ export default function Join() {
   return (
     <div className="mx-auto flex max-w-2xl flex-col gap-6" style={{ "--accent": "29 29 68", "--accent-soft": "95 96 116" }}>
       <div className="flex items-center justify-between">
-        <h1 className="font-display text-3xl">Join BridgeAZ</h1>
+        <h1 className="font-display text-3xl">{mode === "login" ? "Welcome back" : "Join BridgeAZ"}</h1>
         <div className="flex gap-2 text-xs uppercase tracking-wide">
           {[
             { value: "login", label: "Log in" },
@@ -110,24 +114,26 @@ export default function Join() {
             Log in
           </button>
 
-          <div className="space-y-4 border-t border-border pt-4">
-            <div className="space-y-2">
-              <p className="text-xs uppercase tracking-wide text-mist">Or continue with Google</p>
-              <p className="text-sm text-mist">
-                First time with Google? Your selected sign-up role will be used to create the account.
-              </p>
+          {isGoogleAuthAvailable && (
+            <div className="space-y-4 border-t border-border pt-4">
+              <div className="space-y-2">
+                <p className="text-xs uppercase tracking-wide text-mist">Or continue with Google</p>
+                <p className="text-sm text-mist">
+                  First time with Google? Your selected sign-up role will be used to create the account.
+                </p>
+              </div>
+              <GoogleAuthButton
+                text="signin_with"
+                userType={registerForm.userType}
+                currentRegion={registerForm.currentRegion}
+                onSuccess={(data) => {
+                  login(data.token, data.user);
+                  navigate(resolvePostLoginPath(data.user));
+                }}
+                onError={(message) => setError(message)}
+              />
             </div>
-            <GoogleAuthButton
-              text="signin_with"
-              userType={registerForm.userType}
-              currentRegion={registerForm.currentRegion}
-              onSuccess={(data) => {
-                login(data.token, data.user);
-                navigate(resolvePostLoginPath(data.user));
-              }}
-              onError={(message) => setError(message)}
-            />
-          </div>
+          )}
         </form>
       ) : (
         <form onSubmit={handleRegister} className="glass rounded-2xl p-6 space-y-4">
@@ -202,19 +208,21 @@ export default function Join() {
             Create account
           </button>
 
-          <div className="space-y-4 border-t border-border pt-4">
-            <p className="text-xs uppercase tracking-wide text-mist">Or create your account with Google</p>
-            <GoogleAuthButton
-              text="signup_with"
-              userType={registerForm.userType}
-              currentRegion={registerForm.currentRegion}
-              onSuccess={(data) => {
-                login(data.token, data.user);
-                navigate(resolvePostLoginPath(data.user));
-              }}
-              onError={(message) => setError(message)}
-            />
-          </div>
+          {isGoogleAuthAvailable && (
+            <div className="space-y-4 border-t border-border pt-4">
+              <p className="text-xs uppercase tracking-wide text-mist">Or create your account with Google</p>
+              <GoogleAuthButton
+                text="signup_with"
+                userType={registerForm.userType}
+                currentRegion={registerForm.currentRegion}
+                onSuccess={(data) => {
+                  login(data.token, data.user);
+                  navigate(resolvePostLoginPath(data.user));
+                }}
+                onError={(message) => setError(message)}
+              />
+            </div>
+          )}
         </form>
       )}
     </div>
