@@ -1,9 +1,9 @@
 import { useEffect, useState, useRef, useLayoutEffect, useCallback, useMemo } from "react";
+import { Link } from "react-router-dom";
 import { apiClient } from "../api/client";
 import { useAuth } from "../utils/auth";
 import ProfileCard from "../components/ProfileCard";
 import Avatar from "../components/Avatar";
-import { regionLabel } from "../utils/format";
 
 const TABS = [
   {
@@ -17,10 +17,10 @@ const TABS = [
   },
   {
     key: "Connections",
-    label: "Connections",
+    label: "Bridges",
     icon: (
       <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+        <path strokeLinecap="round" strokeLinejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
       </svg>
     ),
   },
@@ -41,12 +41,17 @@ const USER_TYPE_OPTIONS = [
   { key: "professional", label: "Professionals" },
 ];
 
+function resolveAvatar(u) {
+  return u?.avatarUrl || u?.photoUrl || u?.profilePhoto || u?.profilePhotoUrl || u?.profilePictureUrl || null;
+}
+
 export default function Network() {
-  const { token } = useAuth();
+  const { token, user: currentUser } = useAuth();
   const [activeTab, setActiveTab] = useState("Explore");
   const [connections, setConnections] = useState([]);
   const [mentorships, setMentorships] = useState([]);
   const [users, setUsers] = useState([]);
+  const [relationships, setRelationships] = useState({});
   const [filters, setFilters] = useState({ region: "", userType: "", isMentor: false });
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
@@ -104,6 +109,41 @@ export default function Network() {
     }
   };
 
+  // Build a relationship map from connections + mentorships for ProfileCards
+  useEffect(() => {
+    if (!currentUser?._id) return;
+    const map = {};
+    const myId = String(currentUser._id);
+
+    connections.forEach((conn) => {
+      const otherId = String(conn.requesterId?._id || conn.requesterId) === myId
+        ? String(conn.addresseeId?._id || conn.addresseeId)
+        : String(conn.requesterId?._id || conn.requesterId);
+      if (!map[otherId]) map[otherId] = {};
+      if (conn.status === "accepted") {
+        map[otherId].bridged = true;
+      } else if (conn.status === "pending") {
+        map[otherId].bridgePending = true;
+        map[otherId].bridgeDirection = String(conn.requesterId?._id || conn.requesterId) === myId ? "sent" : "received";
+        map[otherId].connectionId = conn._id;
+      }
+    });
+
+    mentorships.forEach((m) => {
+      const mentorId = String(m.mentorId?._id || m.mentorId);
+      const menteeId = String(m.menteeId?._id || m.menteeId);
+      if (mentorId === myId) {
+        if (!map[menteeId]) map[menteeId] = {};
+        map[menteeId].isMentee = true;
+      } else {
+        if (!map[mentorId]) map[mentorId] = {};
+        map[mentorId].isMentor = true;
+      }
+    });
+
+    setRelationships(map);
+  }, [connections, mentorships, currentUser]);
+
   useEffect(() => {
     if (token) loadNetwork();
   }, [token]);
@@ -121,6 +161,15 @@ export default function Network() {
     }
   };
 
+  const handleReject = async (id) => {
+    try {
+      await apiClient.post(`/connections/${id}/reject`, {}, token);
+      loadNetwork();
+    } catch (err) {
+      setError(err.message || "Failed to reject");
+    }
+  };
+
   const handleEnd = async (id) => {
     try {
       await apiClient.post(`/mentorships/${id}/end`, {}, token);
@@ -130,9 +179,19 @@ export default function Network() {
     }
   };
 
+  const handleRemoveBridge = async (id) => {
+    try {
+      await apiClient.delete(`/connections/${id}`, token);
+      loadNetwork();
+    } catch (err) {
+      setError(err.message || "Failed to remove bridge");
+    }
+  };
+
   const pendingConnections = useMemo(
-    () => connections.filter((c) => c.status === "pending"),
-    [connections]
+    () => connections.filter((c) => c.status === "pending" &&
+      String(c.addresseeId?._id || c.addresseeId) === String(currentUser?._id)),
+    [connections, currentUser]
   );
   const acceptedConnections = useMemo(
     () => connections.filter((c) => c.status === "accepted"),
@@ -156,7 +215,7 @@ export default function Network() {
       <div className="space-y-1">
         <h1 className="font-display text-3xl text-sand">Network</h1>
         <p className="font-sans text-sm text-mist/60">
-          Connect with members, find mentors, and grow your community.
+          Bridge with members, find mentors, and grow your community.
         </p>
       </div>
 
@@ -180,10 +239,9 @@ export default function Network() {
               {tab.icon}
             </span>
             {tab.label}
-            {/* Count badges */}
-            {tab.key === "Connections" && connections.length > 0 && (
+            {tab.key === "Connections" && acceptedConnections.length > 0 && (
               <span className="rounded-full bg-surface-alt px-1.5 py-0.5 font-sans text-[10px] font-bold text-mist/60">
-                {connections.length}
+                {acceptedConnections.length}
               </span>
             )}
             {tab.key === "Connections" && pendingConnections.length > 0 && (
@@ -198,7 +256,6 @@ export default function Network() {
             )}
           </button>
         ))}
-        {/* Sliding pill */}
         <span
           className="pointer-events-none absolute rounded-xl border border-sand/8 bg-sand/5"
           style={{
@@ -245,7 +302,6 @@ export default function Network() {
               </div>
 
               <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
-                {/* Search input */}
                 <div className="relative flex-1">
                   <svg className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-mist/35" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
@@ -259,7 +315,6 @@ export default function Network() {
                   />
                 </div>
 
-                {/* User type pills */}
                 <div className="flex items-center gap-1.5">
                   {USER_TYPE_OPTIONS.map((opt) => (
                     <button
@@ -276,7 +331,6 @@ export default function Network() {
                   ))}
                 </div>
 
-                {/* Mentor toggle */}
                 <button
                   onClick={() => setFilters((prev) => ({ ...prev, isMentor: !prev.isMentor }))}
                   className={`flex items-center gap-2 rounded-full px-3.5 py-1.5 font-sans text-xs font-medium transition-all duration-200 ${
@@ -294,7 +348,6 @@ export default function Network() {
             </div>
           </div>
 
-          {/* Results count */}
           {!usersLoading && (
             <div className="flex items-center gap-2">
               <span className="font-sans text-xs text-mist/50">
@@ -308,7 +361,6 @@ export default function Network() {
             </div>
           )}
 
-          {/* Loading skeletons */}
           {usersLoading ? (
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {[...Array(6)].map((_, i) => (
@@ -344,6 +396,8 @@ export default function Network() {
                 <ProfileCard
                   key={member._id}
                   user={member}
+                  relationship={relationships[String(member._id)]}
+                  onRelationshipChange={loadNetwork}
                   style={{ animation: `opp-card-in 0.45s cubic-bezier(0.16, 1, 0.3, 1) ${i * 0.06}s both` }}
                 />
               ))}
@@ -352,7 +406,7 @@ export default function Network() {
         </div>
       )}
 
-      {/* ─── Connections tab ─── */}
+      {/* ─── Bridges tab ─── */}
       {activeTab === "Connections" && (
         <div className="space-y-5">
           {loading ? (
@@ -375,7 +429,7 @@ export default function Network() {
                 <section className="space-y-3">
                   <div className="flex items-center gap-2">
                     <h2 className="font-sans text-[11px] font-bold uppercase tracking-[0.2em] text-mist/50">
-                      Pending Requests
+                      Incoming Bridge Requests
                     </h2>
                     <span className="flex h-4 min-w-[16px] items-center justify-center rounded-full bg-coral/15 px-1 font-sans text-[9px] font-bold text-coral">
                       {pendingConnections.length}
@@ -383,30 +437,43 @@ export default function Network() {
                   </div>
                   <div className="space-y-2">
                     {pendingConnections.map((conn, i) => {
-                      const person = conn.requesterId || conn.addresseeId;
+                      const person = conn.requesterId;
                       return (
                         <div
                           key={conn._id}
-                          className="flex items-center justify-between gap-4 rounded-2xl border border-coral/15 bg-white p-4 transition-all hover:shadow-card"
+                          className="flex items-center justify-between gap-4 rounded-2xl border border-brand/15 bg-white p-4 transition-all hover:shadow-card"
                           style={{ animation: `opp-card-in 0.4s cubic-bezier(0.16, 1, 0.3, 1) ${i * 0.06}s both` }}
                         >
-                          <div className="flex items-center gap-3 min-w-0">
-                            <Avatar url={person?.avatarUrl || person?.photoUrl} alt={person?.name} size={40} />
+                          <Link to={`/profile/${person?._id}`} className="flex items-center gap-3 min-w-0 group">
+                            <Avatar url={resolveAvatar(person)} alt={person?.name} size={40} />
                             <div className="min-w-0">
-                              <p className="truncate font-sans text-sm font-semibold text-sand">
+                              <p className="truncate font-sans text-sm font-semibold text-sand group-hover:text-accent transition-colors">
                                 {person?.name || "Member"}
                               </p>
                               <p className="truncate font-sans text-xs text-mist/50">
-                                Wants to connect
+                                {person?.headline || "Wants to bridge"}
                               </p>
+                              {conn.message && (
+                                <p className="mt-1 truncate font-sans text-xs text-mist/70 italic">
+                                  "{conn.message}"
+                                </p>
+                              )}
                             </div>
+                          </Link>
+                          <div className="flex items-center gap-2 shrink-0">
+                            <button
+                              onClick={() => handleAccept(conn._id)}
+                              className="rounded-xl bg-brand px-5 py-2 font-sans text-xs font-bold text-white shadow-sm transition-all hover:opacity-90 active:scale-[0.98]"
+                            >
+                              Accept
+                            </button>
+                            <button
+                              onClick={() => handleReject(conn._id)}
+                              className="rounded-xl border border-border px-4 py-2 font-sans text-xs font-medium text-mist transition-all hover:border-coral/30 hover:text-coral active:scale-[0.98]"
+                            >
+                              Decline
+                            </button>
                           </div>
-                          <button
-                            onClick={() => handleAccept(conn._id)}
-                            className="shrink-0 rounded-xl bg-sand px-5 py-2 font-sans text-xs font-bold text-white shadow-sm transition-all hover:opacity-90 active:scale-[0.98]"
-                          >
-                            Accept
-                          </button>
                         </div>
                       );
                     })}
@@ -414,10 +481,10 @@ export default function Network() {
                 </section>
               )}
 
-              {/* Accepted connections */}
+              {/* Accepted bridges */}
               <section className="space-y-3">
                 <h2 className="font-sans text-[11px] font-bold uppercase tracking-[0.2em] text-mist/50">
-                  Your Connections
+                  Your Bridges
                   {acceptedConnections.length > 0 && (
                     <span className="ml-2 font-normal text-mist/40">
                       ({acceptedConnections.length})
@@ -428,16 +495,16 @@ export default function Network() {
                   <div className="flex flex-col items-center py-16 text-center">
                     <div className="mb-4 rounded-2xl bg-surface-alt p-4">
                       <svg className="h-8 w-8 text-mist/30" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
                       </svg>
                     </div>
-                    <p className="font-sans text-sm font-medium text-sand/80">No connections yet</p>
+                    <p className="font-sans text-sm font-medium text-sand/80">No bridges yet</p>
                     <p className="mt-1 font-sans text-xs text-mist/50">
-                      Explore members and send connection requests
+                      Explore members and send bridge requests
                     </p>
                     <button
                       onClick={() => setActiveTab("Explore")}
-                      className="mt-4 inline-flex items-center gap-1.5 rounded-full bg-sand/5 px-4 py-2 font-sans text-xs font-semibold text-sand transition-all hover:bg-sand hover:text-white"
+                      className="mt-4 inline-flex items-center gap-1.5 rounded-full bg-brand/5 px-4 py-2 font-sans text-xs font-semibold text-brand transition-all hover:bg-brand hover:text-white"
                     >
                       Explore Members
                       <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
@@ -448,30 +515,52 @@ export default function Network() {
                 ) : (
                   <div className="space-y-2">
                     {acceptedConnections.map((conn, i) => {
-                      const person = conn.requesterId || conn.addresseeId;
+                      const myId = String(currentUser?._id);
+                      const person = String(conn.requesterId?._id) === myId ? conn.addresseeId : conn.requesterId;
+                      const mentorshipForPerson = mentorships.find(m =>
+                        String(m.mentorId?._id) === String(person?._id) || String(m.menteeId?._id) === String(person?._id)
+                      );
+                      const isMentorOf = mentorshipForPerson && String(mentorshipForPerson.mentorId?._id) === String(person?._id);
+                      const isMenteeOf = mentorshipForPerson && String(mentorshipForPerson.menteeId?._id) === String(person?._id);
+                      const avatarRel = isMentorOf ? "mentor" : isMenteeOf ? "mentee" : "bridge";
+
                       return (
                         <div
                           key={conn._id}
-                          className="flex items-center justify-between gap-4 rounded-2xl border border-border bg-white p-4 transition-all hover:shadow-card"
+                          className="flex items-center justify-between gap-4 rounded-2xl border border-brand/10 bg-white p-4 transition-all hover:shadow-card"
                           style={{ animation: `opp-card-in 0.4s cubic-bezier(0.16, 1, 0.3, 1) ${i * 0.06}s both` }}
                         >
-                          <div className="flex items-center gap-3 min-w-0">
-                            <Avatar url={person?.avatarUrl || person?.photoUrl} alt={person?.name} size={40} />
+                          <Link to={`/profile/${person?._id}`} className="flex items-center gap-3 min-w-0 group">
+                            <Avatar url={resolveAvatar(person)} alt={person?.name} size={40} relationship={avatarRel} />
                             <div className="min-w-0">
-                              <p className="truncate font-sans text-sm font-semibold text-sand">
+                              <p className="truncate font-sans text-sm font-semibold text-sand group-hover:text-accent transition-colors">
                                 {person?.name || "Member"}
                               </p>
                               <p className="truncate font-sans text-xs text-mist/50">
-                                {person?.headline || "Connected"}
+                                {person?.headline || "BridgeAZ member"}
                               </p>
                             </div>
-                          </div>
-                          <span className="flex items-center gap-1.5 shrink-0">
-                            <span className="h-1.5 w-1.5 rounded-full bg-accent shadow-[0_0_6px_rgb(var(--accent)/0.25)]" />
-                            <span className="font-sans text-[10px] font-bold uppercase tracking-widest text-mist/50">
-                              Connected
+                          </Link>
+                          <div className="flex items-center gap-3 shrink-0">
+                            {isMentorOf && (
+                              <span className="flex items-center gap-1 rounded-full bg-coral/8 px-2 py-0.5 text-[9px] font-bold uppercase tracking-widest text-coral">
+                                <span className="h-1.5 w-1.5 rounded-full bg-coral" />
+                                Mentor
+                              </span>
+                            )}
+                            {isMenteeOf && (
+                              <span className="flex items-center gap-1 rounded-full bg-emerald-400/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-widest text-emerald-600">
+                                <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+                                Mentee
+                              </span>
+                            )}
+                            <span className="flex items-center gap-1.5">
+                              <span className="h-1.5 w-1.5 rounded-full bg-brand shadow-[0_0_6px_rgba(21,101,163,0.25)]" />
+                              <span className="font-sans text-[10px] font-bold uppercase tracking-widest text-brand/60">
+                                Bridged
+                              </span>
                             </span>
-                          </span>
+                          </div>
                         </div>
                       );
                     })}
@@ -529,6 +618,7 @@ export default function Network() {
               {mentorships.map((item, i) => {
                 const mentor = item.mentorId;
                 const mentee = item.menteeId;
+                const iAmMentor = String(mentor?._id) === String(currentUser?._id);
                 return (
                   <div
                     key={item._id}
@@ -539,31 +629,30 @@ export default function Network() {
                     <div className="flex items-center justify-between gap-4 p-5">
                       <div className="flex items-center gap-4 min-w-0">
                         {/* Mentor */}
-                        <div className="flex items-center gap-2.5 min-w-0">
-                          <Avatar url={mentor?.avatarUrl || mentor?.photoUrl} alt={mentor?.name} size={40} />
+                        <Link to={`/profile/${mentor?._id}`} className="flex items-center gap-2.5 min-w-0 group">
+                          <Avatar url={resolveAvatar(mentor)} alt={mentor?.name} size={40} relationship="mentor" />
                           <div className="min-w-0">
                             <p className="truncate font-sans text-[10px] font-bold uppercase tracking-[0.15em] text-coral/60">Mentor</p>
-                            <p className="truncate font-sans text-sm font-semibold text-sand">
+                            <p className="truncate font-sans text-sm font-semibold text-sand group-hover:text-accent transition-colors">
                               {mentor?.name || "Mentor"}
                             </p>
                           </div>
-                        </div>
+                        </Link>
 
-                        {/* Divider arrow */}
                         <svg className="h-4 w-4 shrink-0 text-mist/25" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                           <path strokeLinecap="round" strokeLinejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6" />
                         </svg>
 
                         {/* Mentee */}
-                        <div className="flex items-center gap-2.5 min-w-0">
-                          <Avatar url={mentee?.avatarUrl || mentee?.photoUrl} alt={mentee?.name} size={40} />
+                        <Link to={`/profile/${mentee?._id}`} className="flex items-center gap-2.5 min-w-0 group">
+                          <Avatar url={resolveAvatar(mentee)} alt={mentee?.name} size={40} relationship="mentee" />
                           <div className="min-w-0">
-                            <p className="truncate font-sans text-[10px] font-bold uppercase tracking-[0.15em] text-accent/50">Mentee</p>
-                            <p className="truncate font-sans text-sm font-semibold text-sand">
+                            <p className="truncate font-sans text-[10px] font-bold uppercase tracking-[0.15em] text-emerald-500/60">Mentee</p>
+                            <p className="truncate font-sans text-sm font-semibold text-sand group-hover:text-accent transition-colors">
                               {mentee?.name || "Mentee"}
                             </p>
                           </div>
-                        </div>
+                        </Link>
                       </div>
 
                       <button

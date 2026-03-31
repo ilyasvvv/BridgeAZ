@@ -16,6 +16,7 @@ const contactRoutes = require("./routes/contact");
 const notificationRoutes = require("./routes/notifications");
 const chatRoutes = require("./routes/chats");
 const networkRoutes = require("./routes/network");
+const followRoutes = require("./routes/follows");
 const searchRoutes = require("./routes/search");
 const {
   authLimiter,
@@ -94,6 +95,7 @@ app.use("/api/contact", generalLimiter, contactRoutes);
 app.use("/api/notifications", generalLimiter, notificationRoutes);
 app.use("/api/chats", chatLimiter, chatRoutes);
 app.use("/api/search", searchLimiter, searchRoutes);
+app.use("/api/users", connectionLimiter, followRoutes);
 app.use("/api", connectionLimiter, networkRoutes);
 
 const PORT = process.env.PORT || 5001;

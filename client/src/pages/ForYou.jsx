@@ -751,16 +751,50 @@ export default function ForYou() {
                     {requests.slice(0, 4).map((request) => (
                       <div
                         key={request._id}
-                        className="rounded-xl bg-charcoal/40 p-3"
+                        className="rounded-xl bg-charcoal/40 p-3 space-y-2"
                       >
                         <UserChip
                           user={request.fromStudent}
                           size={USER_CHIP_SIZES.FEED}
                           nameClassName="text-sm text-sand"
                         />
-                        <p className="mt-1.5 text-xs text-mist line-clamp-2">
-                          {request.message}
-                        </p>
+                        {request.message && (
+                          <p className="text-xs text-mist line-clamp-2 italic">
+                            "{request.message}"
+                          </p>
+                        )}
+                        {request.status === "pending" && (
+                          <div className="flex items-center gap-1.5 pt-1">
+                            <button
+                              onClick={async () => {
+                                try {
+                                  await apiClient.post(`/mentorship-requests/${request._id}/respond`, { status: "accepted" }, token);
+                                  loadData();
+                                } catch {}
+                              }}
+                              className="rounded-lg bg-coral px-3 py-1 text-[11px] font-semibold text-white hover:bg-coral/90 active:scale-[0.97] transition-all"
+                            >
+                              Accept
+                            </button>
+                            <button
+                              onClick={async () => {
+                                try {
+                                  await apiClient.post(`/mentorship-requests/${request._id}/respond`, { status: "declined" }, token);
+                                  loadData();
+                                } catch {}
+                              }}
+                              className="rounded-lg border border-border px-3 py-1 text-[11px] font-medium text-mist hover:text-coral hover:border-coral/30 transition-all"
+                            >
+                              Decline
+                            </button>
+                          </div>
+                        )}
+                        {request.status === "accepted" && (
+                          <p className="text-[11px] font-medium text-emerald-600">Accepted</p>
+                        )}
+                        {request.status === "declined" && (
+                          <p className="text-[11px] font-medium text-mist/50">Declined</p>
+                        )}
                       </div>
                     ))}
                   </div>

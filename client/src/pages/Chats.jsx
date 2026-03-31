@@ -889,7 +889,7 @@ export default function Chats() {
   const getRelationshipLabel = (thread) => {
     const otherId = thread?.otherParticipant?._id ? String(thread.otherParticipant._id) : "";
     if (otherId && mentorshipIds.has(otherId)) return "Mentor";
-    if (otherId && connectionIds.has(otherId)) return "Link";
+    if (otherId && connectionIds.has(otherId)) return "Bridged";
     return "Reach";
   };
 

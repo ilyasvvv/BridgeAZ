@@ -137,7 +137,7 @@ router.get("/:id/public", authMiddleware, blockBanned, async (req, res) => {
       return res.status(400).json({ message: "Invalid user id" });
     }
     const user = await User.findById(req.params.id).select(
-      "name userType currentRegion profilePhotoUrl avatarUrl headline bio education experience skills links socialLinks createdAt studentVerified mentorVerified isMentor verificationStatus"
+      "name userType currentRegion profilePhotoUrl avatarUrl headline bio education experience skills links socialLinks createdAt studentVerified mentorVerified isMentor mentorshipAvailability verificationStatus"
     );
     if (!user) {
       return res.status(404).json({ message: "User not found" });

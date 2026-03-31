@@ -5,11 +5,13 @@ const { authMiddleware, blockBanned } = require("../middleware/auth");
 
 const router = express.Router();
 
+const POPULATE_FIELDS = "name profilePhotoUrl avatarUrl currentRegion headline isMentor mentorVerified mentorshipAvailability";
+
 router.get("/me/connections", authMiddleware, blockBanned, async (req, res) => {
   try {
     const connections = await Connection.find({
       $or: [{ requesterId: req.user._id }, { addresseeId: req.user._id }]
-    }).populate("requesterId addresseeId", "name profilePhotoUrl currentRegion");
+    }).populate("requesterId addresseeId", POPULATE_FIELDS);
     res.json(connections);
   } catch (error) {
     res.status(500).json({ message: "Failed to load connections" });
@@ -21,7 +23,7 @@ router.get("/me/mentorships", authMiddleware, blockBanned, async (req, res) => {
     const mentorships = await Mentorship.find({
       $or: [{ mentorId: req.user._id }, { menteeId: req.user._id }],
       status: "active"
-    }).populate("mentorId menteeId", "name profilePhotoUrl currentRegion");
+    }).populate("mentorId menteeId", POPULATE_FIELDS);
     res.json(mentorships);
   } catch (error) {
     res.status(500).json({ message: "Failed to load mentorships" });
@@ -35,12 +37,10 @@ router.post("/connections/request", authMiddleware, blockBanned, async (req, res
       return res.status(400).json({ message: "recipientId is required" });
     }
 
-    // Block self-connection
     if (req.user._id.equals(recipientId)) {
-      return res.status(400).json({ message: "You cannot connect with yourself" });
+      return res.status(400).json({ message: "You cannot bridge with yourself" });
     }
 
-    // Bidirectional uniqueness check
     const existingConnection = await Connection.findOne({
       $or: [
         { requesterId: req.user._id, addresseeId: recipientId },
@@ -48,7 +48,7 @@ router.post("/connections/request", authMiddleware, blockBanned, async (req, res
       ]
     });
     if (existingConnection) {
-      return res.status(409).json({ message: "Connection already exists" });
+      return res.status(409).json({ message: "Bridge already exists" });
     }
 
     const connectionData = {
@@ -64,9 +64,9 @@ router.post("/connections/request", authMiddleware, blockBanned, async (req, res
     res.status(201).json(connection);
   } catch (error) {
     if (error && error.code === 11000) {
-      return res.status(409).json({ message: "Connection already exists" });
+      return res.status(409).json({ message: "Bridge already exists" });
     }
-    res.status(500).json({ message: "Failed to request connection" });
+    res.status(500).json({ message: "Failed to send bridge request" });
   }
 });
 
@@ -85,12 +85,45 @@ router.post("/connections/:id/accept", authMiddleware, blockBanned, async (req, 
     await connection.save();
     res.json(connection);
   } catch (error) {
-    res.status(500).json({ message: "Failed to accept connection" });
+    res.status(500).json({ message: "Failed to accept bridge request" });
   }
 });
 
-// System A direct mentorship creation removed — use /api/mentorship-requests instead.
-// This endpoint is kept only for listing and ending mentorships.
+router.post("/connections/:id/reject", authMiddleware, blockBanned, async (req, res) => {
+  try {
+    const connection = await Connection.findOne({
+      _id: req.params.id,
+      addresseeId: req.user._id,
+      status: "pending"
+    });
+    if (!connection) {
+      return res.status(404).json({ message: "Request not found" });
+    }
+
+    connection.status = "rejected";
+    await connection.save();
+    res.json(connection);
+  } catch (error) {
+    res.status(500).json({ message: "Failed to reject bridge request" });
+  }
+});
+
+router.delete("/connections/:id", authMiddleware, blockBanned, async (req, res) => {
+  try {
+    const connection = await Connection.findOne({
+      _id: req.params.id,
+      $or: [{ requesterId: req.user._id }, { addresseeId: req.user._id }]
+    });
+    if (!connection) {
+      return res.status(404).json({ message: "Connection not found" });
+    }
+
+    await Connection.deleteOne({ _id: connection._id });
+    res.json({ removed: true });
+  } catch (error) {
+    res.status(500).json({ message: "Failed to remove bridge" });
+  }
+});
 
 router.post("/mentorships/:id/end", authMiddleware, blockBanned, async (req, res) => {
   try {
