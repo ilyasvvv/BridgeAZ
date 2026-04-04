@@ -1,5 +1,8 @@
 import { Routes, Route, Navigate } from "react-router-dom";
+import React, { Suspense } from "react";
 import { useAuth } from "./utils/auth";
+
+const QovshaqApp = React.lazy(() => import("./qovshaq/QovshaqApp"));
 import RootLayout from "./layout/RootLayout";
 import Landing from "./pages/Landing";
 import Login from "./pages/Login";
@@ -43,6 +46,7 @@ const AdminRoute = ({ children }) => {
 export default function App() {
   return (
     <Routes>
+      <Route path="/q/*" element={<Suspense fallback={null}><QovshaqApp /></Suspense>} />
       <Route element={<RootLayout />}>
         <Route path="/" element={<Landing />} />
         <Route path="/join" element={<Join />} />

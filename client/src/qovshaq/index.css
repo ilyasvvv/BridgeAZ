@@ -1,0 +1,105 @@
+/* Qovshaq Phase 0A — Global styles and CSS custom properties */
+
+:root {
+  --q-bg: #FBF8F4;
+  --q-surface: #FFFFFF;
+  --q-surface-alt: #F5F0E8;
+  --q-primary: #2D7A6F;
+  --q-primary-light: #E8F4F1;
+  --q-secondary: #C4683A;
+  --q-secondary-light: #FDF0E8;
+  --q-accent: #D4A853;
+  --q-accent-light: #FDF6E3;
+  --q-text: #2C2825;
+  --q-text-muted: #7A726A;
+  --q-border: #E8E2D9;
+  --q-danger: #D94F4F;
+  --q-success: #3D8B5F;
+}
+
+/* Qovshaq scope: warm cream background, own typography */
+.qovshaq-root {
+  background-color: var(--q-bg);
+  color: var(--q-text);
+  font-family: "Inter", system-ui, sans-serif;
+  min-height: 100vh;
+}
+
+.qovshaq-root * {
+  border-color: var(--q-border);
+}
+
+/* Ambient background mesh */
+.q-ambient {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.q-ambient::before {
+  content: "";
+  position: absolute;
+  width: 600px;
+  height: 600px;
+  top: -150px;
+  right: -100px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(45,122,111,0.06) 0%, transparent 70%);
+  animation: q-float-1 20s ease-in-out infinite;
+}
+
+.q-ambient::after {
+  content: "";
+  position: absolute;
+  width: 500px;
+  height: 500px;
+  bottom: -100px;
+  left: -80px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(212,168,83,0.05) 0%, transparent 70%);
+  animation: q-float-2 25s ease-in-out infinite;
+}
+
+@keyframes q-float-1 {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(-40px, 30px) scale(1.1); }
+}
+
+@keyframes q-float-2 {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(30px, -40px) scale(1.05); }
+}
+
+/* Shimmer skeleton loader */
+@keyframes q-shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.q-skeleton {
+  background: linear-gradient(90deg, var(--q-surface-alt) 25%, var(--q-surface) 50%, var(--q-surface-alt) 75%);
+  background-size: 200% 100%;
+  animation: q-shimmer 1.5s ease-in-out infinite;
+  border-radius: 8px;
+}
+
+/* Scrollbar styling within Qovshaq */
+.qovshaq-root ::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.qovshaq-root ::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.qovshaq-root ::-webkit-scrollbar-thumb {
+  background: var(--q-border);
+  border-radius: 3px;
+}
+
+.qovshaq-root ::-webkit-scrollbar-thumb:hover {
+  background: var(--q-text-muted);
+}

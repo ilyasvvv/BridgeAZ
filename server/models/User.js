@@ -108,7 +108,21 @@ const userSchema = new mongoose.Schema(
       type: String,
       enum: ["available", "busy", "off"],
       default: "available"
-    }
+    },
+    qLocation: {
+      country: String,
+      countryCode: String,
+      city: String,
+      region: String,
+      coordinates: { lat: Number, lng: Number },
+    },
+    qInterests: [String],
+    qOnboarded: { type: Boolean, default: false },
+    qPrivacy: {
+      profileVisibility: { type: String, enum: ["everyone", "community", "connections"], default: "everyone" },
+      messagePermission: { type: String, enum: ["everyone", "connections", "none"], default: "everyone" },
+      locationPrecision: { type: String, enum: ["city", "region", "country"], default: "city" },
+    },
   },
   { timestamps: true }
 );

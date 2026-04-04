@@ -98,6 +98,16 @@ app.use("/api/search", searchLimiter, searchRoutes);
 app.use("/api/users", connectionLimiter, followRoutes);
 app.use("/api", connectionLimiter, networkRoutes);
 
+const qPostRoutes = require("./routes/qPosts");
+const qOnboardRoutes = require("./routes/qOnboard");
+const qSafetyRoutes = require("./routes/qSafety");
+const qProfileRoutes = require("./routes/qProfile");
+
+app.use("/api/q/posts", generalLimiter, qPostRoutes);
+app.use("/api/q/onboard", generalLimiter, qOnboardRoutes);
+app.use("/api/q", generalLimiter, qSafetyRoutes);
+app.use("/api/q/profile", generalLimiter, qProfileRoutes);
+
 const PORT = process.env.PORT || 5001;
 
 mongoose

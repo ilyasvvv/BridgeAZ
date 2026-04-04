@@ -43,12 +43,24 @@ npm run dev
 MONGO_URI=mongodb://localhost:27017/bridgeaz
 JWT_SECRET=replace-with-a-secure-secret
 PORT=5001
+CLIENT_URL=http://localhost:5173
+PUBLIC_APP_URL=http://localhost:5173
+GOOGLE_CLIENT_ID=your-google-oauth-client-id
+RESEND_API_KEY=your-resend-api-key
+MAIL_FROM=BridgeAZ <no-reply@your-domain.com>
 R2_ACCESS_KEY_ID=your-r2-access-key
 R2_SECRET_ACCESS_KEY=your-r2-secret
 R2_BUCKET=your-r2-bucket
 R2_ENDPOINT=https://<account-id>.r2.cloudflarestorage.com
 R2_PUBLIC_BASE_URL=https://<public-bucket-or-domain>
 R2_REGION=auto
+```
+
+### Environment variables (client)
+
+```
+VITE_API_URL=http://localhost:5001/api
+VITE_GOOGLE_CLIENT_ID=your-google-oauth-client-id
 ```
 
 ## File Uploads (Verification) — Cloudflare R2 Presigned URLs
@@ -75,6 +87,8 @@ Your R2 bucket CORS must allow browser origins (e.g., Vercel + localhost) for `P
 
 Implemented now:
 - JWT auth with role-aware registration
+- Google sign-in with first-time account creation support
+- Forgot-password and reset-password flows
 - Profiles with location fields and mentor flags
 - Posts feed with flexible visibility tokens
 - Student + mentor verification requests (manual admin review)
@@ -95,4 +109,5 @@ Planned later:
 - Security reminder: keep R2 keys private and rotate if leaked.
 - Admin seed login (local demo): `admin@bridgeaz.com` / `Admin123!`.
 - Security note: change the admin password and JWT secret for production.
+- Password reset emails are sent through Resend when `RESEND_API_KEY` and `MAIL_FROM` are configured. In non-production, the API returns a preview reset URL when email delivery is not configured.
 - TODOs for production hardening: add rate limiting, audit logs, and pagination on admin endpoints.
