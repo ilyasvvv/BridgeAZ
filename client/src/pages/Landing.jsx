@@ -1,31 +1,66 @@
 import { Link } from "react-router-dom";
-import Globe from "../components/Globe";
+import { useEffect, useRef } from "react";
 
 const stats = [
-  { label: "Members worldwide", value: "3,500+" },
-  { label: "Mentorship matches", value: "420" },
-  { label: "Community projects launched", value: "96" }
+  { label: "Active Members", value: "10K+" },
+  { label: "Countries Connected", value: "50+" },
+  { label: "Active Circles", value: "500+" }
+];
+
+const features = [
+  {
+    icon: "👥",
+    title: "Connect",
+    description: "Find and connect with Azerbaijanis living in your city or anywhere around the world."
+  },
+  {
+    icon: "💬",
+    title: "Chat",
+    description: "Stay in touch with real-time messaging and share moments with your community."
+  },
+  {
+    icon: "🔵",
+    title: "Create Circles",
+    description: "Build and join communities based on your interests, hobbies, or background."
+  },
+  {
+    icon: "📢",
+    title: "Share & Discover",
+    description: "Post updates, share experiences, and discover what's trending in your circle."
+  }
 ];
 
 const testimonials = [
   {
-    name: "Nihad, Baku",
-    quote: "BridgeAZ helped me find alumni in Turkey who guided my grad school path."
+    name: "Leyla Mammadova",
+    role: "Product Designer in Berlin",
+    quote: "Finally found my people! I moved abroad and felt isolated, but Bizim Circle connected me with amazing Azerbaijanis here."
   },
   {
-    name: "Aysel, Istanbul",
-    quote: "The community feels warm and approachable. It is not just another network."
+    name: "Rashad Aliyev",
+    role: "Student in London",
+    quote: "The communities here are so welcoming. I've made friends, found mentors, and even met business partners."
   },
   {
-    name: "Murad, New York",
-    quote: "I met my mentor within a week and landed an internship in fintech."
+    name: "Nigar Hasymova",
+    role: "Founder in NYC",
+    quote: "I just started my career in NYC and was looking for mentors. Connected with Azerbaijanis here, invaluable advice!"
+  },
+  {
+    name: "Elvin Karimov",
+    role: "Engineer in Dubai",
+    description: "Living in Dubai, I wanted to celebrate Novruz with fellow Azerbaijanis. Found an amazing group through this platform!"
+  },
+  {
+    name: "Aysel Jafarova",
+    role: "Artist in Paris",
+    quote: "My wife and I were loving time with their families circle. They have introduced us to beautiful Azerbaijani friends and learning."
+  },
+  {
+    name: "Farid Mustafayev",
+    role: "Entrepreneur in Germany",
+    quote: "Headed advice on starting a business in Europe. Connected with Azerbaijanis here who shared their entrepreneurship."
   }
-];
-
-const globeStats = [
-  { value: "2,400+", label: "Members" },
-  { value: "45+", label: "Countries" },
-  { value: "180+", label: "Mentors" }
 ];
 
 const footerLinks = {
@@ -54,25 +89,110 @@ const footerLinks = {
   ],
 };
 
+// Circular hero graphic component with animated rings
+function CircularHeroGraphic() {
+  const canvasRef = useRef(null);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const ctx = canvas.getContext("2d");
+    const centerX = canvas.width / 2;
+    const centerY = canvas.height / 2;
+    const baseRadius = 80;
+
+    let animationFrame;
+    let rotation = 0;
+
+    const draw = () => {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      // Draw concentric rings
+      for (let i = 5; i > 0; i--) {
+        const radius = baseRadius + i * 15;
+        const alpha = 0.2 - i * 0.03;
+        ctx.strokeStyle = `rgba(0, 0, 0, ${alpha})`;
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+
+      // Draw rotating people icons in circular pattern
+      const peopleCount = 8;
+      for (let i = 0; i < peopleCount; i++) {
+        const angle = (i / peopleCount) * Math.PI * 2 + rotation;
+        const x = centerX + Math.cos(angle) * (baseRadius + 40);
+        const y = centerY + Math.sin(angle) * (baseRadius + 40);
+
+        // Draw small circle for person
+        ctx.fillStyle = "rgba(0, 0, 0, 0.3)";
+        ctx.beginPath();
+        ctx.arc(x, y, 6, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Draw ring around person
+        ctx.strokeStyle = "rgba(0, 0, 0, 0.2)";
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.arc(x, y, 10, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+
+      // Draw center circle
+      ctx.fillStyle = "rgba(0, 0, 0, 0.05)";
+      ctx.beginPath();
+      ctx.arc(centerX, centerY, 20, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.strokeStyle = "rgba(0, 0, 0, 0.15)";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(centerX, centerY, 20, 0, Math.PI * 2);
+      ctx.stroke();
+
+      rotation += 0.005;
+      animationFrame = requestAnimationFrame(draw);
+    };
+
+    draw();
+
+    return () => cancelAnimationFrame(animationFrame);
+  }, []);
+
+  return (
+    <canvas
+      ref={canvasRef}
+      width={300}
+      height={300}
+      className="w-full max-w-xs mx-auto"
+    />
+  );
+}
+
 export default function Landing() {
   return (
-    <div className="flex flex-col gap-16">
-      {/* ─── Sticky minimal landing header ─── */}
-      <header className="sticky top-0 z-20 border-b border-border/60 bg-white/70 backdrop-blur-xl">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-3 md:px-12">
-          <Link to="/" className="font-display text-2xl text-sand">
-            BridgeAZ
+    <div className="flex flex-col gap-20">
+      {/* ─── Header ─── */}
+      <header className="sticky top-0 z-20 border-b border-grey-300 bg-white/70 backdrop-blur-xl">
+        <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4 md:px-12">
+          <Link to="/" className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-full bg-sand flex items-center justify-center">
+              <span className="text-white text-sm font-bold">◯</span>
+            </div>
+            <span className="font-display text-xl font-bold text-sand">Bizim Circle</span>
           </Link>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3">
             <Link
               to="/login"
-              className="text-[13px] font-medium uppercase tracking-widest text-mist transition-colors hover:text-sand"
+              className="text-sm font-medium text-mist transition-colors hover:text-sand"
             >
-              Log in
+              Sign In
             </Link>
             <Link
               to="/join"
-              className="rounded-full border border-coral/30 bg-coral/8 px-5 py-2 text-xs font-semibold uppercase tracking-wide text-coral/90 transition-all duration-300 hover:bg-coral/15 hover:border-coral/50"
+              className="circular-btn text-xs px-5 py-2"
             >
               Join
             </Link>
@@ -80,213 +200,202 @@ export default function Landing() {
         </div>
       </header>
 
-      <section className="mx-auto grid max-w-6xl gap-10 px-6 md:grid-cols-[1.2fr_0.8fr] md:items-center md:px-12">
-        <div className="space-y-6">
-          <p className="text-sm uppercase tracking-[0.4em] text-accent">Connecting Azerbaijanis Worldwide</p>
-          <h1 className="font-display text-4xl md:text-5xl">
-            BridgeAZ is a global community for Azerbaijanis.
-          </h1>
-          <p className="text-base text-mist">
-            Students and professionals connect here for mentorship, opportunities, and collaboration—without the noise.
+      {/* ─── Hero Section ─── */}
+      <section className="mx-auto grid max-w-6xl gap-12 px-6 md:grid-cols-2 md:items-center md:px-12">
+        <div className="space-y-8 animate-slide-up">
+          <div>
+            <p className="text-xs font-bold uppercase tracking-[0.15em] text-mist mb-3">Azerbaijanis Abroad</p>
+            <h1 className="font-display text-5xl md:text-6xl leading-tight text-sand">
+              United in one <span className="relative inline-block">
+                circle
+                <svg className="absolute -bottom-2 left-0 w-full" height="8" viewBox="0 0 100 8">
+                  <path d="M 0 4 Q 25 1 50 4 T 100 4" stroke="currentColor" fill="none" strokeWidth="1.5" opacity="0.5" />
+                </svg>
+              </span>
+            </h1>
+          </div>
+          <p className="text-lg text-mist leading-relaxed">
+            Connect, share, and build communities with fellow Azerbaijanis around the world. From Berlin to New York, from London to Dubai—find your circle.
           </p>
-          <div className="flex flex-wrap gap-4">
+          <div className="flex flex-wrap gap-4 pt-4">
             <Link
               to="/join"
-              className="group relative rounded-full border border-coral/30 bg-coral/8 px-6 py-3 text-sm font-semibold uppercase tracking-wide text-coral/90 transition-all duration-300 hover:-translate-y-0.5 hover:border-coral/50 hover:bg-coral/15 hover:shadow-md"
+              className="circular-btn"
             >
-              Join as Student
-              <span className="absolute inset-x-6 -bottom-px h-px origin-left scale-x-0 bg-coral/40 transition-transform duration-300 group-hover:scale-x-100" />
+              Join Bizim Circle
             </Link>
             <Link
               to="/join"
-              className="group relative rounded-full border border-border px-6 py-3 text-sm font-semibold uppercase tracking-wide text-sand transition-all duration-300 hover:-translate-y-0.5 hover:border-sand/40 hover:shadow-md"
+              className="circular-btn-outline"
             >
-              Join as Professional
-              <span className="absolute inset-x-6 -bottom-px h-px origin-left scale-x-0 bg-sand/30 transition-transform duration-300 group-hover:scale-x-100" />
+              Learn More
             </Link>
           </div>
+          <p className="text-xs text-mist">✓ Free to join  ✓ No credit card required</p>
         </div>
-        <div className="glass rounded-3xl p-6 shadow-elevated ring-1 ring-white/30">
-          <h2 className="font-display text-2xl">Why BridgeAZ?</h2>
-          <ul className="mt-4 space-y-3 text-sm text-mist">
-            <li>Mentorship that actually feels human.</li>
-            <li>Community matches across locations worldwide.</li>
-            <li>Verified profiles for higher trust.</li>
-          </ul>
-        </div>
-      </section>
 
-      <section className="mx-auto max-w-6xl px-6 md:px-12">
-        <div className="mb-8 text-center">
-          <p className="text-sm uppercase tracking-[0.4em] text-accent">By the numbers</p>
-          <h2 className="mt-2 font-display text-3xl md:text-4xl">Our growing impact</h2>
-        </div>
-        <div className="grid gap-6 md:grid-cols-3">
-          {stats.map((stat) => (
-            <div
-              key={stat.label}
-              className="glass group cursor-default rounded-2xl p-6 ring-1 ring-white/20 transition-all duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)] hover:-translate-y-1.5 hover:shadow-floating hover:ring-white/40"
-            >
-              <p className="text-3xl font-semibold text-sand transition-transform duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)] group-hover:scale-110 group-hover:text-accent">
-                {stat.value}
-              </p>
-              <p className="mt-2 text-sm text-mist">{stat.label}</p>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* Interactive Globe Section */}
-      <section className="relative overflow-hidden bg-[#0B0B1A] px-6 py-16 md:px-12">
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_50%_80%,rgba(29,29,68,0.2)_0%,transparent_55%)]" />
-        <div className="relative z-[2] mx-auto max-w-xl text-center">
-          <p className="text-sm uppercase tracking-[0.4em] text-accent/70">Global network</p>
-          <h2 className="mt-3 font-display text-3xl text-white md:text-4xl">
-            Azerbaijanis, everywhere
-          </h2>
-          <p className="mt-3 text-sm leading-relaxed text-white/45">
-            Our members span across the globe. Drag to explore where the community lives.
-          </p>
-        </div>
-        <div className="relative z-[1] mt-10">
-          <Globe />
-        </div>
-        <div className="relative z-[2] mt-10 flex flex-wrap justify-center gap-14">
-          {globeStats.map((item) => (
-            <div
-              key={item.label}
-              className="group cursor-default rounded-xl px-6 py-3 text-center transition-all duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)] hover:-translate-y-1 hover:bg-white/5 hover:shadow-[0_2px_8px_rgba(29,29,68,0.12),0_8px_24px_rgba(29,29,68,0.18),inset_0_1px_0_rgba(255,255,255,0.08)]"
-            >
-              <p className="font-display text-3xl font-semibold text-white transition-transform duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)] group-hover:scale-110">
-                {item.value}
-              </p>
-              <p className="mt-1 text-xs uppercase tracking-widest text-white/40 transition-colors duration-300 group-hover:text-white/70">
-                {item.label}
-              </p>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      <section className="mx-auto max-w-6xl px-6 md:px-12">
-        <div className="mb-8 text-center">
-          <p className="text-sm uppercase tracking-[0.4em] text-accent">Why join BridgeAZ</p>
-          <h2 className="mt-2 font-display text-3xl md:text-4xl">Built for every stage of your journey</h2>
-        </div>
-        <div className="grid gap-10 md:grid-cols-2">
-        <div className="glass rounded-2xl p-6 shadow-elevated ring-1 ring-white/20 transition-all duration-300 hover:shadow-floating hover:ring-white/35">
-          <h3 className="font-display text-2xl">For Students</h3>
-          <p className="mt-3 text-sm text-mist">
-            Find mentors, share progress, and unlock internships from anywhere.
-          </p>
-          <ul className="mt-4 space-y-2 text-sm text-mist">
-            <li>Discover verified mentors in your field.</li>
-            <li>Share project updates and get feedback.</li>
-            <li>Connect with peers across campuses.</li>
-          </ul>
-        </div>
-        <div className="glass rounded-2xl p-6 shadow-elevated ring-1 ring-white/20 transition-all duration-300 hover:shadow-floating hover:ring-white/35">
-          <h3 className="font-display text-2xl">For Professionals</h3>
-          <p className="mt-3 text-sm text-mist">
-            Give back to the next generation and build relationships with emerging talent.
-          </p>
-          <ul className="mt-4 space-y-2 text-sm text-mist">
-            <li>Mentor students who remind you of yourself.</li>
-            <li>Surface internships and projects from your team.</li>
-            <li>Stay connected to the community network.</li>
-          </ul>
-        </div>
-        </div>
-      </section>
-
-      {/* ─── Testimonials with gradient background ─── */}
-      <section className="relative overflow-hidden py-20"
-        style={{ background: "linear-gradient(135deg, #E8EEF4 0%, #F0F2F5 35%, #F5EDE8 70%, #F0F2F5 100%)" }}
-      >
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_20%_0%,rgba(29,29,68,0.06)_0%,transparent_50%)]" />
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_80%_100%,rgba(95,96,116,0.06)_0%,transparent_50%)]" />
-        <div className="relative mx-auto max-w-6xl px-6 md:px-12">
-          <div className="mb-10 text-center">
-            <p className="text-sm uppercase tracking-[0.4em] text-accent">What our members are saying</p>
-            <h2 className="mt-2 font-display text-3xl md:text-4xl">Stories from the community</h2>
-          </div>
-          <div className="grid gap-6 md:grid-cols-3">
-          {testimonials.map((item) => (
-            <div key={item.name} className="rounded-2xl border border-white/60 bg-white/80 p-6 shadow-elevated ring-1 ring-white/30 backdrop-blur-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-glow hover:ring-accent/10">
-              <p className="text-sm leading-relaxed text-mist">"{item.quote}"</p>
-              <p className="mt-4 text-xs font-semibold uppercase tracking-wide text-accent">{item.name}</p>
-            </div>
-          ))}
+        {/* Circular Hero Graphic */}
+        <div className="flex justify-center md:justify-end animate-scale-in" style={{ animationDelay: "200ms" }}>
+          <div className="w-full max-w-sm">
+            <CircularHeroGraphic />
           </div>
         </div>
+      </section>
+
+      {/* ─── Features Grid ─── */}
+      <section className="mx-auto max-w-6xl px-6 md:px-12">
+        <div className="mb-12 text-center">
+          <p className="text-xs font-bold uppercase tracking-[0.15em] text-mist mb-3">Everything You Need</p>
+          <h2 className="font-display text-4xl text-sand">Stay Connected</h2>
+        </div>
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+          {features.map((feature, idx) => (
+            <div
+              key={idx}
+              className="circular-card p-6 group"
+              style={{ animationDelay: `${idx * 100}ms`, animation: "slide-up 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) both" }}
+            >
+              <div className="text-4xl mb-3 group-hover:scale-110 transition-transform duration-300">
+                {feature.icon}
+              </div>
+              <h3 className="font-display text-lg font-semibold text-sand mb-2">{feature.title}</h3>
+              <p className="text-sm text-mist leading-relaxed">{feature.description}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* ─── Testimonials ─── */}
+      <section className="mx-auto max-w-6xl px-6 md:px-12">
+        <div className="mb-12 text-center">
+          <p className="text-xs font-bold uppercase tracking-[0.15em] text-mist mb-3">Real Stories</p>
+          <h2 className="font-display text-4xl text-sand">What our community is saying</h2>
+        </div>
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+          {testimonials.map((testimonial, idx) => (
+            <div
+              key={idx}
+              className="circular-card p-6 flex flex-col"
+              style={{ animationDelay: `${idx * 75}ms`, animation: "slide-up 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) both" }}
+            >
+              <div className="flex items-start gap-3 mb-4">
+                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-grey-200 to-grey-300 flex-shrink-0 flex items-center justify-center">
+                  <span className="text-sm font-bold text-sand">
+                    {testimonial.name.charAt(0)}
+                  </span>
+                </div>
+                <div className="flex-1">
+                  <p className="font-semibold text-sm text-sand">{testimonial.name}</p>
+                  <p className="text-xs text-mist">{testimonial.role}</p>
+                </div>
+              </div>
+              <p className="text-sm text-mist leading-relaxed flex-1">"{testimonial.quote || testimonial.description}"</p>
+              <div className="mt-4 pt-4 border-t border-grey-300 flex gap-1">
+                {[...Array(5)].map((_, i) => (
+                  <span key={i} className="text-yellow-400 text-xs">★</span>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* ─── Stats ─── */}
+      <section className="mx-auto max-w-6xl px-6 md:px-12">
+        <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-grey-900 via-grey-800 to-grey-900 px-8 py-16 md:px-16 md:py-24 border border-grey-700">
+          <div className="absolute inset-0 opacity-10" style={{
+            backgroundImage: "radial-gradient(circle at 20% 50%, white, transparent 50%), radial-gradient(circle at 80% 80%, white, transparent 50%)"
+          }} />
+          <div className="relative">
+            <div className="mb-12 text-center">
+              <p className="text-xs font-bold uppercase tracking-[0.15em] text-grey-400 mb-3">Join thousands</p>
+              <h2 className="font-display text-4xl md:text-5xl text-white mb-3">Azerbaijanis Worldwide</h2>
+              <p className="text-grey-300 max-w-2xl mx-auto">
+                From Berlin to New York, from London to Dubai—we're building the largest community of Azerbaijanis abroad.
+              </p>
+            </div>
+            <div className="grid gap-8 md:grid-cols-3">
+              {stats.map((stat, idx) => (
+                <div key={idx} className="text-center group cursor-default">
+                  <div className="relative inline-block mb-3">
+                    <p className="font-display text-5xl md:text-6xl font-bold text-white group-hover:scale-110 transition-transform duration-300">
+                      {stat.value}
+                    </p>
+                  </div>
+                  <p className="text-grey-300 text-sm font-medium">{stat.label}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ─── CTA Section ─── */}
+      <section className="mx-auto max-w-6xl px-6 md:px-12 text-center py-12">
+        <h2 className="font-display text-4xl text-sand mb-4">Ready to join your circle?</h2>
+        <p className="text-mist mb-8 max-w-2xl mx-auto">
+          Start connecting with fellow Azerbaijanis today. It's free and takes just a minute.
+        </p>
+        <Link
+          to="/join"
+          className="circular-btn inline-block"
+        >
+          Get Started Now
+        </Link>
       </section>
 
       {/* ─── Footer ─── */}
-      <footer className="border-t border-border/60 bg-white/40 backdrop-blur-sm">
+      <footer className="border-t border-grey-300 bg-white/50 backdrop-blur-sm">
         <div className="mx-auto max-w-6xl px-6 py-16 md:px-12">
-          {/* Link columns */}
-          <div className="grid gap-10 sm:grid-cols-2 md:grid-cols-4">
-            <div>
-              <h4 className="text-xs font-semibold uppercase tracking-widest text-sand">Platform</h4>
-              <ul className="mt-4 space-y-3">
-                {footerLinks.platform.map((link) => (
-                  <li key={link.label}>
-                    <Link to={link.href} className="text-sm text-mist transition-colors hover:text-accent">{link.label}</Link>
-                  </li>
-                ))}
-              </ul>
-            </div>
-            <div>
-              <h4 className="text-xs font-semibold uppercase tracking-widest text-sand">Company</h4>
-              <ul className="mt-4 space-y-3">
-                {footerLinks.company.map((link) => (
-                  <li key={link.label}>
-                    <Link to={link.href} className="text-sm text-mist transition-colors hover:text-accent">{link.label}</Link>
-                  </li>
-                ))}
-              </ul>
-            </div>
-            <div>
-              <h4 className="text-xs font-semibold uppercase tracking-widest text-sand">Support</h4>
-              <ul className="mt-4 space-y-3">
-                {footerLinks.support.map((link) => (
-                  <li key={link.label}>
-                    <Link to={link.href} className="text-sm text-mist transition-colors hover:text-accent">{link.label}</Link>
-                  </li>
-                ))}
-              </ul>
-            </div>
-            <div>
-              <h4 className="text-xs font-semibold uppercase tracking-widest text-sand">Legal</h4>
-              <ul className="mt-4 space-y-3">
-                {footerLinks.legal.map((link) => (
-                  <li key={link.label}>
-                    <Link to={link.href} className="text-sm text-mist transition-colors hover:text-accent">{link.label}</Link>
-                  </li>
-                ))}
-              </ul>
-            </div>
+          <div className="grid gap-12 sm:grid-cols-2 md:grid-cols-4 mb-12">
+            {Object.entries(footerLinks).map(([category, links]) => (
+              <div key={category}>
+                <h4 className="text-xs font-bold uppercase tracking-[0.15em] text-sand mb-6">
+                  {category.charAt(0).toUpperCase() + category.slice(1)}
+                </h4>
+                <ul className="space-y-3">
+                  {links.map((link) => (
+                    <li key={link.label}>
+                      <Link to={link.href} className="text-sm text-mist transition-colors hover:text-sand">
+                        {link.label}
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
           </div>
 
-          {/* Divider */}
-          <div className="mt-14 border-t border-border/60 pt-8">
+          <div className="border-t border-grey-300 pt-8">
             <div className="flex flex-col items-center justify-between gap-6 md:flex-row">
               <div>
-                <Link to="/" className="font-display text-xl text-sand">BridgeAZ</Link>
-                <p className="mt-1 text-xs text-mist">Connecting Azerbaijanis worldwide.</p>
+                <Link to="/" className="flex items-center gap-2 mb-2">
+                  <div className="w-7 h-7 rounded-full bg-sand flex items-center justify-center">
+                    <span className="text-white text-xs font-bold">◯</span>
+                  </div>
+                  <span className="font-display text-lg font-bold text-sand">Bizim Circle</span>
+                </Link>
+                <p className="text-xs text-mist">Connecting Azerbaijanis worldwide.</p>
               </div>
               <div className="flex items-center gap-6">
-                <a href="https://twitter.com" target="_blank" rel="noopener noreferrer" className="text-mist transition-colors hover:text-accent" aria-label="Twitter">
-                  <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 24 24"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
-                </a>
-                <a href="https://linkedin.com" target="_blank" rel="noopener noreferrer" className="text-mist transition-colors hover:text-accent" aria-label="LinkedIn">
-                  <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 24 24"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 01-2.063-2.065 2.064 2.064 0 112.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>
-                </a>
-                <a href="https://instagram.com" target="_blank" rel="noopener noreferrer" className="text-mist transition-colors hover:text-accent" aria-label="Instagram">
-                  <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z"/></svg>
-                </a>
+                {[
+                  { name: "Twitter", icon: "𝕏" },
+                  { name: "LinkedIn", icon: "in" },
+                  { name: "Instagram", icon: "📷" },
+                ].map((social) => (
+                  <a
+                    key={social.name}
+                    href="#"
+                    aria-label={social.name}
+                    className="w-10 h-10 rounded-full bg-grey-200 flex items-center justify-center text-sand hover:bg-grey-300 transition-colors text-sm font-semibold"
+                  >
+                    {social.icon}
+                  </a>
+                ))}
               </div>
-              <p className="text-xs text-mist/60">&copy; {new Date().getFullYear()} BridgeAZ. All rights reserved.</p>
+              <p className="text-xs text-mist/60">
+                &copy; {new Date().getFullYear()} Bizim Circle. All rights reserved.
+              </p>
             </div>
           </div>
         </div>
