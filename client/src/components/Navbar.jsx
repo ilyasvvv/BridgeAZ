@@ -126,7 +126,7 @@ export default function Navbar() {
       <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-3">
         {/* Logo */}
         <Link to="/" className="font-display text-2xl text-sand">
-          BridgeAZ
+          bizim circle
         </Link>
 
         {/* ─── Desktop nav ─── */}

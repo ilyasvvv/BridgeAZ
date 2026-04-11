@@ -1,17 +1,37 @@
-import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
-import { apiClient } from "../api/client";
+import { useEffect, useRef, useState } from "react";
 import { useAuth } from "../utils/auth";
+import { apiClient, uploadViaPresign } from "../api/client";
+import BizimHeader from "../components/BizimHeader";
 import PostCard from "../components/PostCard";
+import Avatar from "../components/Avatar";
+
+const POST_TABS = [
+  { key: "note", label: "Note", icon: "📝" },
+  { key: "event", label: "Event", icon: "📅" },
+  { key: "opportunity", label: "Opportunity", icon: "💼" },
+];
+
+const resolveAvatarUrl = (u) =>
+  u?.avatarUrl || u?.photoUrl || u?.profilePhoto || u?.profilePhotoUrl || u?.profilePictureUrl || null;
 
 export default function Dashboard() {
-  const { user, token, setUser } = useAuth();
-  const [posts, setPosts] = useState([]);
-  const [error, setError] = useState("");
-  const [loading, setLoading] = useState(true);
-  const [newPostContent, setNewPostContent] = useState("");
-  const [postingLoading, setPostingLoading] = useState(false);
+  const { user, token } = useAuth();
+  const fileInputRef = useRef(null);
+  const composeRef = useRef(null);
 
+  const [posts, setPosts] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  // Compose state
+  const [composeOpen, setComposeOpen] = useState(false);
+  const [postType, setPostType] = useState("note");
+  const [content, setContent] = useState("");
+  const [attachment, setAttachment] = useState(null);
+  const [attachmentPreview, setAttachmentPreview] = useState("");
+  const [posting, setPosting] = useState(false);
+
+  // Load posts
   const loadPosts = async () => {
     setLoading(true);
     try {
@@ -25,304 +45,329 @@ export default function Dashboard() {
   };
 
   useEffect(() => {
-    loadPosts();
-  }, []);
+    if (token) loadPosts();
+  }, [token]);
 
-  const handleLike = async (postId) => {
-    try {
-      const response = await apiClient.post(`/posts/${postId}/like`, {}, token);
-      setPosts((prev) =>
-        prev.map((post) =>
-          post._id === postId
-            ? {
-                ...post,
-                likesCount: response.likesCount,
-                likedByMe: response.likedByMe
-              }
-            : post
-        )
-      );
-    } catch (err) {
-      setError(err.message || "Failed to like");
+  // Attachment preview
+  useEffect(() => {
+    if (!attachment) { setAttachmentPreview(""); return; }
+    const type = attachment.type || "";
+    if (type.startsWith("image/") || type.startsWith("video/")) {
+      const url = URL.createObjectURL(attachment);
+      setAttachmentPreview(url);
+      return () => URL.revokeObjectURL(url);
     }
-  };
+    setAttachmentPreview("");
+  }, [attachment]);
 
-  const handleMentorToggle = async () => {
+  const handleCreatePost = async () => {
+    if (!content.trim()) return;
+    setPosting(true);
+    setError("");
     try {
-      const updated = await apiClient.put(
-        "/users/me",
-        { isMentor: !user.isMentor },
-        token
-      );
-      setUser(updated);
-    } catch (err) {
-      setError(err.message || "Failed to update mentor preference");
-    }
-  };
-
-  const handlePostCreate = async () => {
-    if (!newPostContent.trim()) return;
-    setPostingLoading(true);
-    try {
-      const newPost = await apiClient.post("/posts", { content: newPostContent }, token);
-      setPosts([newPost, ...posts]);
-      setNewPostContent("");
+      let attachmentUrl, attachmentContentType;
+      if (attachment) {
+        const upload = await uploadViaPresign({ file: attachment, purpose: "attachment" }, token);
+        attachmentUrl = upload.documentUrl;
+        attachmentContentType = attachment.type;
+      }
+      await apiClient.post("/posts", {
+        content,
+        attachmentUrl,
+        attachmentContentType,
+        visibilityRegion: "ALL",
+      }, token);
+      setContent("");
+      setAttachment(null);
+      setAttachmentPreview("");
+      setComposeOpen(false);
+      setPostType("note");
+      await loadPosts();
     } catch (err) {
       setError(err.message || "Failed to create post");
     } finally {
-      setPostingLoading(false);
+      setPosting(false);
+    }
+  };
+
+  const handleLike = async (postId) => {
+    try {
+      const res = await apiClient.post(`/posts/${postId}/like`, {}, token);
+      setPosts((prev) =>
+        prev.map((p) => p._id === postId ? { ...p, likesCount: res.likesCount, likedByMe: res.likedByMe } : p)
+      );
+    } catch (err) {
+      setError(err.message);
     }
   };
 
   return (
-    <div className="mx-auto grid max-w-7xl gap-6 md:grid-cols-[250px_1fr_300px] px-4 md:px-6">
-      {/* ─── Left Sidebar: Circles & People ─── */}
-      <aside className="space-y-6 hidden md:block">
-        {/* Circles Section */}
-        <div className="circular-card p-5 sticky top-20">
-          <h3 className="font-display text-lg font-semibold text-sand mb-4">
-            <span className="inline-block w-2 h-2 rounded-full bg-sand mr-2" />
-            Circles For You
-          </h3>
-          <div className="space-y-3">
-            {[
-              { name: "Baku Friends", members: "245" },
-              { name: "Tech Community", members: "182" },
-              { name: "Diaspora Network", members: "89" }
-            ].map((circle, idx) => (
-              <div
-                key={idx}
-                className="group cursor-pointer p-3 rounded-xl bg-grey-100 hover:bg-grey-200 transition-colors"
-              >
-                <div className="flex items-center gap-2 mb-2">
-                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-grey-300 to-grey-400" />
-                  <p className="text-sm font-semibold text-sand group-hover:text-sand transition-colors">
-                    {circle.name}
-                  </p>
-                </div>
-                <div className="flex items-center justify-between">
-                  <p className="text-xs text-mist">{circle.members} members</p>
-                  <button className="text-xs font-semibold text-sand hover:bg-sand hover:text-white px-3 py-1 rounded-full transition-all">
+    <>
+      <BizimHeader />
+
+      <div className="mx-auto max-w-7xl px-4 md:px-6 py-6 grid gap-6 md:grid-cols-[260px_1fr] lg:grid-cols-[260px_1fr_300px]">
+
+        {/* ════════ LEFT SIDEBAR ════════ */}
+        <aside className="hidden md:block space-y-5">
+          {/* Circles For You */}
+          <div className="rounded-2xl bg-white border border-grey-300 p-5 sticky top-[72px]">
+            <h3 className="text-sm font-semibold text-sand mb-4 flex items-center gap-2">
+              <span className="w-4 h-4 rounded-full border-2 border-sand inline-flex items-center justify-center text-[8px] font-bold">○</span>
+              Circles For You
+            </h3>
+            <div className="space-y-3">
+              {["Circle Name 1", "Circle Name 2", "Circle Name 3"].map((name, i) => (
+                <div key={i} className="flex items-center justify-between">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-lg bg-blue-100" />
+                    <div>
+                      <p className="text-xs font-semibold text-sand">{name}</p>
+                      <p className="text-[11px] text-mist">500 members</p>
+                    </div>
+                  </div>
+                  <button className="rounded-full border border-blue-500 text-blue-600 text-[11px] font-semibold px-3 py-0.5 hover:bg-blue-50 transition-colors">
                     Join
                   </button>
                 </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* People Section */}
-        <div className="circular-card p-5">
-          <h3 className="font-display text-lg font-semibold text-sand mb-4">
-            <span className="inline-block w-2 h-2 rounded-full bg-sand mr-2" />
-            People For You
-          </h3>
-          <div className="space-y-3">
-            {[
-              { name: "Aylin Oz", role: "Designer in Berlin" },
-              { name: "Ramin Hashim", role: "Engineer in SF" },
-              { name: "Leyla K.", role: "Founder in London" }
-            ].map((person, idx) => (
-              <div
-                key={idx}
-                className="group cursor-pointer p-3 rounded-xl bg-grey-100 hover:bg-grey-200 transition-colors"
-              >
-                <div className="flex items-center gap-2 mb-2">
-                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-grey-300 to-grey-400" />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-sand truncate">{person.name}</p>
-                    <p className="text-xs text-mist truncate">{person.role}</p>
-                  </div>
-                </div>
-                <button className="w-full text-xs font-semibold text-white bg-sand rounded-full py-1.5 hover:opacity-90 transition-opacity">
-                  Follow
-                </button>
-              </div>
-            ))}
-          </div>
-        </div>
-      </aside>
-
-      {/* ─── Center: Feed ─── */}
-      <main className="space-y-6">
-        {/* Post Creation */}
-        <div className="circular-card p-6">
-          <div className="flex gap-4 items-start">
-            <div className="w-12 h-12 rounded-full bg-gradient-to-br from-grey-300 to-grey-400 flex-shrink-0" />
-            <div className="flex-1">
-              <textarea
-                value={newPostContent}
-                onChange={(e) => setNewPostContent(e.target.value)}
-                placeholder="What's on your mind?"
-                className="w-full bg-grey-100 rounded-2xl border border-grey-300 p-4 text-sm placeholder-mist focus:outline-none focus:ring-2 focus:ring-sand focus:ring-offset-0 resize-none"
-                rows={3}
-              />
-              <div className="flex items-center justify-between mt-4">
-                <div className="flex gap-2">
-                  {["📸", "😊", "🎉"].map((icon, idx) => (
-                    <button
-                      key={idx}
-                      className="w-10 h-10 rounded-full bg-grey-100 hover:bg-grey-200 flex items-center justify-center transition-colors"
-                    >
-                      {icon}
-                    </button>
-                  ))}
-                </div>
-                <button
-                  onClick={handlePostCreate}
-                  disabled={!newPostContent.trim() || postingLoading}
-                  className="circular-btn disabled:opacity-50 disabled:cursor-not-allowed text-xs"
-                >
-                  {postingLoading ? "Posting..." : "Post"}
-                </button>
-              </div>
+              ))}
             </div>
           </div>
-        </div>
 
-        {/* Posts Feed */}
-        <div className="space-y-6">
+          {/* People For You */}
+          <div className="rounded-2xl bg-white border border-grey-300 p-5">
+            <h3 className="text-sm font-semibold text-sand mb-4 flex items-center gap-2">
+              <svg className="w-4 h-4 text-sand" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+              </svg>
+              People For You
+            </h3>
+            <div className="space-y-3">
+              {[
+                { name: "User Name 1", loc: "Location" },
+                { name: "User Name 2", loc: "Location" },
+                { name: "User Name 3", loc: "Location" },
+              ].map((p, i) => (
+                <div key={i} className="flex items-center justify-between">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-full bg-grey-300" />
+                    <div>
+                      <p className="text-xs font-semibold text-sand">{p.name}</p>
+                      <p className="text-[11px] text-mist">{p.loc}</p>
+                    </div>
+                  </div>
+                  <button className="rounded-full bg-blue-500 text-white text-[11px] font-semibold px-3 py-1 hover:bg-blue-600 transition-colors">
+                    Follow
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        </aside>
+
+        {/* ════════ CENTER FEED ════════ */}
+        <main className="space-y-5 min-w-0">
           {error && (
-            <div className="circular-card p-4 border border-red-200 bg-red-50">
-              <p className="text-sm text-red-600">{error}</p>
+            <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600 flex justify-between">
+              <span>{error}</span>
+              <button onClick={() => setError("")} className="text-red-400 hover:text-red-600">&times;</button>
             </div>
           )}
 
+          {/* ── Post composer ── */}
+          {!composeOpen ? (
+            <div className="rounded-2xl bg-white border border-grey-300 p-4">
+              {/* Type tabs */}
+              <div className="flex gap-2 mb-4">
+                {POST_TABS.map((tab) => (
+                  <button
+                    key={tab.key}
+                    onClick={() => { setPostType(tab.key); setComposeOpen(true); }}
+                    className={`rounded-full px-4 py-1.5 text-xs font-semibold transition-colors ${
+                      tab.key === "note"
+                        ? "bg-blue-500 text-white"
+                        : "bg-grey-100 text-mist hover:bg-grey-200"
+                    }`}
+                  >
+                    {tab.icon} {tab.label}
+                  </button>
+                ))}
+              </div>
+              {/* Click to open */}
+              <button
+                onClick={() => { setComposeOpen(true); setTimeout(() => composeRef.current?.focus(), 100); }}
+                className="w-full flex items-center gap-3 text-left"
+              >
+                <div className="w-10 h-10 rounded-full bg-grey-300 flex-shrink-0" />
+                <span className="text-sm text-mist">What's on your mind?</span>
+              </button>
+            </div>
+          ) : (
+            <div className="rounded-2xl bg-white border border-grey-300 p-5 animate-scale-in">
+              {/* Tabs */}
+              <div className="flex gap-2 mb-4">
+                {POST_TABS.map((tab) => (
+                  <button
+                    key={tab.key}
+                    onClick={() => setPostType(tab.key)}
+                    className={`rounded-full px-4 py-1.5 text-xs font-semibold transition-colors ${
+                      postType === tab.key
+                        ? "bg-blue-500 text-white"
+                        : "bg-grey-100 text-mist hover:bg-grey-200"
+                    }`}
+                  >
+                    {tab.icon} {tab.label}
+                  </button>
+                ))}
+              </div>
+
+              {/* Compose area */}
+              <div className="flex items-start gap-3">
+                <div className="w-10 h-10 rounded-full bg-grey-300 flex-shrink-0 mt-0.5" />
+                <div className="flex-1 min-w-0">
+                  <textarea
+                    ref={composeRef}
+                    value={content}
+                    onChange={(e) => setContent(e.target.value)}
+                    placeholder={
+                      postType === "note" ? "What's on your mind?"
+                      : postType === "event" ? "Describe your event..."
+                      : "Describe the opportunity..."
+                    }
+                    rows={4}
+                    className="w-full resize-none rounded-xl border-0 bg-transparent text-sm text-sand placeholder:text-mist/50 focus:outline-none focus:ring-0"
+                  />
+                </div>
+              </div>
+
+              {/* Attachment preview */}
+              {attachmentPreview && (
+                <div className="ml-[52px] mt-2 rounded-xl border border-grey-300 bg-grey-100 p-2 relative">
+                  {attachment?.type?.startsWith("image/") ? (
+                    <img src={attachmentPreview} alt="Preview" className="w-full max-h-48 rounded-lg object-contain" />
+                  ) : (
+                    <video src={attachmentPreview} className="w-full max-h-48 rounded-lg" controls />
+                  )}
+                  <button
+                    onClick={() => { setAttachment(null); setAttachmentPreview(""); }}
+                    className="absolute top-3 right-3 w-7 h-7 bg-sand/80 text-white rounded-full flex items-center justify-center text-xs hover:bg-sand"
+                  >
+                    &times;
+                  </button>
+                </div>
+              )}
+
+              {/* Actions */}
+              <div className="ml-[52px] mt-3 flex items-center justify-between border-t border-grey-200 pt-3">
+                <div className="flex gap-1">
+                  <button
+                    onClick={() => fileInputRef.current?.click()}
+                    className="w-9 h-9 rounded-full bg-grey-100 hover:bg-grey-200 flex items-center justify-center text-sm transition-colors"
+                  >
+                    📎
+                  </button>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    hidden
+                    accept="image/*,video/*,application/pdf"
+                    onChange={(e) => setAttachment(e.target.files?.[0] || null)}
+                  />
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => { setComposeOpen(false); setContent(""); setAttachment(null); }}
+                    className="text-xs text-mist hover:text-sand transition-colors px-3 py-1.5"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleCreatePost}
+                    disabled={posting || !content.trim()}
+                    className="circular-btn text-xs px-5 py-2 disabled:opacity-50"
+                  >
+                    {posting ? "Posting..." : "Post"}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ── Feed ── */}
           {loading ? (
             <div className="space-y-4">
-              {[1, 2, 3].map((idx) => (
-                <div key={idx} className="circular-card p-6 animate-pulse">
-                  <div className="flex gap-4 items-start">
-                    <div className="w-12 h-12 rounded-full bg-grey-200" />
-                    <div className="flex-1 space-y-3">
-                      <div className="h-4 bg-grey-200 rounded w-1/4" />
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="rounded-2xl bg-white border border-grey-300 p-5 animate-pulse">
+                  <div className="flex gap-3">
+                    <div className="w-10 h-10 rounded-full bg-grey-200" />
+                    <div className="flex-1 space-y-2">
+                      <div className="h-3 bg-grey-200 rounded w-1/3" />
                       <div className="h-3 bg-grey-200 rounded w-full" />
-                      <div className="h-3 bg-grey-200 rounded w-3/4" />
+                      <div className="h-3 bg-grey-200 rounded w-2/3" />
                     </div>
                   </div>
+                  <div className="mt-4 h-40 bg-grey-200 rounded-xl" />
                 </div>
               ))}
             </div>
           ) : posts.length === 0 ? (
-            <div className="circular-card p-12 text-center">
-              <p className="text-mist mb-4">No posts yet. Start the conversation!</p>
-              <p className="text-sm text-mist/60">Follow people and circles to see posts in your feed.</p>
+            <div className="rounded-2xl bg-white border border-grey-300 p-12 text-center">
+              <p className="text-mist mb-2">No posts yet.</p>
+              <p className="text-sm text-mist/60">Follow people and join circles to see content here.</p>
             </div>
           ) : (
-            posts.map((post) => (
-              <PostCard key={post._id} post={post} onLike={handleLike} />
-            ))
+            posts.map((post) => <PostCard key={post._id} post={post} onLike={handleLike} />)
           )}
-        </div>
-      </main>
+        </main>
 
-      {/* ─── Right Sidebar: Messages & Profile ─── */}
-      <aside className="space-y-6 hidden lg:block">
-        {/* Profile Card */}
-        <div className="circular-card p-5 sticky top-20">
-          <div className="text-center mb-4">
-            <div className="w-16 h-16 rounded-full bg-gradient-to-br from-grey-300 to-grey-400 mx-auto mb-3" />
-            <p className="font-semibold text-sand text-sm">{user?.name || "User"}</p>
-            <p className="text-xs text-mist">{user?.headline || "Add a headline"}</p>
-          </div>
-          <div className="grid grid-cols-3 gap-2 py-3 border-y border-grey-300 text-center mb-4">
-            <div>
-              <p className="font-semibold text-sand text-sm">0</p>
-              <p className="text-xs text-mist">Followers</p>
+        {/* ════════ RIGHT SIDEBAR: MESSAGES ════════ */}
+        <aside className="hidden lg:block">
+          <div className="rounded-2xl bg-white border border-grey-300 p-5 sticky top-[72px]">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-sm font-semibold text-sand">Messages</h3>
+              <button className="text-mist hover:text-sand text-lg leading-none">&middot;&middot;&middot;</button>
             </div>
-            <div>
-              <p className="font-semibold text-sand text-sm">0</p>
-              <p className="text-xs text-mist">Following</p>
-            </div>
-            <div>
-              <p className="font-semibold text-sand text-sm">0</p>
-              <p className="text-xs text-mist">Circles</p>
-            </div>
-          </div>
-          <Link
-            to={`/profile/${user?._id}`}
-            className="w-full block text-center circular-btn-outline text-xs py-2"
-          >
-            View Profile
-          </Link>
-        </div>
 
-        {/* Messages */}
-        <div className="circular-card p-5">
-          <h3 className="font-display text-lg font-semibold text-sand mb-4 flex items-center gap-2">
-            <span className="inline-block w-2 h-2 rounded-full bg-sand" />
-            Messages
-          </h3>
-          <div className="space-y-2">
-            {[
-              { name: "Ramin H.", preview: "Sounds good! See you then..." },
-              { name: "Aylin", preview: "Just sent you the design files" },
-              { name: "Leyla", preview: "Let's catch up soon!" }
-            ].map((msg, idx) => (
-              <div
-                key={idx}
-                className="group cursor-pointer p-3 rounded-xl bg-grey-100 hover:bg-grey-200 transition-colors"
-              >
-                <div className="flex items-start gap-2 mb-1">
-                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-grey-300 to-grey-400 flex-shrink-0" />
-                  <p className="text-xs font-semibold text-sand group-hover:text-sand">{msg.name}</p>
+            {/* Search messages */}
+            <div className="flex items-center gap-2 px-3 py-2 rounded-full bg-grey-100 border border-grey-300 mb-4">
+              <svg className="w-3.5 h-3.5 text-grey-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+              <input
+                type="text"
+                placeholder="Search messages..."
+                className="flex-1 bg-transparent outline-none text-xs text-sand placeholder-grey-500"
+              />
+            </div>
+
+            {/* Message list */}
+            <div className="space-y-1">
+              {Array.from({ length: 6 }, (_, i) => (
+                <div key={i} className="flex items-center gap-3 p-2.5 rounded-lg hover:bg-grey-100 transition-colors cursor-pointer">
+                  <div className="relative flex-shrink-0">
+                    <div className="w-10 h-10 rounded-full bg-grey-300" />
+                    {i < 3 && <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-green-500 rounded-full border-2 border-white" />}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex justify-between items-baseline">
+                      <p className="text-xs font-semibold text-sand truncate">Contact Name {i + 1}</p>
+                      <span className="text-[10px] text-mist flex-shrink-0">2h</span>
+                    </div>
+                    <p className="text-[11px] text-mist truncate">Last message preview te...</p>
+                  </div>
                 </div>
-                <p className="text-xs text-mist truncate ml-10">{msg.preview}</p>
-              </div>
-            ))}
-          </div>
-          <button className="w-full mt-4 circular-btn-outline text-xs py-2">
-            New Message
-          </button>
-        </div>
+              ))}
+            </div>
 
-        {/* Quick Links */}
-        <div className="circular-card p-5">
-          <h3 className="font-semibold text-sand text-sm mb-3">Quick Links</h3>
-          <ul className="space-y-2 text-xs">
-            <li>
-              <Link to="/fyp" className="text-mist hover:text-sand transition-colors">
-                → For You Feed
-              </Link>
-            </li>
-            <li>
-              <Link to="/opportunities" className="text-mist hover:text-sand transition-colors">
-                → Jobs & Opportunities
-              </Link>
-            </li>
-            <li>
-              <Link to="/explore" className="text-mist hover:text-sand transition-colors">
-                → Browse Members
-              </Link>
-            </li>
-            <li>
-              <Link to="/network" className="text-mist hover:text-sand transition-colors">
-                → My Network
-              </Link>
-            </li>
-          </ul>
-        </div>
-
-        {/* Mentor Section */}
-        {user?.userType === "professional" && (
-          <div className="circular-card p-5 border-2 border-grey-400">
-            <h3 className="font-semibold text-sand text-sm mb-2">Mentorship</h3>
-            <p className="text-xs text-mist mb-3">
-              Help the next generation by becoming a mentor in your field.
-            </p>
-            <button
-              onClick={handleMentorToggle}
-              className={`w-full text-xs font-semibold rounded-full py-2 transition-all ${
-                user.isMentor
-                  ? "bg-sand text-white hover:opacity-90"
-                  : "bg-grey-100 text-sand hover:bg-grey-200 border border-grey-300"
-              }`}
-            >
-              {user.isMentor ? "Mentor Mode ON" : "Become Mentor"}
+            {/* New message button */}
+            <button className="w-full mt-4 rounded-full bg-blue-500 text-white text-xs font-semibold py-2.5 hover:bg-blue-600 transition-colors flex items-center justify-center gap-2">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+              </svg>
+              New Message
             </button>
           </div>
-        )}
-      </aside>
-    </div>
+        </aside>
+      </div>
+    </>
   );
 }

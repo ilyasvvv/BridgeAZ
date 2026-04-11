@@ -51,7 +51,7 @@ export default function Join() {
   return (
     <div className="mx-auto flex max-w-2xl flex-col gap-6" style={{ "--accent": "29 29 68", "--accent-soft": "95 96 116" }}>
       <div className="flex items-center justify-between">
-        <h1 className="font-display text-3xl">{mode === "login" ? "Welcome back" : "Join BridgeAZ"}</h1>
+        <h1 className="font-display text-3xl">{mode === "login" ? "Welcome back" : "Join Bizim Circle"}</h1>
         <div className="flex gap-2 text-xs uppercase tracking-wide">
           {[
             { value: "login", label: "Log in" },

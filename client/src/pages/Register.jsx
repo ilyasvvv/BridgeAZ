@@ -36,7 +36,7 @@ export default function Register() {
 
   return (
     <div className="mx-auto flex max-w-lg flex-col gap-6" style={{ "--accent": "29 29 68", "--accent-soft": "95 96 116" }}>
-      <h1 className="font-display text-3xl">Join BridgeAZ</h1>
+      <h1 className="font-display text-3xl">Join Bizim Circle</h1>
       <p className="text-sm text-mist">
         Students get access to verified mentorship. Professionals can opt-in to become mentors.
       </p>
@@ -132,7 +132,7 @@ export default function Register() {
         </div>
       </form>
       <p className="text-sm text-mist">
-        Already part of BridgeAZ? <Link to="/join" className="text-accent">Log in</Link>
+        Already part of Bizim Circle? <Link to="/join" className="text-accent">Log in</Link>
       </p>
     </div>
   );

@@ -420,7 +420,7 @@ export default function Opportunities() {
         <div className="space-y-1.5">
           <h1 className="font-display text-4xl tracking-tight text-sand md:text-5xl">Opportunities</h1>
           <p className="max-w-md font-sans text-sm tracking-wide text-mist">
-            Career openings, research positions, and high-impact projects within the BridgeAZ network.
+            Career openings, research positions, and high-impact projects within the Bizim Circle network.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2.5">
@@ -897,7 +897,7 @@ export default function Opportunities() {
                   {editingId ? "Edit Opportunity" : "Post a New Opportunity"}
                 </h2>
                 <p className="mt-0.5 font-sans text-xs text-mist/50">
-                  {editingId ? "Update your opportunity details below." : "Share an opening with the BridgeAZ community."}
+                  {editingId ? "Update your opportunity details below." : "Share an opening with the Bizim Circle community."}
                 </p>
               </div>
               <button

@@ -109,7 +109,7 @@ export default function ProfileCard({ user, style, relationship, onRelationshipC
                 {user.name || "Member"}
               </Link>
               <p className="mt-0.5 font-sans text-[13px] leading-relaxed text-mist/80 line-clamp-1">
-                {user.headline || "BridgeAZ member"}
+                {user.headline || "Bizim Circle member"}
               </p>
             </div>
           </div>

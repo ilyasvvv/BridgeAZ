@@ -250,7 +250,7 @@ export default function PublicProfile() {
                     </span>
                   )}
                 </div>
-                <p className="text-lg font-medium text-mist">{profile.headline || "BridgeAZ Member"}</p>
+                <p className="text-lg font-medium text-mist">{profile.headline || "Bizim Circle Member"}</p>
                 <div className="mt-3 flex flex-wrap items-center gap-2">
                   <RegionPill region={profile.currentRegion} />
                   <StatusBadge label={profile.userType} tone={profile.userType === "professional" ? "blue" : "slate"} />
@@ -553,7 +553,7 @@ export default function PublicProfile() {
           entityId: id,
           url: `/profile/${id}`,
           title: profile.name || "Profile",
-          subtitle: profile.headline || "BridgeAZ member",
+          subtitle: profile.headline || "Bizim Circle member",
           imageUrl:
             profile.avatarUrl || profile.profilePhotoUrl || profile.profilePictureUrl || "",
           meta: { profileId: id }

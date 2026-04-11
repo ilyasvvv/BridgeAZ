@@ -537,7 +537,7 @@ export default function Network() {
                                 {person?.name || "Member"}
                               </p>
                               <p className="truncate font-sans text-xs text-mist/50">
-                                {person?.headline || "BridgeAZ member"}
+                                {person?.headline || "Bizim Circle member"}
                               </p>
                             </div>
                           </Link>

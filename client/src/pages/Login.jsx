@@ -13,7 +13,7 @@ export default function Login() {
   const { login, user } = useAuth();
 
   useEffect(() => {
-    if (user) navigate("/fyp", { replace: true });
+    if (user) navigate("/dashboard", { replace: true });
   }, [user, navigate]);
 
   const handleChange = (event) => {
@@ -35,7 +35,7 @@ export default function Login() {
   return (
     <div className="mx-auto flex max-w-md flex-col gap-6" style={{ "--accent": "29 29 68", "--accent-soft": "95 96 116" }}>
       <h1 className="font-display text-3xl">Welcome back</h1>
-      <p className="text-sm text-mist">Log in to stay connected with BridgeAZ.</p>
+      <p className="text-sm text-mist">Log in to stay connected with Bizim Circle.</p>
       <form onSubmit={handleSubmit} className="glass rounded-2xl p-6 space-y-4">
         <div>
           <label className="text-xs uppercase tracking-wide text-mist">Email</label>
