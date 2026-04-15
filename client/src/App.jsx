@@ -9,6 +9,7 @@ import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
 import Dashboard from "./pages/Dashboard";
 import Profile from "./pages/Profile";
+import Search from "./pages/Search";
 
 const ProtectedRoute = ({ children }) => {
   const { user, loading } = useAuth();
