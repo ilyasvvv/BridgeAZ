@@ -28,6 +28,7 @@ export default function App() {
         <Route path="/login" element={<Login />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password" element={<ResetPassword />} />
+        <Route path="/search" element={<Search />} />
 
         {/* Authenticated — MVP: only Home + Profile */}
         <Route
