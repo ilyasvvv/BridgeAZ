@@ -53,9 +53,10 @@ export default {
         "q-success": "#3D8B5F"
       },
       fontFamily: {
-        display: ["Newsreader", "serif"],
-        body: ["Source Sans 3", "system-ui", "sans-serif"],
-        "q-display": ["DM Serif Display", "serif"],
+        display: ["Inter", "system-ui", "sans-serif"],
+        body: ["Inter", "system-ui", "sans-serif"],
+        serif: ["Instrument Serif", "Georgia", "serif"],
+        "q-display": ["Inter", "system-ui", "sans-serif"],
         "q-body": ["Inter", "system-ui", "sans-serif"]
       },
       borderRadius: {
