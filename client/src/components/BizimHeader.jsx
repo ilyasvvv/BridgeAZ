@@ -13,7 +13,6 @@ export default function BizimHeader() {
   const [location, setLocation] = useState("London");
   const [locOpen, setLocOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
   const locRef = useRef(null);
   const profileRef = useRef(null);
 
