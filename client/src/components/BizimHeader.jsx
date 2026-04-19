@@ -30,46 +30,14 @@ export default function BizimHeader() {
       <div className="mx-auto max-w-7xl px-4 md:px-6 py-2.5">
         <div className="flex items-center gap-4">
 
-          {/* ─── Logo + Location + "circle" ─── */}
-          <div className="flex items-center gap-1.5 flex-shrink-0">
-            {/* Logo mark */}
-            <Link to="/dashboard" className="flex items-center gap-1.5">
-              <div className="w-8 h-8 rounded-full border-2 border-sand flex items-center justify-center">
-                <span className="text-sand text-[10px] font-bold tracking-tight">iii</span>
-              </div>
-              <span className="font-display text-sm font-bold text-sand">bizim</span>
-            </Link>
-
-            {/* Location selector */}
-            <div ref={locRef} className="relative">
-              <button
-                onClick={() => setLocOpen(!locOpen)}
-                className="flex items-center gap-1 rounded-full border-2 border-blue-500 bg-white px-3 py-1 text-sm font-semibold text-blue-600 hover:bg-blue-50 transition-colors"
-              >
-                {location}
-                <svg className={`w-3.5 h-3.5 transition-transform ${locOpen ? "rotate-180" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" />
-                </svg>
-              </button>
-              {locOpen && (
-                <div className="absolute top-full left-0 mt-1.5 w-44 bg-white border border-grey-300 rounded-xl shadow-floating z-50 py-1 max-h-64 overflow-y-auto">
-                  {LOCATIONS.map((loc) => (
-                    <button
-                      key={loc}
-                      onClick={() => { setLocation(loc); setLocOpen(false); }}
-                      className={`w-full text-left px-4 py-2 text-sm transition-colors ${
-                        loc === location ? "bg-grey-100 font-semibold text-sand" : "text-mist hover:bg-grey-100"
-                      }`}
-                    >
-                      {loc}
-                    </button>
-                  ))}
-                </div>
-              )}
+          {/* ─── Logo (bizim ◯ circle) ─── */}
+          <Link to="/dashboard" className="flex items-center gap-1.5 flex-shrink-0">
+            <span className="font-display text-sm font-bold text-sand">bizim</span>
+            <div className="w-8 h-8 rounded-full border-2 border-sand flex items-center justify-center">
+              <span className="text-sand text-[10px] font-bold tracking-tight">iii</span>
             </div>
-
             <span className="font-display text-sm font-bold text-sand">circle</span>
-          </div>
+          </Link>
 
           {/* ─── Search bar (click-to-open) ─── */}
           <button
