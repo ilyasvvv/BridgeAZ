@@ -32,7 +32,7 @@ export default function UserChip({
 }) {
   const profileTo = to || (user?._id ? `/profile/${user._id}` : null);
   const name = user?.name || "Member";
-  const role = showRole ? user?.userType : null;
+  const role = showRole ? (user?.accountType === "circle" || user?.userType === "circle" ? "circle" : null) : null;
 
   const content = (
     <span className={`inline-flex min-w-0 items-center gap-3 ${className}`}>

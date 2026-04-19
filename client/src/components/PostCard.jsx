@@ -1,5 +1,4 @@
 import { useRef, useState } from "react";
-import StatusBadge from "./StatusBadge";
 import RegionPill from "./RegionPill";
 import UserChip, { USER_CHIP_SIZES } from "./UserChip";
 import { formatRelativeTime } from "../utils/format";
@@ -55,12 +54,11 @@ export default function PostCard({ post, onLike }) {
             <span className="text-xs text-mist">{formatRelativeTime(post.createdAt)}</span>
           </div>
         </div>
-        <div className="flex items-center gap-1.5">
-          {(post.author?.studentVerified || post.author?.mentorVerified) && (
-            <StatusBadge label="Verified" tone="success" />
-          )}
-          <StatusBadge label={post.author?.userType || "member"} tone="slate" />
-        </div>
+        {(post.author?.accountType === "circle" || post.author?.userType === "circle") && (
+          <span className="rounded-full border border-border bg-surface-alt px-3 py-1 text-[10px] font-semibold uppercase tracking-wide text-mist">
+            Circle
+          </span>
+        )}
       </div>
       <p className="mt-4 text-base text-sand/90 break-words whitespace-pre-wrap">
         {post.content}

@@ -27,7 +27,7 @@ const toThreadPayload = (thread, userId) => {
 router.get("/threads", authMiddleware, blockBanned, async (req, res) => {
   try {
     const threads = await ChatThread.find({ participants: req.user._id })
-      .populate("participants", "name userType avatarUrl profilePhotoUrl profilePictureUrl")
+      .populate("participants", "name accountType avatarUrl profilePhotoUrl profilePictureUrl")
       .sort({ lastMessageAt: -1, updatedAt: -1 })
       .limit(100);
     const mapped = threads.map((thread) => toThreadPayload(thread, req.user._id));
@@ -63,7 +63,7 @@ router.post("/threads", authMiddleware, blockBanned, async (req, res) => {
       }
       const populated = await existing.populate(
         "participants",
-        "name userType avatarUrl profilePhotoUrl profilePictureUrl"
+        "name accountType avatarUrl profilePhotoUrl profilePictureUrl"
       );
       const payload = toThreadPayload(populated, req.user._id);
       try {
@@ -109,7 +109,7 @@ router.post("/threads", authMiddleware, blockBanned, async (req, res) => {
     });
     const populated = await thread.populate(
       "participants",
-      "name userType avatarUrl profilePhotoUrl profilePictureUrl"
+      "name accountType avatarUrl profilePhotoUrl profilePictureUrl"
     );
     const payload = toThreadPayload(populated, req.user._id);
     try {
@@ -385,7 +385,7 @@ router.post("/threads/:id/accept", authMiddleware, blockBanned, async (req, res)
     const thread = await ChatThread.findOne({
       _id: req.params.id,
       participants: req.user._id
-    }).populate("participants", "name userType avatarUrl profilePhotoUrl profilePictureUrl");
+    }).populate("participants", "name accountType avatarUrl profilePhotoUrl profilePictureUrl");
     if (!thread) {
       return res.status(404).json({ message: "Thread not found" });
     }
@@ -412,7 +412,7 @@ router.post("/threads/:id/reject", authMiddleware, blockBanned, async (req, res)
     const thread = await ChatThread.findOne({
       _id: req.params.id,
       participants: req.user._id
-    }).populate("participants", "name userType avatarUrl profilePhotoUrl profilePictureUrl");
+    }).populate("participants", "name accountType avatarUrl profilePhotoUrl profilePictureUrl");
     if (!thread) {
       return res.status(404).json({ message: "Thread not found" });
     }

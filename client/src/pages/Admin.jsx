@@ -5,39 +5,32 @@ import { regionLabel } from "../utils/format";
 
 export default function Admin() {
   const { token, user } = useAuth();
-  const [activeTab, setActiveTab] = useState("verifications");
+  const [activeTab, setActiveTab] = useState("users");
   const [users, setUsers] = useState([]);
   const [userFilters, setUserFilters] = useState({
     search: "",
     region: "",
-    userType: "",
-    verificationStatus: "",
+    accountType: "",
     banned: ""
   });
   const [userMessage, setUserMessage] = useState("");
   const [userLoading, setUserLoading] = useState(false);
-  const [requests, setRequests] = useState([]);
-  const [comment, setComment] = useState({});
-  const [message, setMessage] = useState("");
   const [banTarget, setBanTarget] = useState(null);
   const [banReason, setBanReason] = useState("");
   const [opportunities, setOpportunities] = useState([]);
   const [opportunityMessage, setOpportunityMessage] = useState("");
-  const [actionLoading, setActionLoading] = useState({});
 
   const roles = Array.isArray(user?.roles) ? user.roles : [];
   const canC = user?.isAdmin || roles.includes("staffC") || roles.includes("staffB") || roles.includes("adminA");
-  const canB = user?.isAdmin || roles.includes("staffB") || roles.includes("adminA");
   const canA = user?.isAdmin || roles.includes("adminA");
 
   const tabs = useMemo(
     () =>
       [
-        canB && { id: "verifications", label: "Verifications" },
         canC && { id: "jobs", label: "Job Moderation" },
         canA && { id: "users", label: "Users" }
       ].filter(Boolean),
-    [canA, canB, canC]
+    [canA, canC]
   );
 
   useEffect(() => {
@@ -53,8 +46,7 @@ export default function Admin() {
       const params = new URLSearchParams();
       if (filters.search) params.set("search", filters.search);
       if (filters.region) params.set("region", filters.region);
-      if (filters.userType) params.set("userType", filters.userType);
-      if (filters.verificationStatus) params.set("verificationStatus", filters.verificationStatus);
+      if (filters.accountType) params.set("accountType", filters.accountType);
       if (filters.banned !== "") params.set("banned", filters.banned);
       const data = await apiClient.get(`/admin/users?${params.toString()}`, token);
       setUsers(data);
@@ -62,15 +54,6 @@ export default function Admin() {
       setUserMessage(error.message || "Failed to load users");
     } finally {
       setUserLoading(false);
-    }
-  };
-
-  const loadRequests = async () => {
-    try {
-      const data = await apiClient.get("/admin/verifications?status=pending", token);
-      setRequests(data);
-    } catch (error) {
-      setMessage(error.message || "Failed to load verification requests");
     }
   };
 
@@ -87,30 +70,8 @@ export default function Admin() {
   useEffect(() => {
     if (!token) return;
     if (activeTab === "users") loadUsers();
-    if (activeTab === "verifications") loadRequests();
     if (activeTab === "jobs") loadOpportunities();
   }, [activeTab, token]);
-
-  const handleAction = async (id, action) => {
-    try {
-      setActionLoading((prev) => ({ ...prev, [id]: action }));
-      const response = await apiClient.patch(
-        `/admin/verifications/${id}/${action}`,
-        { adminNotes: comment[id] || "" },
-        token
-      );
-      setMessage(`Request ${action}d.`);
-      setRequests((prev) => prev.filter((item) => item._id !== response.verification?._id));
-    } catch (error) {
-      setMessage(error.message || "Action failed");
-    } finally {
-      setActionLoading((prev) => {
-        const next = { ...prev };
-        delete next[id];
-        return next;
-      });
-    }
-  };
 
   const openBanModal = (user) => {
     setBanTarget(user);
@@ -172,7 +133,7 @@ export default function Admin() {
           <div>
             <h2 className="font-display text-2xl">Admin Control Center</h2>
             <p className="mt-2 text-sm text-mist">
-              Review the community, moderate access, and approve verification requests.
+              Review the community, moderate access, and manage accounts.
             </p>
           </div>
           <div className="flex gap-2">
@@ -192,66 +153,6 @@ export default function Admin() {
           </div>
         </div>
       </div>
-
-      {activeTab === "verifications" && (
-        <div className="space-y-4">
-          {message && <p className="text-sm text-accent">{message}</p>}
-          {requests.length === 0 && !message && (
-            <div className="flex flex-col items-center py-12 text-center">
-              <p className="text-sm font-medium text-sand/80">No pending verification requests</p>
-              <p className="mt-1 text-xs text-mist/50">New requests will appear here when users submit verification documents.</p>
-            </div>
-          )}
-          <div className="grid gap-4 md:grid-cols-2">
-            {requests.map((request) => (
-              <div key={request._id} className="glass rounded-2xl p-5">
-                <p className="text-sm text-mist">{request.user?.name}</p>
-                <p className="text-xs uppercase tracking-wide text-accent">
-                  {request.requestType}
-                </p>
-                <p className="mt-2 text-xs text-mist">
-                  Region: {regionLabel(request.user?.currentRegion)}
-                </p>
-                {request.documentUrl && (
-                  <a
-                    href={request.documentUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="mt-3 block text-xs text-coral"
-                  >
-                    View document
-                  </a>
-                )}
-                <textarea
-                  placeholder="Admin comment"
-                  rows={2}
-                  value={comment[request._id] || ""}
-                  onChange={(event) =>
-                    setComment((prev) => ({ ...prev, [request._id]: event.target.value }))
-                  }
-                  className="mt-3 w-full rounded-xl border border-border bg-white px-3 py-2 text-xs text-sand"
-                />
-                <div className="mt-4 flex gap-3">
-                  <button
-                    onClick={() => handleAction(request._id, "approve")}
-                    disabled={!!actionLoading[request._id]}
-                    className="rounded-full bg-sand px-4 py-2 text-xs font-semibold uppercase tracking-wide text-white"
-                  >
-                    {actionLoading[request._id] === "approve" ? "Approving..." : "Approve"}
-                  </button>
-                  <button
-                    onClick={() => handleAction(request._id, "reject")}
-                    disabled={!!actionLoading[request._id]}
-                    className="rounded-full border border-border px-4 py-2 text-xs uppercase tracking-wide text-sand hover:border-coral"
-                  >
-                    {actionLoading[request._id] === "reject" ? "Rejecting..." : "Reject"}
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
 
       {activeTab === "jobs" && (
         <div className="space-y-4">
@@ -299,31 +200,15 @@ export default function Admin() {
               placeholder="Based in (country/city)"
             />
             <select
-              value={userFilters.userType}
+              value={userFilters.accountType}
               onChange={(event) =>
-                setUserFilters((prev) => ({ ...prev, userType: event.target.value }))
+                setUserFilters((prev) => ({ ...prev, accountType: event.target.value }))
               }
               className="rounded-xl border border-border bg-white px-4 py-2 text-sm text-sand"
             >
-              <option value="">All types</option>
-              <option value="student">Student</option>
-              <option value="professional">Professional</option>
-            </select>
-            <select
-              value={userFilters.verificationStatus}
-              onChange={(event) =>
-                setUserFilters((prev) => ({
-                  ...prev,
-                  verificationStatus: event.target.value
-                }))
-              }
-              className="rounded-xl border border-border bg-white px-4 py-2 text-sm text-sand"
-            >
-              <option value="">All verification</option>
-              <option value="unverified">Unverified</option>
-              <option value="pending">Pending</option>
-              <option value="verified">Verified</option>
-              <option value="rejected">Rejected</option>
+              <option value="">All accounts</option>
+              <option value="personal">Personal</option>
+              <option value="circle">Circle</option>
             </select>
             <select
               value={userFilters.banned}
@@ -349,8 +234,7 @@ export default function Admin() {
                   const cleared = {
                     search: "",
                     region: "",
-                    userType: "",
-                    verificationStatus: "",
+                    accountType: "",
                     banned: ""
                   };
                   setUserFilters(cleared);
@@ -376,13 +260,10 @@ export default function Admin() {
                   </div>
                   <div className="text-xs text-mist space-y-1">
                     <p>
-                      Type: <span className="text-sand">{item.userType}</span>
+                      Account: <span className="text-sand">{item.accountType || "personal"}</span>
                     </p>
                     <p>
                       Region: <span className="text-sand">{regionLabel(item.currentRegion)}</span>
-                    </p>
-                    <p>
-                      Verification: <span className="text-sand">{item.verificationStatus}</span>
                     </p>
                     <p>
                       Status:{" "}

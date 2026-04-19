@@ -141,7 +141,7 @@ export default function Opportunities() {
   const [loading, setLoading] = useState(true);
 
   const canPost = useMemo(
-    () => user?.isAdmin || user?.userType === "professional",
+    () => Boolean(user),
     [user]
   );
 

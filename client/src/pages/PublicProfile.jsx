@@ -3,7 +3,6 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { apiClient } from "../api/client";
 import { useAuth } from "../utils/auth";
 import RegionPill from "../components/RegionPill";
-import StatusBadge from "../components/StatusBadge";
 import UserChip, { USER_CHIP_SIZES } from "../components/UserChip";
 import Avatar from "../components/Avatar";
 import ShareSheet from "../components/ShareSheet";
@@ -198,14 +197,12 @@ export default function PublicProfile() {
         ? "from-emerald-400/20 to-emerald-400/5"
         : "from-accent/20 to-accent/5";
 
-  const availability = profile.isMentor && profile.mentorVerified
+  const availability = profile.isMentor
     ? AVAILABILITY_CONFIG[profile.mentorshipAvailability] || AVAILABILITY_CONFIG.available
     : null;
 
   const canRequestMentorship =
-    user?.userType === "student" &&
     profile.isMentor &&
-    profile.mentorVerified &&
     !relationship?.isMentor &&
     !relationship?.isMentee &&
     !relationship?.mentorshipRequestPending &&
@@ -253,9 +250,11 @@ export default function PublicProfile() {
                 <p className="text-lg font-medium text-mist">{profile.headline || "Bizim Circle Member"}</p>
                 <div className="mt-3 flex flex-wrap items-center gap-2">
                   <RegionPill region={profile.currentRegion} />
-                  <StatusBadge label={profile.userType} tone={profile.userType === "professional" ? "blue" : "slate"} />
-                  {profile.mentorVerified && <StatusBadge label="Verified Mentor" tone="success" />}
-                  {profile.studentVerified && <StatusBadge label="Verified Student" tone="success" />}
+                  {(profile.accountType === "circle" || profile.userType === "circle") && (
+                    <span className="rounded-full border border-border bg-charcoal px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-sand">
+                      Circle
+                    </span>
+                  )}
                   {/* Mentor availability */}
                   {availability && (
                     <span className={`flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-medium ${availability.bg} ${availability.text} ${availability.border}`}>

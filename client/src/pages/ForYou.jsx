@@ -101,9 +101,8 @@ export default function ForYou() {
       setPosts(postsData);
       setOpportunities(opportunitiesData);
 
-      if (user?.userType === "student") {
+      if (!user?.isMentor) {
         const mentorParams = new URLSearchParams({
-          userType: "professional",
           isMentor: "true"
         });
         if (user.currentRegion) {
@@ -113,7 +112,7 @@ export default function ForYou() {
           `/users?${mentorParams.toString()}`,
           token
         );
-        setMentors(mentorsData.filter((mentor) => mentor.mentorVerified));
+        setMentors(mentorsData);
       } else if (user?.isMentor) {
         const mentorshipRequests = await apiClient.get("/mentorship-requests", token);
         setRequests(mentorshipRequests);
@@ -713,7 +712,7 @@ export default function ForYou() {
               <h3 className="font-display text-lg text-sand">Mentorship</h3>
             </div>
             <div className="px-5 pb-5">
-              {user?.userType === "student" ? (
+              {!user?.isMentor ? (
                 mentors.length ? (
                   <div className="space-y-3">
                     <p className="text-xs font-medium uppercase tracking-wide text-mist">

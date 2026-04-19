@@ -35,7 +35,6 @@ router.post("/presign", authMiddleware, blockBanned, async (req, res) => {
     }
 
     const allowedPurposes = new Set([
-      "verification",
       "avatar",
       "resume",
       "attachment",

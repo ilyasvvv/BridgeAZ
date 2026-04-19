@@ -8,7 +8,7 @@ const { authMiddleware, blockBanned } = require("../middleware/auth");
 const { sanitizeString } = require("../middleware/sanitize");
 
 const AUTHOR_SELECT =
-  "name avatarUrl profilePhotoUrl profilePictureUrl currentRegion userType qLocation";
+  "name avatarUrl profilePhotoUrl profilePictureUrl currentRegion accountType qLocation";
 
 // ---------- GET / — paginated feed ----------
 router.get("/", authMiddleware, async (req, res) => {

@@ -13,6 +13,13 @@ const {
 
 const router = express.Router();
 
+const normalizeUsername = (value = "") =>
+  String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9._]/g, "")
+    .replace(/^[._]+|[._]+$/g, "");
+
 router.get("/me", authMiddleware, blockBanned, async (req, res) => {
   res.json(req.user);
 });
@@ -21,6 +28,7 @@ router.put("/me", authMiddleware, blockBanned, async (req, res) => {
   try {
     const allowedFields = [
       "name",
+      "username",
       "headline",
       "bio",
       "currentRegion",
@@ -50,6 +58,7 @@ router.put("/me", authMiddleware, blockBanned, async (req, res) => {
 
     // Sanitize string fields
     if (updates.name !== undefined) updates.name = sanitizeString(updates.name, FIELD_LIMITS.name);
+    if (updates.username !== undefined) updates.username = normalizeUsername(updates.username);
     if (updates.headline !== undefined) updates.headline = sanitizeString(updates.headline, FIELD_LIMITS.headline);
     if (updates.bio !== undefined) updates.bio = sanitizeString(updates.bio, FIELD_LIMITS.bio);
     if (updates.currentRegion !== undefined) updates.currentRegion = sanitizeString(updates.currentRegion, 100);
@@ -57,6 +66,9 @@ router.put("/me", authMiddleware, blockBanned, async (req, res) => {
     // Validate name is not empty after sanitization
     if (updates.name !== undefined && !updates.name) {
       return res.status(400).json({ message: "Name cannot be empty" });
+    }
+    if (updates.username !== undefined && (updates.username.length < 3 || updates.username.length > 24)) {
+      return res.status(400).json({ message: "Username must be 3-24 characters" });
     }
 
     // Sanitize arrays
@@ -67,6 +79,17 @@ router.put("/me", authMiddleware, blockBanned, async (req, res) => {
 
     if (updates.isPrivate !== undefined) {
       updates.profileVisibility = updates.isPrivate ? "private" : "public";
+    }
+
+    if (updates.username) {
+      const existingUsername = await User.findOne({
+        _id: { $ne: req.user._id },
+        username: updates.username
+      }).select("_id");
+
+      if (existingUsername) {
+        return res.status(409).json({ message: "Username already taken" });
+      }
     }
 
     const user = await User.findByIdAndUpdate(req.user._id, updates, {
@@ -91,6 +114,7 @@ router.get("/search", authMiddleware, blockBanned, async (req, res) => {
       const regex = { $regex: escapedQ, $options: "i" };
       query.$or = [
         { name: regex },
+        { username: regex },
         { headline: regex },
         { skills: regex },
         { "education.institution": regex },
@@ -102,9 +126,7 @@ router.get("/search", authMiddleware, blockBanned, async (req, res) => {
     }
 
     const users = await User.find(query)
-      .select(
-        "name avatarUrl profilePhotoUrl profilePictureUrl currentRegion locationNow education experience headline userType studentVerified mentorVerified isMentor"
-      )
+      .select("name username accountType avatarUrl profilePhotoUrl profilePictureUrl currentRegion locationNow education experience headline")
       .sort({ updatedAt: -1 })
       .limit(limit);
 
@@ -115,7 +137,7 @@ router.get("/search", authMiddleware, blockBanned, async (req, res) => {
       return {
         _id: member._id,
         name: member.name,
-        username: null,
+        username: member.username || "",
         avatarUrl: member.avatarUrl || member.profilePhotoUrl || member.profilePictureUrl || "",
         profilePhotoUrl: member.profilePhotoUrl || member.avatarUrl || "",
         profilePictureUrl: member.profilePictureUrl || "",
@@ -137,7 +159,7 @@ router.get("/:id/public", authMiddleware, blockBanned, async (req, res) => {
       return res.status(400).json({ message: "Invalid user id" });
     }
     const user = await User.findById(req.params.id).select(
-      "name userType currentRegion profilePhotoUrl avatarUrl headline bio education experience skills links socialLinks createdAt studentVerified mentorVerified isMentor mentorshipAvailability verificationStatus"
+      "name username accountType currentRegion profilePhotoUrl avatarUrl headline bio education experience skills links socialLinks createdAt isMentor mentorshipAvailability"
     );
     if (!user) {
       return res.status(404).json({ message: "User not found" });
@@ -180,11 +202,11 @@ router.get("/:id", authMiddleware, blockBanned, async (req, res) => {
 
 router.get("/", authMiddleware, blockBanned, async (req, res) => {
   try {
-    const { region, userType, isMentor } = req.query;
+    const { region, accountType, isMentor } = req.query;
     const query = {};
 
     if (region) query.currentRegion = region;
-    if (userType) query.userType = userType;
+    if (accountType) query.accountType = accountType;
     if (isMentor !== undefined) query.isMentor = isMentor === "true";
 
     const users = await User.find(query).select("-passwordHash").limit(100);

@@ -6,12 +6,12 @@ import ProfileCard from "../components/ProfileCard";
 export default function Explore() {
   const { token } = useAuth();
   const [users, setUsers] = useState([]);
-  const [filters, setFilters] = useState({ region: "", userType: "", isMentor: false });
+  const [filters, setFilters] = useState({ region: "", accountType: "", isMentor: false });
 
   const loadUsers = async () => {
     const params = new URLSearchParams();
     if (filters.region) params.set("region", filters.region);
-    if (filters.userType) params.set("userType", filters.userType);
+    if (filters.accountType) params.set("accountType", filters.accountType);
     if (filters.isMentor) params.set("isMentor", "true");
 
     const data = await apiClient.get(`/users?${params.toString()}`, token);
@@ -34,13 +34,13 @@ export default function Explore() {
             placeholder="Based in (country/city)"
           />
           <select
-            value={filters.userType}
-            onChange={(event) => setFilters((prev) => ({ ...prev, userType: event.target.value }))}
+            value={filters.accountType}
+            onChange={(event) => setFilters((prev) => ({ ...prev, accountType: event.target.value }))}
             className="rounded-xl border border-border bg-white px-4 py-2 text-sm text-sand"
           >
-            <option value="">All Types</option>
-            <option value="student">Student</option>
-            <option value="professional">Professional</option>
+            <option value="">All accounts</option>
+            <option value="personal">Personal</option>
+            <option value="circle">Circle</option>
           </select>
           <label className="flex items-center gap-2 text-sm text-mist">
             <input

@@ -22,7 +22,7 @@ export default function BizimHeader() {
   const handleLogout = () => {
     setProfileOpen(false);
     logout();
-    navigate("/login");
+    navigate("/");
   };
 
   return (

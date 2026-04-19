@@ -1,6 +1,30 @@
 const jwt = require("jsonwebtoken");
 const User = require("../models/User");
 
+const normalizeUserContext = (user) => {
+  if (!user) return user;
+
+  const hasCircleIdentity =
+    user.accountType === "circle" ||
+    user.userType === "circle" ||
+    (Array.isArray(user.roles) && user.roles.includes("circle"));
+
+  user.accountType = hasCircleIdentity ? "circle" : "personal";
+  user.userType = hasCircleIdentity ? "circle" : "member";
+  user.roles = Array.isArray(user.roles)
+    ? Array.from(new Set(user.roles.map((role) => (role === "student" || role === "professional" ? "member" : role))))
+    : [];
+
+  if (user.accountType === "circle" && !user.roles.includes("circle")) {
+    user.roles.push("circle");
+  }
+  if (user.accountType === "personal" && !user.roles.includes("member")) {
+    user.roles.push("member");
+  }
+
+  return user;
+};
+
 const authMiddleware = async (req, res, next) => {
   const authHeader = req.headers.authorization || "";
   const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : null;
@@ -17,6 +41,7 @@ const authMiddleware = async (req, res, next) => {
     if (!req.user) {
       return res.status(401).json({ message: "User not found" });
     }
+    normalizeUserContext(req.user);
     next();
   } catch (error) {
     return res.status(401).json({ message: "Invalid token" });

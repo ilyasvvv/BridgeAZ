@@ -58,6 +58,20 @@ const requestJson = (urlString, { method = "GET", headers = {}, body } = {}) =>
 
 const normalizeEmail = (email = "") => email.trim().toLowerCase();
 
+const normalizeUsername = (username = "") => {
+  const normalized = String(username || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9._]/g, "")
+    .replace(/^[._]+|[._]+$/g, "");
+
+  if (normalized.length < 3 || normalized.length > 24) {
+    return "";
+  }
+
+  return normalized;
+};
+
 const normalizeSignupType = (value = "") => {
   const normalized = String(value || "").trim().toLowerCase();
 
@@ -66,15 +80,36 @@ const normalizeSignupType = (value = "") => {
   }
 
   if (["student", "professional", "personal", "person", "member"].includes(normalized)) {
-    return { accountType: "personal", userType: normalized === "student" || normalized === "professional" ? normalized : "member", role: normalized === "student" || normalized === "professional" ? normalized : "member" };
+    return { accountType: "personal", userType: "member", role: "member" };
   }
 
   return null;
 };
 
+const normalizeAccountFields = (user) => {
+  const hasCircleIdentity =
+    user.accountType === "circle" ||
+    user.userType === "circle" ||
+    (Array.isArray(user.roles) && user.roles.includes("circle"));
+  const accountType = hasCircleIdentity ? "circle" : "personal";
+  const userType = accountType === "circle" ? "circle" : "member";
+  const roles = Array.isArray(user.roles)
+    ? Array.from(new Set(user.roles.map((role) => (role === "student" || role === "professional" ? "member" : role))))
+    : [];
+
+  if (accountType === "circle" && !roles.includes("circle")) {
+    roles.push("circle");
+  }
+  if (accountType === "personal" && !roles.includes("member")) {
+    roles.push("member");
+  }
+
+  return { accountType, userType, roles };
+};
+
 const buildSafeUser = (user) => {
   const safeUser = user.toObject();
-  safeUser.accountType = safeUser.accountType || (safeUser.userType === "circle" ? "circle" : "personal");
+  Object.assign(safeUser, normalizeAccountFields(safeUser));
   delete safeUser.passwordHash;
   delete safeUser.passwordResetTokenHash;
   delete safeUser.passwordResetExpiresAt;
@@ -133,14 +168,14 @@ const sendPasswordResetEmail = async ({ to, name, resetUrl }) => {
 };
 
 const signToken = (user) => {
+  const normalized = normalizeAccountFields(user);
   return jwt.sign(
     {
       userId: user._id,
-      accountType: user.accountType || "personal",
-      userType: user.userType,
+      accountType: normalized.accountType,
+      userType: normalized.userType,
+      username: user.username,
       currentRegion: user.currentRegion,
-      studentVerified: user.studentVerified,
-      mentorVerified: user.mentorVerified,
       isAdmin: user.isAdmin,
       banned: user.banned
     },
@@ -152,12 +187,13 @@ const signToken = (user) => {
 router.post("/register", async (req, res) => {
   try {
     const rawName = req.body.name;
-    const { email, password, userType, accountType, currentRegion } = req.body;
+    const { email, password, userType, accountType, currentRegion, username } = req.body;
     const name = sanitizeString(rawName, FIELD_LIMITS.name);
     const normalizedEmail = normalizeEmail(email);
+    const normalizedUsername = normalizeUsername(username);
     const signupType = normalizeSignupType(accountType || userType);
 
-    if (!name || !normalizedEmail || !password || !signupType) {
+    if (!name || !normalizedEmail || !normalizedUsername || !password || !signupType) {
       return res.status(400).json({ message: "Missing required fields" });
     }
 
@@ -165,24 +201,26 @@ router.post("/register", async (req, res) => {
       return res.status(400).json({ message: "Password must be at least 8 characters" });
     }
 
-    const existing = await User.findOne({ email: normalizedEmail });
+    const existing = await User.findOne({
+      $or: [{ email: normalizedEmail }, { username: normalizedUsername }]
+    });
     if (existing) {
-      return res.status(409).json({ message: "Email already registered" });
+      return res.status(409).json({
+        message: existing.email === normalizedEmail ? "Email already registered" : "Username already taken"
+      });
     }
 
     const passwordHash = await bcrypt.hash(password, 10);
     const user = await User.create({
       name,
+      username: normalizedUsername,
       email: normalizedEmail,
       passwordHash,
       authProviders: ["password"],
       accountType: signupType.accountType,
       userType: signupType.userType,
       currentRegion: (currentRegion || "").trim(),
-      roles: [signupType.role],
-      studentVerified: false,
-      mentorVerified: false,
-      verificationStatus: "unverified"
+      roles: [signupType.role]
     });
 
     const token = signToken(user);
@@ -195,13 +233,17 @@ router.post("/register", async (req, res) => {
 router.post("/login", async (req, res) => {
   try {
     const { email, password } = req.body || {};
-    const normalizedEmail = normalizeEmail(email);
+    const identifier = String(email || "").trim();
+    const normalizedEmail = normalizeEmail(identifier);
+    const normalizedUsername = normalizeUsername(identifier);
 
-    if (!normalizedEmail || !password) {
-      return res.status(400).json({ message: "Email and password are required" });
+    if (!identifier || !password) {
+      return res.status(400).json({ message: "Email or username and password are required" });
     }
 
-    const user = await User.findOne({ email: normalizedEmail });
+    const user = await User.findOne({
+      $or: [{ email: normalizedEmail }, ...(normalizedUsername ? [{ username: normalizedUsername }] : [])]
+    });
 
     if (!user) {
       return res.status(401).json({ message: "Invalid credentials" });
@@ -209,6 +251,18 @@ router.post("/login", async (req, res) => {
 
     if (user.banned) {
       return res.status(403).json({ message: "Your account has been banned." });
+    }
+
+    const normalizedFields = normalizeAccountFields(user);
+    if (
+      user.accountType !== normalizedFields.accountType ||
+      user.userType !== normalizedFields.userType ||
+      JSON.stringify(user.roles || []) !== JSON.stringify(normalizedFields.roles)
+    ) {
+      user.accountType = normalizedFields.accountType;
+      user.userType = normalizedFields.userType;
+      user.roles = normalizedFields.roles;
+      await user.save();
     }
 
     if (!user.passwordHash) {
@@ -229,7 +283,8 @@ router.post("/login", async (req, res) => {
 
 router.post("/google", async (req, res) => {
   try {
-    const { credential, userType, accountType, currentRegion } = req.body || {};
+    const { credential, userType, accountType, currentRegion, username } = req.body || {};
+    const normalizedUsername = normalizeUsername(username);
     const signupType = normalizeSignupType(accountType || userType);
 
     if (!credential) {
@@ -257,17 +312,27 @@ router.post("/google", async (req, res) => {
       if (!user.avatarUrl && googleProfile.picture) {
         user.avatarUrl = googleProfile.picture;
       }
+      const normalizedFields = normalizeAccountFields(user);
+      user.accountType = normalizedFields.accountType;
+      user.userType = normalizedFields.userType;
+      user.roles = normalizedFields.roles;
       await user.save();
     } else {
-      if (!signupType) {
+      if (!signupType || !normalizedUsername) {
         return res.status(400).json({
-          code: "ACCOUNT_TYPE_REQUIRED",
-          message: "Choose personal account or circle to create your Google account."
+          code: "SIGNUP_REQUIRED",
+          message: "Create your account first with an account type and username."
         });
+      }
+
+      const usernameExists = await User.findOne({ username: normalizedUsername }).select("_id");
+      if (usernameExists) {
+        return res.status(409).json({ message: "Username already taken" });
       }
 
       user = await User.create({
         name: googleProfile.name || email.split("@")[0],
+        username: normalizedUsername,
         email,
         googleId: googleProfile.sub,
         authProviders: ["google"],
@@ -276,10 +341,7 @@ router.post("/google", async (req, res) => {
         currentRegion: (currentRegion || "").trim(),
         roles: [signupType.role],
         profilePictureUrl: googleProfile.picture || "",
-        avatarUrl: googleProfile.picture || "",
-        studentVerified: false,
-        mentorVerified: false,
-        verificationStatus: "unverified"
+        avatarUrl: googleProfile.picture || ""
       });
     }
 

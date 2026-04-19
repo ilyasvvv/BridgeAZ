@@ -37,8 +37,8 @@ const TABS = [
 
 const USER_TYPE_OPTIONS = [
   { key: "", label: "Everyone" },
-  { key: "student", label: "Students" },
-  { key: "professional", label: "Professionals" },
+  { key: "personal", label: "Personal" },
+  { key: "circle", label: "Circles" },
 ];
 
 function resolveAvatar(u) {
@@ -52,7 +52,7 @@ export default function Network() {
   const [mentorships, setMentorships] = useState([]);
   const [users, setUsers] = useState([]);
   const [relationships, setRelationships] = useState({});
-  const [filters, setFilters] = useState({ region: "", userType: "", isMentor: false });
+  const [filters, setFilters] = useState({ region: "", accountType: "", isMentor: false });
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
   const [usersLoading, setUsersLoading] = useState(true);
@@ -98,7 +98,7 @@ export default function Network() {
     try {
       const params = new URLSearchParams();
       if (filters.region) params.set("region", filters.region);
-      if (filters.userType) params.set("userType", filters.userType);
+      if (filters.accountType) params.set("accountType", filters.accountType);
       if (filters.isMentor) params.set("isMentor", "true");
       const data = await apiClient.get(`/users?${params.toString()}`, token);
       setUsers(data);
@@ -201,7 +201,7 @@ export default function Network() {
   const activeFilterCount = useMemo(() => {
     let count = 0;
     if (filters.region) count++;
-    if (filters.userType) count++;
+    if (filters.accountType) count++;
     if (filters.isMentor) count++;
     return count;
   }, [filters]);
@@ -290,7 +290,7 @@ export default function Network() {
                 </h2>
                 {activeFilterCount > 0 && (
                   <button
-                    onClick={() => setFilters({ region: "", userType: "", isMentor: false })}
+                    onClick={() => setFilters({ region: "", accountType: "", isMentor: false })}
                     className="flex items-center gap-1.5 font-sans text-[11px] font-semibold text-coral/70 transition-colors hover:text-coral"
                   >
                     <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -319,9 +319,9 @@ export default function Network() {
                   {USER_TYPE_OPTIONS.map((opt) => (
                     <button
                       key={opt.key}
-                      onClick={() => setFilters((prev) => ({ ...prev, userType: opt.key }))}
+                      onClick={() => setFilters((prev) => ({ ...prev, accountType: opt.key }))}
                       className={`rounded-full px-3.5 py-1.5 font-sans text-xs font-medium transition-all duration-200 ${
-                        filters.userType === opt.key
+                        filters.accountType === opt.key
                           ? "border border-sand/30 bg-sand/5 text-sand shadow-sm"
                           : "border border-transparent text-mist/50 hover:text-mist"
                       }`}

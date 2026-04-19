@@ -3,7 +3,6 @@ import { Link } from "react-router-dom";
 import { apiClient } from "../api/client";
 import { useAuth } from "../utils/auth";
 import RegionPill from "./RegionPill";
-import StatusBadge from "./StatusBadge";
 import Avatar from "./Avatar";
 
 const AVAILABILITY_CONFIG = {
@@ -79,7 +78,7 @@ export default function ProfileCard({ user, style, relationship, onRelationshipC
         ? "from-transparent via-emerald-400 to-transparent"
         : "from-transparent via-sand to-transparent";
 
-  const availability = user.isMentor && user.mentorVerified
+  const availability = user.isMentor
     ? AVAILABILITY_CONFIG[user.mentorshipAvailability] || AVAILABILITY_CONFIG.available
     : null;
 
@@ -137,14 +136,11 @@ export default function ProfileCard({ user, style, relationship, onRelationshipC
         {/* Badges + region row */}
         <div className="flex flex-wrap items-center gap-2">
           <RegionPill region={user.currentRegion} />
-          {user.studentVerified && <StatusBadge label="Student Verified" tone="teal" />}
-          {user.mentorVerified && <StatusBadge label="Mentor Verified" tone="coral" />}
-          {user.isMentor && !user.mentorVerified && <StatusBadge label="Mentor Pending" tone="ember" />}
-          {user.userType && (
+          {(user.accountType === "circle" || user.userType === "circle") ? (
             <span className="rounded-md bg-surface-alt px-2 py-0.5 font-sans text-[10px] font-medium capitalize text-mist/60">
-              {user.userType}
+              circle
             </span>
-          )}
+          ) : null}
           {/* Mentor availability */}
           {availability && (
             <span className={`flex items-center gap-1 rounded-full bg-white border border-border/60 px-2 py-0.5 text-[10px] font-medium ${availability.text}`}>

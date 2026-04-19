@@ -109,7 +109,7 @@ router.get("/", authMiddleware, blockBanned, async (req, res) => {
       tasks.push(
         Promise.all([
           User.find(filter)
-            .select("name avatarUrl profilePhotoUrl profilePictureUrl headline currentRegion locationNow userType education experience studentVerified mentorVerified isMentor")
+            .select("name username accountType avatarUrl profilePhotoUrl profilePictureUrl headline currentRegion locationNow education experience isMentor")
             .sort({ updatedAt: -1 })
             .limit(limit)
             .lean(),

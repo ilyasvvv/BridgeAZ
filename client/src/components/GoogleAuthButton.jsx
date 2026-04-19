@@ -41,6 +41,7 @@ export default function GoogleAuthButton({
   text = "continue_with",
   userType = "personal",
   accountType = "",
+  username = "",
   currentRegion = "",
   width = 360,
   containerClassName = "",
@@ -79,6 +80,7 @@ export default function GoogleAuthButton({
                 credential,
                 userType,
                 accountType,
+                username,
                 currentRegion
               });
               onSuccess?.(data);
@@ -115,7 +117,7 @@ export default function GoogleAuthButton({
     return () => {
       cancelled = true;
     };
-  }, [accountType, currentRegion, onError, onSuccess, text, userType, width]);
+  }, [accountType, currentRegion, onError, onSuccess, text, userType, username, width]);
 
   if (unavailable) {
     return null;

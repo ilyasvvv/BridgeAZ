@@ -9,10 +9,6 @@ const router = express.Router();
 
 router.post("/", authMiddleware, blockBanned, async (req, res) => {
   try {
-    if (req.user.userType !== "student") {
-      return res.status(403).json({ message: "Only students can request mentorship" });
-    }
-
     const { toMentor, message } = req.body;
     if (!toMentor) {
       return res.status(400).json({ message: "toMentor is required" });
@@ -93,7 +89,7 @@ router.post("/:id/respond", authMiddleware, blockBanned, async (req, res) => {
         });
       }
 
-      // Notify the student
+      // Notify the mentee
       await Notification.create({
         userId: request.fromStudent,
         actorId: req.user._id,

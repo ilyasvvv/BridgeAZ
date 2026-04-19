@@ -1,6 +1,5 @@
 import { useRef, useState } from "react";
 import RegionPill from "./RegionPill";
-import StatusBadge from "./StatusBadge";
 import UserChip, { USER_CHIP_SIZES } from "./UserChip";
 import { formatRelativeTime } from "../utils/format";
 import ShareSheet from "./ShareSheet";
@@ -94,7 +93,11 @@ export default function CommunityPostCard({
             </div>
           </div>
           <div className="flex shrink-0 items-center gap-2">
-            <StatusBadge label={post.author?.userType || "member"} tone="slate" />
+            {(post.author?.accountType === "circle" || post.author?.userType === "circle") && (
+              <span className="rounded-full border border-border bg-charcoal px-3 py-1 text-[10px] font-semibold uppercase tracking-wide text-sand">
+                Circle
+              </span>
+            )}
             <div className="relative">
               <button
                 type="button"

@@ -16,7 +16,7 @@ router.get("/:userId", authMiddleware, async (req, res) => {
     }
 
     const user = await User.findById(userId).select(
-      "name avatarUrl profilePhotoUrl profilePictureUrl currentRegion userType headline bio qLocation qInterests qOnboarded"
+      "name avatarUrl profilePhotoUrl profilePictureUrl currentRegion accountType headline bio qLocation qInterests qOnboarded"
     ).lean();
 
     if (!user) return res.status(404).json({ error: "User not found" });

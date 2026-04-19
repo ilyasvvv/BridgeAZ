@@ -28,6 +28,7 @@ const ROLE_OPTIONS = [
 const PREVIEW_TOKENS = ["People", "Circles", "Mentors", "Advice"];
 
 const isValidEmail = (value) => /\S+@\S+\.\S+/.test(value);
+const isValidUsername = (value) => /^[a-z0-9._]{3,24}$/i.test(value);
 
 function AuthField({ label, className = "", ...props }) {
   return (
@@ -104,6 +105,7 @@ export default function Join({ initialMode = "register" }) {
   const [loginForm, setLoginForm] = useState({ email: "", password: "" });
   const [registerForm, setRegisterForm] = useState({
     name: "",
+    username: "",
     email: "",
     password: "",
     accountType: "personal",
@@ -144,6 +146,7 @@ export default function Join({ initialMode = "register" }) {
   const validateSignupStep = (step) => {
     if (step === 1) {
       if (!registerForm.name.trim()) return "Add your name.";
+      if (!isValidUsername(registerForm.username)) return "Use a unique username with 3-24 letters, numbers, dots, or underscores.";
       if (!isValidEmail(registerForm.email)) return "Add a valid email.";
       if (!registerForm.currentRegion.trim()) return "Add your current country.";
     }
@@ -238,29 +241,16 @@ export default function Join({ initialMode = "register" }) {
               <form className="space-y-5" onSubmit={handleLogin}>
                 <div className="auth-section-copy">
                   <h2>Welcome back</h2>
-                  <p>{registerForm.accountType === "circle" ? "Sign into your circle space." : "Sign into your personal space."}</p>
-                </div>
-
-                <div className="auth-google-role-picker">
-                  {ROLE_OPTIONS.map((role) => (
-                    <button
-                      key={role.value}
-                      type="button"
-                      className={`auth-role-pill ${registerForm.accountType === role.value ? "is-selected" : ""}`}
-                      onClick={() => updateRegisterField("accountType", role.value)}
-                    >
-                      {role.title}
-                    </button>
-                  ))}
+                  <p>Sign in with email or username.</p>
                 </div>
 
                 <div className="space-y-3">
                   <AuthField
-                    label="Email"
-                    type="email"
+                    label="Email or username"
+                    type="text"
                     value={loginForm.email}
                     onChange={(event) => updateLoginField("email", event.target.value)}
-                    placeholder="you@example.com"
+                    placeholder="you@example.com or yourname"
                     required
                   />
                   <AuthField
@@ -331,6 +321,15 @@ export default function Join({ initialMode = "register" }) {
                         value={registerForm.name}
                         onChange={(event) => updateRegisterField("name", event.target.value)}
                         placeholder={isCircleSignup ? "Community name" : "Full name"}
+                        required
+                      />
+                      <AuthField
+                        className="sm:col-span-2"
+                        label="Username"
+                        type="text"
+                        value={registerForm.username}
+                        onChange={(event) => updateRegisterField("username", event.target.value.toLowerCase())}
+                        placeholder={isCircleSignup ? "yourcircle" : "yourname"}
                         required
                       />
                       <AuthField
@@ -411,28 +410,31 @@ export default function Join({ initialMode = "register" }) {
                   <p>{mode === "login" ? "Continue with Google" : "Prefer Google?"}</p>
                   <span>
                     {mode === "login"
-                      ? "If this is your first Google sign-in, we will create the selected account type."
-                      : "Your selected account type and country will be used for first-time setup."}
+                      ? "Use the Google account you already signed up with."
+                      : "Your account type, username, and country will be used for first-time setup."}
                   </span>
                 </div>
 
-                <div className="auth-google-role-picker">
-                  {ROLE_OPTIONS.map((role) => (
-                    <button
-                      key={role.value}
-                      type="button"
-                      className={`auth-role-pill ${registerForm.accountType === role.value ? "is-selected" : ""}`}
-                      onClick={() => updateRegisterField("accountType", role.value)}
-                    >
-                      {role.title}
-                    </button>
-                  ))}
-                </div>
+                {mode === "register" ? (
+                  <div className="auth-google-role-picker">
+                    {ROLE_OPTIONS.map((role) => (
+                      <button
+                        key={role.value}
+                        type="button"
+                        className={`auth-role-pill ${registerForm.accountType === role.value ? "is-selected" : ""}`}
+                        onClick={() => updateRegisterField("accountType", role.value)}
+                      >
+                        {role.title}
+                      </button>
+                    ))}
+                  </div>
+                ) : null}
 
                 <GoogleAuthButton
                   text={mode === "login" ? "signin_with" : "signup_with"}
-                  userType={registerForm.accountType}
-                  accountType={registerForm.accountType}
+                  userType={mode === "register" ? registerForm.accountType : ""}
+                  accountType={mode === "register" ? registerForm.accountType : ""}
+                  username={mode === "register" ? registerForm.username : ""}
                   currentRegion={registerForm.currentRegion}
                   width={420}
                   containerClassName="w-full"

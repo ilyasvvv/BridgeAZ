@@ -23,7 +23,7 @@ const TYPOS = {
   enginer:"engineer",engneer:"engineer",enginere:"engineer",enginner:"engineer",
   desgin:"design",desgn:"design",desing:"design",dezign:"design",dsign:"design",
   londno:"london",londn:"london",lnodon:"london",
-  studet:"student",studnet:"student",sudent:"student",studen:"student",
+  studet:"community",studnet:"community",sudent:"community",studen:"community",
   carrer:"career",carreer:"career",carier:"career",carear:"career",
   comunity:"community",commnity:"community",communty:"community",
   opprotunity:"opportunity",oportunity:"opportunity",oppurtunity:"opportunity",
@@ -39,7 +39,7 @@ const TYPOS = {
 
 /* ── Synonym groups (query expansion) ── */
 const SYN = {
-  people:["person","people","member","mentor","mentors","professional","student","user","profile"],
+  people:["person","people","member","mentor","mentors","user","profile","circle","community"],
   opportunity:["opportunity","opportunities","job","jobs","internship","internships","role","roles","position","opening","work","hire","hiring"],
   london:["london","uk","britain","england"],
   remote:["remote","distributed","anywhere","wfh","online"],
@@ -48,8 +48,8 @@ const SYN = {
   founder:["founder","cofounder","startup","entrepreneur"],
   design:["design","ux","ui","figma","designer","creative"],
   engineering:["engineering","engineer","dev","developer","code","coding","programmer","software"],
-  career:["career","job","work","profession","resume","cv"],
-  student:["student","undergrad","graduate","uni","university","college"]
+  career:["career","job","work","resume","cv"],
+  community:["community","circle","group","club","collective"]
 };
 
 /* ── Core vocabulary for fuzzy matching ── */
@@ -58,7 +58,7 @@ Object.values(TYPOS).forEach(v => CORE_WORDS.add(v));
 Object.entries(SYN).forEach(([k, vs]) => { CORE_WORDS.add(k); vs.forEach(v => CORE_WORDS.add(v)); });
 [
   "mentorship","mentor","internship","research","founder","engineer","designer",
-  "professional","networking","community","fintech","edtech","analytics","marketing",
+  "networking","community","circle","fintech","edtech","analytics","marketing",
   "finance","consulting","operations","sales","frontend","backend","fullstack",
   "javascript","python","react","node","typescript","data","science","analyst"
 ].forEach(w => CORE_WORDS.add(w));
@@ -292,6 +292,7 @@ function applyTopicAndBoost(data, topicFilters, mem) {
       ...tok(item.city),
       ...tok(item.headline),
       ...tok(item.title),
+      ...tok(item.accountType),
       ...tok(item.userType)
     ]);
     return [...topicFilters].every(f => {

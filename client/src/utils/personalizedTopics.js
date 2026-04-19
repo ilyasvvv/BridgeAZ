@@ -3,14 +3,14 @@
    Rank topics by relevance to the current user and
    return up to 8 as {id, label} chips for search.
    Signals used:
-   - User profile: userType, headline, skills, education,
+   - User profile: accountType, headline, skills, education,
      experience, locationNow, currentRegion
    - Recent click history (from useSmartSearch memory)
    ═══════════════════════════════════════════════════ */
 
 const TOPIC_CATALOG = [
-  { id: "mentor",      label: "Mentors",     match: ["mentor","professional","senior","coach"] },
-  { id: "student",     label: "Students",    match: ["student","undergrad","graduate","university","college","school"] },
+  { id: "mentor",      label: "Mentors",     match: ["mentor","coach","guide","advisor"] },
+  { id: "community",   label: "Communities", match: ["community","circle","group","club"] },
   { id: "founder",     label: "Founders",    match: ["founder","cofounder","startup","entrepreneur","ceo"] },
   { id: "london",      label: "London",      match: ["london","uk","britain","england"] },
   { id: "berlin",      label: "Berlin",      match: ["berlin","germany","deutschland"] },
@@ -34,7 +34,7 @@ const TOPIC_CATALOG = [
 ];
 
 const DEFAULT_ORDER = [
-  "mentor","student","london","remote","ai","product","engineering","design"
+  "mentor","community","london","remote","ai","product","engineering","design"
 ];
 
 function scoreFrom(haystack, matches) {
@@ -51,7 +51,7 @@ export function pickPersonalizedTopics(user, docClicks) {
   /* ─ Profile signals ─ */
   if (user) {
     const parts = [
-      user.userType,
+      user.accountType,
       user.headline,
       user.currentRegion,
       user.locationNow?.country,

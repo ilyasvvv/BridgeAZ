@@ -45,6 +45,13 @@ const socialLinksSchema = new mongoose.Schema({
 const userSchema = new mongoose.Schema(
   {
     name: { type: String, required: true },
+    username: {
+      type: String,
+      unique: true,
+      sparse: true,
+      lowercase: true,
+      trim: true
+    },
     email: { type: String, required: true, unique: true, lowercase: true },
     passwordHash: { type: String },
     googleId: { type: String, unique: true, sparse: true },

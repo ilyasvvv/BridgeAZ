@@ -9,7 +9,7 @@ const { sanitizeString, FIELD_LIMITS } = require("../middleware/sanitize");
 const router = express.Router();
 const normalizeToken = (value) => (typeof value === "string" ? value.trim() : "");
 const authorSelect =
-  "name avatarUrl photoUrl profilePhoto profilePhotoUrl profilePictureUrl currentRegion userType role studentVerified mentorVerified isMentor";
+  "name avatarUrl photoUrl profilePhoto profilePhotoUrl profilePictureUrl currentRegion accountType isMentor";
 const commentAuthorSelect =
   "name avatarUrl photoUrl profilePhoto profilePhotoUrl profilePictureUrl";
 

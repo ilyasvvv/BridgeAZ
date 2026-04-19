@@ -11,8 +11,8 @@ const features = [
 
 const testimonials = [
   { name: "Leyla Mammadova", city: "Berlin, Germany", quote: "Finally found my people! I moved to Berlin 2 years ago and bizim circle helped me connect with amazing Azerbaijanis here. We even started a weekend football circle!", likes: 234 },
-  { name: "Rashad Aliyev", city: "London, UK", quote: "As a student abroad, this platform made me feel less homesick. The London Azerbaijanis circle organizes meetups and cultural events. It's like having a piece of home here.", likes: 188 },
-  { name: "Nigar Huseyova", city: "New York, USA", quote: "I just started my career in NYC and was looking for networking opportunities. Through bizim circle, I connected with Azerbaijani professionals who gave me invaluable advice!", likes: 312 },
+  { name: "Rashad Aliyev", city: "London, UK", quote: "Living abroad felt lighter once I found the London Azerbaijanis circle here. Meetups, advice, and familiar faces made it feel like home again.", likes: 188 },
+  { name: "Nigar Huseyova", city: "New York, USA", quote: "I was looking for real community in NYC. Through bizim circle, I found people, circles, and conversations that actually turned into support.", likes: 312 },
   { name: "Elvin Kazimov", city: "Dubai, UAE", quote: "Living in Dubai, I wanted to celebrate Novruz with fellow Azerbaijanis. Found an amazing group through this platform and had the best celebration!", likes: 276 },
   { name: "Aysel Jabbarova", city: "Toronto, Canada", quote: "My kids were losing touch with their Azerbaijani roots. Thanks to the families circle, they now have Azerbaijani friends and are learning the language together!", likes: 421 },
   { name: "Farid Mustafayev", city: "Paris, France", quote: "Needed advice on starting a business in France. Connected with Azerbaijani entrepreneurs who shared their experiences. This community is pure gold!", likes: 198 },

@@ -362,7 +362,7 @@ export default function SearchOverlay() {
           <div className="mt-16 text-center max-w-lg mx-auto">
             <p className="text-xs font-bold uppercase tracking-[0.2em] text-mist mb-3">Try searching</p>
             <div className="flex flex-wrap justify-center gap-2">
-              {["product mentor", "london internship", "ai founders", "design student"].map(q => (
+              {["product mentor", "london internship", "ai founders", "design circle"].map(q => (
                 <button
                   key={q}
                   type="button"
@@ -420,7 +420,8 @@ function PersonCard({ user, onClick }) {
   const initial = (user.name || "?").charAt(0).toUpperCase();
   const location = user.locationNow?.country || user.currentRegion || user.country || "";
   const edu = Array.isArray(user.education) && user.education[0]?.institution;
-  const sub = user.headline || [edu, location].filter(Boolean).join(" · ") || user.userType || "Community member";
+  const accountLabel = user.accountType === "circle" || user.userType === "circle" ? "Circle" : "Member";
+  const sub = user.headline || [edu, location].filter(Boolean).join(" · ") || accountLabel;
 
   return (
     <button
@@ -442,18 +443,11 @@ function PersonCard({ user, onClick }) {
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
           <p className="font-semibold text-sand truncate">{user.name || "Unnamed"}</p>
-          {(user.mentorVerified || user.studentVerified) && (
-            <span className="flex-shrink-0 w-4 h-4 rounded-full bg-sand flex items-center justify-center" title="Verified">
-              <svg className="w-2.5 h-2.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" />
-              </svg>
-            </span>
-          )}
         </div>
         <p className="text-xs text-mist truncate mt-0.5">{sub}</p>
-        {user.userType && (
+        {(user.accountType === "circle" || user.userType === "circle") && (
           <span className="inline-block mt-2 px-2 py-0.5 rounded-full bg-grey-100 border border-grey-200 text-[10px] font-bold uppercase tracking-wider text-sand">
-            {user.userType}
+            circle
           </span>
         )}
       </div>
@@ -548,9 +542,9 @@ function PostPreview({ post, onClick }) {
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
             <p className="font-semibold text-sand truncate">{author.name || "Unknown"}</p>
-            {author.userType && (
+            {(author.accountType === "circle" || author.userType === "circle") && (
               <span className="px-1.5 py-0.5 rounded-full bg-grey-100 text-[10px] font-bold uppercase tracking-wider text-grey-700">
-                {author.userType}
+                circle
               </span>
             )}
           </div>

@@ -213,11 +213,6 @@ router.get("/:id", authMiddleware, blockBanned, async (req, res) => {
 
 router.post("/", authMiddleware, blockBanned, async (req, res) => {
   try {
-    const isAdmin = req.user.isAdmin || (req.user.roles || []).includes("adminA");
-    if (!isAdmin && req.user.userType !== "professional") {
-      return res.status(403).json({ message: "Only professionals can post opportunities" });
-    }
-
     const {
       title,
       orgName,

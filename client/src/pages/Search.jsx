@@ -14,7 +14,7 @@ const TYPE_FILTERS = [
 
 const TOPIC_FILTERS = [
   { id: "mentor", label: "Mentors" },
-  { id: "student", label: "Students" },
+  { id: "community", label: "Communities" },
   { id: "london", label: "London" },
   { id: "remote", label: "Remote" },
   { id: "ai", label: "AI" },
@@ -244,7 +244,7 @@ export default function Search() {
           <div className="mt-16 text-center max-w-lg mx-auto">
             <p className="text-xs font-bold uppercase tracking-[0.2em] text-mist mb-3">Try searching</p>
             <div className="flex flex-wrap justify-center gap-2">
-              {["product mentor", "london internship", "ai founders", "design student"].map(q => (
+              {["product mentor", "london internship", "ai founders", "design circle"].map(q => (
                 <button
                   key={q}
                   type="button"
@@ -280,7 +280,7 @@ function ResultRow({ item, onClick, navigate }) {
 
   const title = item.name || item.title || "Untitled";
   const subtitle = isUser
-    ? (item.headline || item.userType || "Community member")
+    ? (item.headline || (item.accountType === "circle" ? "Circle" : "Community member"))
     : isOpp
     ? (item.company || item.orgName || item.type || "Opportunity")
     : (item.content ? item.content.slice(0, 120) + (item.content.length > 120 ? "…" : "") : "Community post");

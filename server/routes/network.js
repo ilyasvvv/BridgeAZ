@@ -5,7 +5,7 @@ const { authMiddleware, blockBanned } = require("../middleware/auth");
 
 const router = express.Router();
 
-const POPULATE_FIELDS = "name profilePhotoUrl avatarUrl currentRegion headline isMentor mentorVerified mentorshipAvailability";
+const POPULATE_FIELDS = "name profilePhotoUrl avatarUrl currentRegion headline accountType isMentor mentorshipAvailability";
 
 router.get("/me/connections", authMiddleware, blockBanned, async (req, res) => {
   try {
