@@ -147,20 +147,13 @@ export default function SearchOverlay() {
           animation: `${closing ? "searchLiftOut" : "searchDropDown"} 0.32s cubic-bezier(0.34, 1.56, 0.64, 1) forwards`
         }}
       >
-        {/* Title — same format as header logo (bizim ◯ circle), scaled up */}
+        {/* Title — matches header logo format (◯ on left, text on right), scaled up */}
         <div className={`text-center transition-all duration-500 ease-out ${hasQuery ? "pt-10 md:pt-14" : "pt-20 md:pt-32"}`}>
           <div
             className={`flex items-center justify-center transition-all duration-500 ${
               hasQuery ? "gap-3 md:gap-4" : "gap-4 md:gap-6"
             }`}
           >
-            <span
-              className={`font-display font-bold text-sand transition-all duration-500 ${
-                hasQuery ? "text-3xl md:text-5xl" : "text-5xl md:text-7xl"
-              }`}
-            >
-              bizim
-            </span>
             <div
               className={`rounded-full border-sand flex items-center justify-center transition-all duration-500 ${
                 hasQuery
@@ -176,17 +169,30 @@ export default function SearchOverlay() {
                 iii
               </span>
             </div>
-            <span
-              className={`font-display font-bold text-sand transition-all duration-500 ${
-                hasQuery ? "text-3xl md:text-5xl" : "text-5xl md:text-7xl"
+            <div
+              className={`flex items-baseline transition-all duration-500 ${
+                hasQuery ? "gap-2 md:gap-3" : "gap-3 md:gap-4"
               }`}
             >
-              circle
-            </span>
+              <span
+                className={`font-display font-bold text-sand transition-all duration-500 ${
+                  hasQuery ? "text-3xl md:text-5xl" : "text-5xl md:text-7xl"
+                }`}
+              >
+                bizim
+              </span>
+              <span
+                className={`font-display font-bold text-sand transition-all duration-500 ${
+                  hasQuery ? "text-3xl md:text-5xl" : "text-5xl md:text-7xl"
+                }`}
+              >
+                circle
+              </span>
+            </div>
           </div>
           {!hasQuery && (
             <p className="mt-6 text-mist text-sm font-medium tracking-wide">
-              Search people, circles, posts — one field, messy typos welcome.
+              Search people, circles, posts and more!
             </p>
           )}
         </div>
