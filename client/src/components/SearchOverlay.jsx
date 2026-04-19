@@ -375,9 +375,17 @@ export default function SearchOverlay() {
           from { opacity: 0; }
           to { opacity: 1; }
         }
+        @keyframes searchFadeOut {
+          from { opacity: 1; }
+          to { opacity: 0; }
+        }
         @keyframes searchDropDown {
-          from { opacity: 0; transform: translateY(-24px); }
-          to { opacity: 1; transform: translateY(0); }
+          from { opacity: 0; transform: translateY(-32px) scale(0.98); }
+          to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+        @keyframes searchLiftOut {
+          from { opacity: 1; transform: translateY(0) scale(1); }
+          to { opacity: 0; transform: translateY(-24px) scale(0.98); }
         }
       `}</style>
     </div>,
