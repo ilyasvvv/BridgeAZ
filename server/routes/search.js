@@ -33,6 +33,14 @@ router.get("/", authMiddleware, blockBanned, async (req, res) => {
 
     const regex = q.length >= 2 ? new RegExp(escapeRegex(q), "i") : null;
 
+    // Per-token regexes — useful for matching posts that contain all words
+    // (e.g. "hello world" matches a post containing both "hello" and "world"
+    // even if they aren't adjacent).
+    const tokens = q.length >= 2
+      ? q.split(/\s+/).map((t) => t.trim()).filter((t) => t.length >= 2)
+      : [];
+    const tokenRegexes = tokens.map((t) => new RegExp(escapeRegex(t), "i"));
+
     // Build queries
     const userQuery = () => {
       const filter = {
@@ -81,7 +89,14 @@ router.get("/", authMiddleware, blockBanned, async (req, res) => {
 
     const postQuery = () => {
       const filter = {};
-      if (regex) filter.content = regex;
+      if (tokenRegexes.length > 1) {
+        // Multi-word query: require every word to appear somewhere in the
+        // post content (order-independent). Keeps "hello world" matching
+        // posts where the words aren't adjacent.
+        filter.$and = tokenRegexes.map((r) => ({ content: r }));
+      } else if (regex) {
+        filter.content = regex;
+      }
       // Respect visibility region like the feed does
       const userRegion = req.user.currentRegion;
       if (userRegion && userRegion.toUpperCase() !== "ALL") {
