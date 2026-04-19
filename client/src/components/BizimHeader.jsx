@@ -87,21 +87,21 @@ export default function BizimHeader() {
             <span className="font-display text-sm font-bold text-sand">circle</span>
           </div>
 
-          {/* ─── Search bar ─── */}
-          <form onSubmit={handleSearch} className="flex-1 max-w-lg mx-auto">
-            <div className="flex items-center gap-2.5 px-4 py-2 rounded-full border border-grey-300 bg-grey-100 focus-within:border-grey-500 focus-within:bg-white transition-colors">
+          {/* ─── Search bar (click-to-open) ─── */}
+          <button
+            type="button"
+            onClick={() => navigate("/search")}
+            className="flex-1 max-w-lg mx-auto group"
+          >
+            <div className="flex items-center gap-2.5 px-4 py-2 rounded-full border border-grey-300 bg-grey-100 group-hover:border-grey-500 group-hover:bg-white transition-colors">
               <svg className="w-4 h-4 text-grey-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
               </svg>
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search people, circles, posts..."
-                className="flex-1 bg-transparent outline-none text-sm text-sand placeholder-grey-500"
-              />
+              <span className="flex-1 text-left text-sm text-grey-500">
+                Search people, circles, posts...
+              </span>
             </div>
-          </form>
+          </button>
 
           {/* ─── Right: Notifications + Profile + Sign Out ─── */}
           <div className="flex items-center gap-3 flex-shrink-0">
