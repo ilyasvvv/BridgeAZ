@@ -228,9 +228,9 @@ export default function useSmartSearch({ debounceMs = 280 } = {}) {
     timerRef.current = setTimeout(() => doSearch(q), debounceMs);
   }, [doSearch, debounceMs]);
 
-  /* Immediate re-run when filters change */
+  /* Immediate re-run when filters change — also fires when there is no query yet */
   useEffect(() => {
-    if (query.trim().length >= 2) doSearch(query);
+    doSearch(query);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [typeFilter, topicFilters, countries]);
 
