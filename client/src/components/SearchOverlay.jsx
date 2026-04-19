@@ -32,7 +32,8 @@ export default function SearchOverlay() {
     results, counts, loading,
     corrections,
     recordClick, resetMemory,
-    clear
+    clear,
+    learnedTags
   } = useSmartSearch();
 
   const hasQuery = query.trim().length >= 2;
