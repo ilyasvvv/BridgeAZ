@@ -359,7 +359,7 @@ export default function SearchOverlay() {
         )}
 
         {/* Suggestion chips */}
-        {!hasQuery && (
+        {!hasInput && (
           <div className="mt-16 text-center max-w-lg mx-auto">
             <p className="text-xs font-bold uppercase tracking-[0.2em] text-mist mb-3">Try searching</p>
             <div className="flex flex-wrap justify-center gap-2">
