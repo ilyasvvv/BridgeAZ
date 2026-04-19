@@ -90,7 +90,7 @@ export default function SearchOverlay() {
   if (!mounted) return null;
 
   const handleOpenResult = (item) => {
-    recordClick(item._id);
+    recordClick(item._id, item);
     if (item._type === "user") navigate(`/profile/${item._id}`);
     else if (item._type === "opportunity") navigate(`/opportunities/${item._id}`);
     else if (item._type === "post") navigate(`/post/${item._id}`);
