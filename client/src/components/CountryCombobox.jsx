@@ -3,7 +3,17 @@ import { countries } from "../utils/countries";
 
 const MAX_RESULTS = 12;
 
-export default function CountryCombobox({ value = "", onChange, id = "country", label = "Country" }) {
+export default function CountryCombobox({
+  value = "",
+  onChange,
+  id = "country",
+  label = "Country",
+  rootClassName = "",
+  labelClassName = "text-xs uppercase tracking-wide text-mist",
+  inputClassName = "mt-2 w-full rounded-xl border border-border bg-white px-4 py-2 text-sand",
+  listClassName = "absolute z-30 mt-2 max-h-64 w-full overflow-auto rounded-xl border border-border bg-slate p-1 shadow-xl",
+  itemClassName = ""
+}) {
   const rootRef = useRef(null);
   const [query, setQuery] = useState(value || "");
   const [isOpen, setIsOpen] = useState(false);
@@ -68,8 +78,8 @@ export default function CountryCombobox({ value = "", onChange, id = "country", 
   };
 
   return (
-    <div className="relative" ref={rootRef}>
-      <label htmlFor={id} className="text-xs uppercase tracking-wide text-mist">
+    <div className={`relative ${rootClassName}`.trim()} ref={rootRef}>
+      <label htmlFor={id} className={labelClassName}>
         {label}
       </label>
       <input
@@ -84,12 +94,12 @@ export default function CountryCombobox({ value = "", onChange, id = "country", 
         }}
         onFocus={() => setIsOpen(true)}
         onKeyDown={handleKeyDown}
-        className="mt-2 w-full rounded-xl border border-border bg-white px-4 py-2 text-sand"
+        className={inputClassName}
         placeholder="Type to search country"
         autoComplete="off"
       />
       {isOpen && matches.length > 0 && (
-        <ul className="absolute z-30 mt-2 max-h-64 w-full overflow-auto rounded-xl border border-border bg-slate p-1 shadow-xl">
+        <ul className={listClassName}>
           {matches.map((country, index) => (
             <li key={country}>
               <button
@@ -99,7 +109,7 @@ export default function CountryCombobox({ value = "", onChange, id = "country", 
                   index === activeIndex
                     ? "bg-accent/20 text-accent"
                     : "text-sand hover:bg-gray-100"
-                }`}
+                } ${itemClassName}`.trim()}
               >
                 {country}
               </button>

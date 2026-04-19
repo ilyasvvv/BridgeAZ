@@ -41,6 +41,8 @@ export default function GoogleAuthButton({
   text = "continue_with",
   userType = "student",
   currentRegion = "",
+  width = 360,
+  containerClassName = "",
   onSuccess,
   onError
 }) {
@@ -87,13 +89,16 @@ export default function GoogleAuthButton({
         });
 
         containerRef.current.innerHTML = "";
+        const parentWidth = containerRef.current.parentElement?.clientWidth || width;
+        const buttonWidth = Math.max(220, Math.min(width, parentWidth));
+
         window.google.accounts.id.renderButton(containerRef.current, {
           type: "standard",
           theme: "outline",
           size: "large",
           shape: "pill",
           text,
-          width: 320
+          width: buttonWidth
         });
         setUnavailable(false);
       })
@@ -116,7 +121,7 @@ export default function GoogleAuthButton({
 
   return (
     <div className="space-y-2">
-      <div ref={containerRef} className="flex justify-center" />
+      <div ref={containerRef} className={`flex justify-center ${containerClassName}`.trim()} />
       {pending && <p className="text-center text-xs uppercase tracking-wide text-mist">Signing in with Google...</p>}
     </div>
   );
