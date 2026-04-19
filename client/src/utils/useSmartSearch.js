@@ -269,13 +269,37 @@ export default function useSmartSearch({ debounceMs = 280 } = {}) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [typeFilter, topicFilters, countries]);
 
-  /* Record click → save correction + boost */
-  const recordClick = useCallback((resultId) => {
+  /* Record click → save correction + boost + harvest tags */
+  const recordClick = useCallback((resultId, item) => {
     const mem = memRef.current;
     mem.docClicks[resultId] = (mem.docClicks[resultId] || 0) + 1;
     corrections.forEach(c => { mem.corrections[c.raw] = c.to; });
+    if (item) {
+      harvestTags(item).forEach(tag => {
+        mem.tagCounts[tag] = (mem.tagCounts[tag] || 0) + 1;
+      });
+    }
     saveMem(mem);
   }, [corrections]);
+
+  /* Learned tags ranked by click frequency; fall back to defaults for new users */
+  const learnedTags = useMemo(() => {
+    const counts = memRef.current.tagCounts || {};
+    const entries = Object.entries(counts)
+      .filter(([t]) => t && t.length >= 3)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 8)
+      .map(([id]) => ({ id, label: capitalize(id) }));
+    if (entries.length >= 4) return entries;
+    // Merge: user's learned tags first, then defaults to fill to 8
+    const seen = new Set(entries.map(e => e.id));
+    for (const d of DEFAULT_TAGS) {
+      if (entries.length >= 8) break;
+      if (!seen.has(d.id)) entries.push(d);
+    }
+    return entries;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [query, results]);
 
   const toggleTopic = useCallback((id) => {
     setTopicFilters(prev => {
