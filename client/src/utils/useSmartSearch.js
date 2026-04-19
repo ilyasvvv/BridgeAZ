@@ -335,7 +335,8 @@ export default function useSmartSearch({ debounceMs = 280 } = {}) {
     results, counts, loading,
     corrections, effectiveQuery,
     recordClick, resetMemory, clear,
-    docClicks: memRef.current.docClicks
+    docClicks: memRef.current.docClicks,
+    learnedTags
   };
 }
 
