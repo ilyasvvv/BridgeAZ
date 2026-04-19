@@ -3,25 +3,16 @@ import { useState, useRef, useEffect } from "react";
 import { useAuth } from "../utils/auth";
 import { useSearch } from "../utils/SearchContext";
 
-const LOCATIONS = [
-  "London", "Berlin", "New York", "Dubai", "Paris",
-  "Istanbul", "Toronto", "San Francisco", "Sydney", "Baku",
-];
-
 export default function BizimHeader() {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
   const { open: openSearch } = useSearch();
-  const [location, setLocation] = useState("London");
-  const [locOpen, setLocOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
-  const locRef = useRef(null);
   const profileRef = useRef(null);
 
   // Close dropdowns on outside click
   useEffect(() => {
     const handler = (e) => {
-      if (locRef.current && !locRef.current.contains(e.target)) setLocOpen(false);
       if (profileRef.current && !profileRef.current.contains(e.target)) setProfileOpen(false);
     };
     document.addEventListener("mousedown", handler);
