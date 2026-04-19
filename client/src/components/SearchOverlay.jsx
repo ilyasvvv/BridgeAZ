@@ -292,7 +292,7 @@ export default function SearchOverlay() {
         </div>
 
         {/* Results */}
-        {hasQuery && (
+        {hasInput && (
           <div className="mt-10">
             <div className="flex items-baseline justify-between mb-4 px-1">
               <div>
