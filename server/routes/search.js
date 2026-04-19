@@ -11,9 +11,6 @@ const escapeRegex = (str) => str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 router.get("/", authMiddleware, blockBanned, async (req, res) => {
   try {
     const q = typeof req.query.q === "string" ? req.query.q.trim() : "";
-    if (q.length < 2) {
-      return res.json({ users: [], opportunities: [], posts: [], counts: { users: 0, opportunities: 0, posts: 0 } });
-    }
 
     const limitRaw = Number.parseInt(req.query.limit, 10);
     const limit = Number.isFinite(limitRaw) ? Math.max(1, Math.min(limitRaw, 20)) : 5;
@@ -27,22 +24,31 @@ router.get("/", authMiddleware, blockBanned, async (req, res) => {
       ? req.query.countries.split(",").map((c) => c.trim()).filter(Boolean)
       : [];
 
-    const regex = new RegExp(escapeRegex(q), "i");
+    const hasFilters = typesParam.length < 3 || countriesParam.length > 0;
+
+    // Require either q>=2 or at least one narrowing filter
+    if (q.length < 2 && !hasFilters) {
+      return res.json({ users: [], opportunities: [], posts: [], counts: { users: 0, opportunities: 0, posts: 0 } });
+    }
+
+    const regex = q.length >= 2 ? new RegExp(escapeRegex(q), "i") : null;
 
     // Build queries
     const userQuery = () => {
       const filter = {
         _id: { $ne: req.user._id },
-        banned: { $ne: true },
-        $or: [
+        banned: { $ne: true }
+      };
+      if (regex) {
+        filter.$or = [
           { name: regex },
           { headline: regex },
           { skills: regex },
           { "education.institution": regex },
           { "experience.company": regex },
           { "experience.org": regex }
-        ]
-      };
+        ];
+      }
       if (countriesParam.length) {
         filter["locationNow.country"] = { $in: countriesParam };
       }
@@ -51,15 +57,17 @@ router.get("/", authMiddleware, blockBanned, async (req, res) => {
 
     const opportunityQuery = () => {
       const filter = {
-        status: "open",
-        $or: [
+        status: "open"
+      };
+      if (regex) {
+        filter.$or = [
           { title: regex },
           { company: regex },
           { orgName: regex },
           { description: regex },
           { tags: regex }
-        ]
-      };
+        ];
+      }
       if (countriesParam.length) {
         filter.country = { $in: countriesParam };
       }
@@ -72,7 +80,8 @@ router.get("/", authMiddleware, blockBanned, async (req, res) => {
     };
 
     const postQuery = () => {
-      const filter = { content: regex };
+      const filter = {};
+      if (regex) filter.content = regex;
       // Respect visibility region like the feed does
       const userRegion = req.user.currentRegion;
       if (userRegion && userRegion.toUpperCase() !== "ALL") {
