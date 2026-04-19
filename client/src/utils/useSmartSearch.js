@@ -164,26 +164,36 @@ export default function useSmartSearch({ debounceMs = 280 } = {}) {
     if (abortRef.current) abortRef.current.abort();
     const trimmed = rawQuery.trim();
 
-    if (trimmed.length < 2) {
+    const hasFilters = typeFilter !== "all" || topicFilters.size > 0 || countries.length > 0;
+
+    // Nothing to do: no query AND no filters
+    if (trimmed.length < 2 && !hasFilters) {
       setResults(EMPTY); setCounts(EMPTY_COUNTS);
       setLoading(false); setCorrections([]); setEffectiveQuery("");
       return;
     }
 
-    const { fixedTokens, fixes } = interpret(trimmed);
-    const corrected = fixedTokens.join(" ").trim() || trimmed;
-    setCorrections(fixes);
-    setEffectiveQuery(corrected);
+    let searchQ = "";
+    let fixes = [];
 
-    // Build search query: corrected terms (backend does regex OR-matching)
-    const searchQ = corrected;
+    if (trimmed.length >= 2) {
+      const out = interpret(trimmed);
+      searchQ = out.fixedTokens.join(" ").trim() || trimmed;
+      fixes = out.fixes;
+    } else if (topicFilters.size > 0) {
+      // No query, but topic filters selected → use first topic as seed
+      searchQ = [...topicFilters][0];
+    }
+    setCorrections(fixes);
+    setEffectiveQuery(searchQ);
 
     const controller = new AbortController();
     abortRef.current = controller;
     setLoading(true);
 
     try {
-      const params = new URLSearchParams({ q: searchQ, limit: "10" });
+      const params = new URLSearchParams({ limit: "10" });
+      if (searchQ) params.set("q", searchQ);
       const types = typeFilter === "all"
         ? ["users","opportunities","posts"]
         : [typeFilter];
