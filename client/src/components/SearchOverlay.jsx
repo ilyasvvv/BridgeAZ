@@ -263,7 +263,7 @@ export default function SearchOverlay() {
           </div>
 
           <div className="mt-3 flex flex-wrap justify-center gap-2">
-            {TOPIC_FILTERS.map(f => {
+            {learnedTags.map(f => {
               const on = topicFilters.has(f.id);
               return (
                 <button
