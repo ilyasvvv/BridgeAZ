@@ -14,14 +14,14 @@ const SIGNUP_STEPS = [
 
 const ROLE_OPTIONS = [
   {
-    value: "student",
-    title: "Student",
-    subtitle: "Mentors, circles, internships"
+    value: "personal",
+    title: "Personal account",
+    subtitle: "Meet people, join circles, stay visible"
   },
   {
-    value: "professional",
-    title: "Professional",
-    subtitle: "Peers, builders, giving back"
+    value: "circle",
+    title: "Create a circle",
+    subtitle: "A community page with members at the center"
   }
 ];
 
@@ -106,7 +106,7 @@ export default function Join({ initialMode = "register" }) {
     name: "",
     email: "",
     password: "",
-    userType: "student",
+    accountType: "personal",
     currentRegion: ""
   });
   const [error, setError] = useState("");
@@ -138,6 +138,8 @@ export default function Join({ initialMode = "register" }) {
     setError("");
     setRegisterForm((prev) => ({ ...prev, [name]: value }));
   };
+
+  const isCircleSignup = registerForm.accountType === "circle";
 
   const validateSignupStep = (step) => {
     if (step === 1) {
@@ -236,7 +238,20 @@ export default function Join({ initialMode = "register" }) {
               <form className="space-y-5" onSubmit={handleLogin}>
                 <div className="auth-section-copy">
                   <h2>Welcome back</h2>
-                  <p>Minimal, direct, familiar.</p>
+                  <p>{registerForm.accountType === "circle" ? "Sign into your circle space." : "Sign into your personal space."}</p>
+                </div>
+
+                <div className="auth-google-role-picker">
+                  {ROLE_OPTIONS.map((role) => (
+                    <button
+                      key={role.value}
+                      type="button"
+                      className={`auth-role-pill ${registerForm.accountType === role.value ? "is-selected" : ""}`}
+                      onClick={() => updateRegisterField("accountType", role.value)}
+                    >
+                      {role.title}
+                    </button>
+                  ))}
                 </div>
 
                 <div className="space-y-3">
@@ -260,7 +275,7 @@ export default function Join({ initialMode = "register" }) {
 
                 <div className="auth-inline-row">
                   <button type="button" className="auth-link-button" onClick={() => switchMode("register")}>
-                    New here?
+                    Create account
                   </button>
                   <Link to="/forgot-password" className="auth-link-button">
                     Forgot password
@@ -285,8 +300,8 @@ export default function Join({ initialMode = "register" }) {
                         <button
                           key={role.value}
                           type="button"
-                          className={`auth-role-card ${registerForm.userType === role.value ? "is-selected" : ""}`}
-                          onClick={() => updateRegisterField("userType", role.value)}
+                          className={`auth-role-card ${registerForm.accountType === role.value ? "is-selected" : ""}`}
+                          onClick={() => updateRegisterField("accountType", role.value)}
                         >
                           <span className="auth-role-dot"></span>
                           <strong>{role.title}</strong>
@@ -305,17 +320,17 @@ export default function Join({ initialMode = "register" }) {
                   <>
                     <div className="auth-section-copy">
                       <h2>Just the basics</h2>
-                      <p>Enough to make matching useful.</p>
+                      <p>{isCircleSignup ? "Give the community its public identity." : "Enough to make matching useful."}</p>
                     </div>
 
                     <div className="grid gap-3 sm:grid-cols-2">
                       <AuthField
                         className="sm:col-span-2"
-                        label="Name"
+                        label={isCircleSignup ? "Circle name" : "Name"}
                         type="text"
                         value={registerForm.name}
                         onChange={(event) => updateRegisterField("name", event.target.value)}
-                        placeholder="Full name"
+                        placeholder={isCircleSignup ? "Community name" : "Full name"}
                         required
                       />
                       <AuthField
@@ -329,7 +344,7 @@ export default function Join({ initialMode = "register" }) {
                       />
                       <CountryCombobox
                         id="join-country"
-                        label="Country"
+                        label={isCircleSignup ? "Base country" : "Country"}
                         value={registerForm.currentRegion}
                         onChange={(nextValue) => updateRegisterField("currentRegion", nextValue)}
                         rootClassName="sm:col-span-2"
@@ -396,8 +411,8 @@ export default function Join({ initialMode = "register" }) {
                   <p>{mode === "login" ? "Continue with Google" : "Prefer Google?"}</p>
                   <span>
                     {mode === "login"
-                      ? "If this is your first Google sign-in, we will create the selected profile type."
-                      : "Your selected role and country will be used for first-time setup."}
+                      ? "If this is your first Google sign-in, we will create the selected account type."
+                      : "Your selected account type and country will be used for first-time setup."}
                   </span>
                 </div>
 
@@ -406,8 +421,8 @@ export default function Join({ initialMode = "register" }) {
                     <button
                       key={role.value}
                       type="button"
-                      className={`auth-role-pill ${registerForm.userType === role.value ? "is-selected" : ""}`}
-                      onClick={() => updateRegisterField("userType", role.value)}
+                      className={`auth-role-pill ${registerForm.accountType === role.value ? "is-selected" : ""}`}
+                      onClick={() => updateRegisterField("accountType", role.value)}
                     >
                       {role.title}
                     </button>
@@ -416,7 +431,8 @@ export default function Join({ initialMode = "register" }) {
 
                 <GoogleAuthButton
                   text={mode === "login" ? "signin_with" : "signup_with"}
-                  userType={registerForm.userType}
+                  userType={registerForm.accountType}
+                  accountType={registerForm.accountType}
                   currentRegion={registerForm.currentRegion}
                   width={420}
                   containerClassName="w-full"

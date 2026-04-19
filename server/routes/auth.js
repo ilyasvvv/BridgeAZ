@@ -58,15 +58,23 @@ const requestJson = (urlString, { method = "GET", headers = {}, body } = {}) =>
 
 const normalizeEmail = (email = "") => email.trim().toLowerCase();
 
-const normalizeUserType = (userType = "") => {
-  if (["student", "professional"].includes(userType)) {
-    return userType;
+const normalizeSignupType = (value = "") => {
+  const normalized = String(value || "").trim().toLowerCase();
+
+  if (["circle", "community"].includes(normalized)) {
+    return { accountType: "circle", userType: "circle", role: "circle" };
   }
-  return "";
+
+  if (["student", "professional", "personal", "person", "member"].includes(normalized)) {
+    return { accountType: "personal", userType: normalized === "student" || normalized === "professional" ? normalized : "member", role: normalized === "student" || normalized === "professional" ? normalized : "member" };
+  }
+
+  return null;
 };
 
 const buildSafeUser = (user) => {
   const safeUser = user.toObject();
+  safeUser.accountType = safeUser.accountType || (safeUser.userType === "circle" ? "circle" : "personal");
   delete safeUser.passwordHash;
   delete safeUser.passwordResetTokenHash;
   delete safeUser.passwordResetExpiresAt;
@@ -128,6 +136,7 @@ const signToken = (user) => {
   return jwt.sign(
     {
       userId: user._id,
+      accountType: user.accountType || "personal",
       userType: user.userType,
       currentRegion: user.currentRegion,
       studentVerified: user.studentVerified,
@@ -143,12 +152,12 @@ const signToken = (user) => {
 router.post("/register", async (req, res) => {
   try {
     const rawName = req.body.name;
-    const { email, password, userType, currentRegion } = req.body;
+    const { email, password, userType, accountType, currentRegion } = req.body;
     const name = sanitizeString(rawName, FIELD_LIMITS.name);
     const normalizedEmail = normalizeEmail(email);
-    const normalizedUserType = normalizeUserType(userType);
+    const signupType = normalizeSignupType(accountType || userType);
 
-    if (!name || !normalizedEmail || !password || !normalizedUserType) {
+    if (!name || !normalizedEmail || !password || !signupType) {
       return res.status(400).json({ message: "Missing required fields" });
     }
 
@@ -167,9 +176,10 @@ router.post("/register", async (req, res) => {
       email: normalizedEmail,
       passwordHash,
       authProviders: ["password"],
-      userType: normalizedUserType,
+      accountType: signupType.accountType,
+      userType: signupType.userType,
       currentRegion: (currentRegion || "").trim(),
-      roles: [normalizedUserType],
+      roles: [signupType.role],
       studentVerified: false,
       mentorVerified: false,
       verificationStatus: "unverified"
@@ -219,8 +229,8 @@ router.post("/login", async (req, res) => {
 
 router.post("/google", async (req, res) => {
   try {
-    const { credential, userType, currentRegion } = req.body || {};
-    const normalizedUserType = normalizeUserType(userType);
+    const { credential, userType, accountType, currentRegion } = req.body || {};
+    const signupType = normalizeSignupType(accountType || userType);
 
     if (!credential) {
       return res.status(400).json({ message: "Google credential is required" });
@@ -249,10 +259,10 @@ router.post("/google", async (req, res) => {
       }
       await user.save();
     } else {
-      if (!normalizedUserType) {
+      if (!signupType) {
         return res.status(400).json({
-          code: "USER_TYPE_REQUIRED",
-          message: "Choose student or professional to create your Google account."
+          code: "ACCOUNT_TYPE_REQUIRED",
+          message: "Choose personal account or circle to create your Google account."
         });
       }
 
@@ -261,9 +271,10 @@ router.post("/google", async (req, res) => {
         email,
         googleId: googleProfile.sub,
         authProviders: ["google"],
-        userType: normalizedUserType,
+        accountType: signupType.accountType,
+        userType: signupType.userType,
         currentRegion: (currentRegion || "").trim(),
-        roles: [normalizedUserType],
+        roles: [signupType.role],
         profilePictureUrl: googleProfile.picture || "",
         avatarUrl: googleProfile.picture || "",
         studentVerified: false,

@@ -39,7 +39,8 @@ const loadGoogleScript = () => {
 
 export default function GoogleAuthButton({
   text = "continue_with",
-  userType = "student",
+  userType = "personal",
+  accountType = "",
   currentRegion = "",
   width = 360,
   containerClassName = "",
@@ -77,6 +78,7 @@ export default function GoogleAuthButton({
               const data = await apiClient.post("/auth/google", {
                 credential,
                 userType,
+                accountType,
                 currentRegion
               });
               onSuccess?.(data);
@@ -113,7 +115,7 @@ export default function GoogleAuthButton({
     return () => {
       cancelled = true;
     };
-  }, [currentRegion, onError, onSuccess, text, userType]);
+  }, [accountType, currentRegion, onError, onSuccess, text, userType, width]);
 
   if (unavailable) {
     return null;

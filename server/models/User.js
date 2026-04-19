@@ -53,11 +53,20 @@ const userSchema = new mongoose.Schema(
       enum: ["password", "google"],
       default: []
     },
-    userType: { type: String, enum: ["student", "professional"], required: true },
+    accountType: {
+      type: String,
+      enum: ["personal", "circle"],
+      default: "personal"
+    },
+    userType: {
+      type: String,
+      enum: ["student", "professional", "member", "circle"],
+      required: true
+    },
     currentRegion: { type: String, trim: true },
     roles: {
       type: [String],
-      enum: ["student", "professional", "mentor", "staffC", "staffB", "adminA"],
+      enum: ["student", "professional", "member", "circle", "mentor", "staffC", "staffB", "adminA"],
       default: []
     },
     profileVisibility: { type: String, enum: ["public", "private"], default: "public" },
