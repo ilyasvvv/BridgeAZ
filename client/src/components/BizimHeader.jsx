@@ -11,6 +11,7 @@ const LOCATIONS = [
 export default function BizimHeader() {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
+  const { open: openSearch } = useSearch();
   const [location, setLocation] = useState("London");
   const [locOpen, setLocOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
