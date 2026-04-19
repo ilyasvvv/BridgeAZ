@@ -1,368 +1,313 @@
 import { createPortal } from "react-dom";
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useSearch } from "../utils/SearchContext";
-import useGlobalSearch from "../utils/useGlobalSearch";
-import CountryMultiSelect from "./CountryMultiSelect";
+import useSmartSearch from "../utils/useSmartSearch";
+import { API_ORIGIN } from "../api/client";
 
-const TYPE_TABS = [
-  { key: "all", label: "All" },
-  { key: "users", label: "People" },
-  { key: "opportunities", label: "Opportunities" },
-  { key: "posts", label: "Posts" },
+/* ───────── Filter definitions ───────── */
+const TYPE_FILTERS = [
+  { id: "all", label: "Everything" },
+  { id: "users", label: "People" },
+  { id: "opportunities", label: "Opportunities" },
+  { id: "posts", label: "Posts" }
 ];
 
-function SearchIcon({ className }) {
-  return (
-    <svg className={className} width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <circle cx="11" cy="11" r="8" />
-      <path d="m21 21-4.3-4.3" />
-    </svg>
-  );
-}
+const TOPIC_FILTERS = [
+  { id: "mentor", label: "Mentors" },
+  { id: "student", label: "Students" },
+  { id: "london", label: "London" },
+  { id: "remote", label: "Remote" },
+  { id: "ai", label: "AI" },
+  { id: "product", label: "Product" },
+  { id: "engineering", label: "Engineering" },
+  { id: "design", label: "Design" }
+];
 
-function PersonResult({ user, focused, onClick }) {
-  const avatar = user.avatarUrl || user.profilePhotoUrl || user.profilePictureUrl;
-  const location = user.locationNow?.country || user.currentRegion || "";
-  const edu = Array.isArray(user.education) && user.education[0]?.institution;
-  const exp = Array.isArray(user.experience) && (user.experience[0]?.company || user.experience[0]?.org);
-  const sub = [edu, exp, location].filter(Boolean).join(" · ");
-
-  return (
-    <button
-      onClick={onClick}
-      className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left transition-colors ${
-        focused ? "bg-accent/8" : "hover:bg-charcoal"
-      }`}
-    >
-      {avatar ? (
-        <img src={avatar} alt="" className="h-9 w-9 rounded-full object-cover" />
-      ) : (
-        <div className="flex h-9 w-9 items-center justify-center rounded-full bg-charcoal text-sm font-medium text-mist">
-          {user.name?.[0]?.toUpperCase() || "?"}
-        </div>
-      )}
-      <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-medium text-sand">{user.name}</p>
-        {(user.headline || sub) && (
-          <p className="truncate text-xs text-mist">{user.headline || sub}</p>
-        )}
-      </div>
-      {user.userType && (
-        <span className="rounded-full bg-charcoal px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-mist">
-          {user.userType}
-        </span>
-      )}
-    </button>
-  );
-}
-
-function OpportunityResult({ opp, focused, onClick }) {
-  return (
-    <button
-      onClick={onClick}
-      className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left transition-colors ${
-        focused ? "bg-accent/8" : "hover:bg-charcoal"
-      }`}
-    >
-      <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-teal/10 text-teal">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <rect width="20" height="14" x="2" y="7" rx="2" ry="2" />
-          <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" />
-        </svg>
-      </div>
-      <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-medium text-sand">{opp.title}</p>
-        <p className="truncate text-xs text-mist">
-          {[opp.orgName || opp.company, opp.country, opp.type].filter(Boolean).join(" · ")}
-        </p>
-      </div>
-    </button>
-  );
-}
-
-function PostResult({ post, focused, onClick }) {
-  const author = post.author;
-  const avatar = author?.avatarUrl || author?.profilePhotoUrl || author?.profilePictureUrl;
-  const preview = post.content?.length > 100 ? post.content.slice(0, 100) + "..." : post.content;
-
-  return (
-    <button
-      onClick={onClick}
-      className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left transition-colors ${
-        focused ? "bg-accent/8" : "hover:bg-charcoal"
-      }`}
-    >
-      {avatar ? (
-        <img src={avatar} alt="" className="h-9 w-9 rounded-full object-cover" />
-      ) : (
-        <div className="flex h-9 w-9 items-center justify-center rounded-full bg-charcoal text-sm font-medium text-mist">
-          {author?.name?.[0]?.toUpperCase() || "?"}
-        </div>
-      )}
-      <div className="min-w-0 flex-1">
-        <p className="truncate text-xs font-medium text-sand">{author?.name || "Unknown"}</p>
-        <p className="truncate text-xs text-mist">{preview}</p>
-      </div>
-    </button>
-  );
-}
-
-function SectionHeader({ label, count }) {
-  return (
-    <div className="px-3 pb-1 pt-3">
-      <span className="text-[11px] font-bold uppercase tracking-[0.15em] text-mist/50">
-        {label}
-        {count > 0 && <span className="ml-1.5 text-mist/30">({count})</span>}
-      </span>
-    </div>
-  );
-}
-
+/* ═══════════════════════════════════════════════════
+   OVERLAY (drop-down takeover)
+   ═══════════════════════════════════════════════════ */
 export default function SearchOverlay() {
   const { isOpen, close } = useSearch();
   const navigate = useNavigate();
   const inputRef = useRef(null);
-  const { query, setQuery, countries, setCountries, results, counts, loading, clear } = useGlobalSearch();
-  const [activeTab, setActiveTab] = useState("all");
-  const [focusedIndex, setFocusedIndex] = useState(-1);
 
-  // Build flat list of results for keyboard navigation
-  const flatItems = [];
-  if (activeTab === "all" || activeTab === "users") {
-    results.users.forEach((u) => flatItems.push({ type: "user", data: u }));
-  }
-  if (activeTab === "all" || activeTab === "opportunities") {
-    results.opportunities.forEach((o) => flatItems.push({ type: "opportunity", data: o }));
-  }
-  if (activeTab === "all" || activeTab === "posts") {
-    results.posts.forEach((p) => flatItems.push({ type: "post", data: p }));
-  }
+  const {
+    query, setQuery,
+    typeFilter, setTypeFilter,
+    topicFilters, toggleTopic,
+    results, counts, loading,
+    corrections,
+    recordClick, resetMemory,
+    clear
+  } = useSmartSearch();
 
-  const navigateTo = useCallback(
-    (item) => {
-      if (item.type === "user") navigate(`/profile/${item.data._id}`);
-      else if (item.type === "opportunity") navigate(`/opportunities/${item.data._id}`);
-      else if (item.type === "post") navigate(`/post/${item.data._id}`);
-      close();
-      clear();
-    },
-    [navigate, close, clear]
-  );
+  const hasQuery = query.trim().length >= 2;
+  const totalResults = counts.users + counts.opportunities + counts.posts;
 
-  // Auto-focus input when opened
+  /* Focus input + lock scroll on open */
   useEffect(() => {
-    if (isOpen) {
-      setTimeout(() => inputRef.current?.focus(), 50);
-      setFocusedIndex(-1);
-    } else {
-      clear();
-      setActiveTab("all");
-    }
-  }, [isOpen, clear]);
-
-  // Lock body scroll
-  useEffect(() => {
-    if (isOpen) {
-      document.body.style.overflow = "hidden";
-      return () => { document.body.style.overflow = ""; };
-    }
+    if (!isOpen) return;
+    document.body.style.overflow = "hidden";
+    const t = setTimeout(() => inputRef.current?.focus(), 80);
+    return () => {
+      document.body.style.overflow = "";
+      clearTimeout(t);
+    };
   }, [isOpen]);
 
-  const handleKeyDown = (e) => {
-    if (e.key === "Escape") {
-      close();
-      return;
-    }
-    if (e.key === "ArrowDown") {
-      e.preventDefault();
-      setFocusedIndex((p) => (p + 1 >= flatItems.length ? 0 : p + 1));
-      return;
-    }
-    if (e.key === "ArrowUp") {
-      e.preventDefault();
-      setFocusedIndex((p) => (p <= 0 ? flatItems.length - 1 : p - 1));
-      return;
-    }
-    if (e.key === "Enter" && focusedIndex >= 0 && flatItems[focusedIndex]) {
-      e.preventDefault();
-      navigateTo(flatItems[focusedIndex]);
-    }
-  };
-
-  // Reset focus index when results change
+  /* ESC to close */
   useEffect(() => {
-    setFocusedIndex(-1);
-  }, [results]);
+    if (!isOpen) return;
+    const onKey = (e) => { if (e.key === "Escape") close(); };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [isOpen, close]);
+
+  /* Reset local state when closed */
+  useEffect(() => {
+    if (!isOpen) clear();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
-  const hasQuery = query.trim().length >= 2;
-  const hasResults = flatItems.length > 0;
-  const totalCount = counts.users + counts.opportunities + counts.posts;
+  const handleOpenResult = (item) => {
+    recordClick(item._id);
+    if (item._type === "user") navigate(`/profile/${item._id}`);
+    else if (item._type === "opportunity") navigate(`/opportunities/${item._id}`);
+    else if (item._type === "post") navigate(`/post/${item._id}`);
+    close();
+  };
 
   return createPortal(
-    <div
-      className="fixed inset-0 z-[9999] flex items-start justify-center pt-[12vh] md:pt-[15vh]"
-      onKeyDown={handleKeyDown}
-    >
-      {/* Backdrop */}
+    <div className="fixed inset-0 z-[9999] overflow-y-auto" style={{ animation: "searchFadeIn 0.2s ease" }}>
+      {/* Blurred backdrop */}
       <div
-        className="absolute inset-0 bg-sand/30 backdrop-blur-sm"
+        className="fixed inset-0 bg-white/70 backdrop-blur-xl"
         onClick={close}
-        style={{ animation: "searchFadeIn 0.15s ease" }}
+        aria-hidden
       />
 
-      {/* Modal */}
-      <div
-        className="relative mx-4 flex w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-border bg-white shadow-floating"
-        style={{ animation: "searchSlideIn 0.2s cubic-bezier(0.16, 1, 0.3, 1)", maxHeight: "min(70vh, 600px)" }}
+      {/* Decorative orbit circles */}
+      <div aria-hidden className="fixed inset-0 pointer-events-none overflow-hidden">
+        <div className="absolute -top-48 -left-48 w-[560px] h-[560px] rounded-full border border-grey-200 opacity-60" />
+        <div className="absolute -top-24 -left-24 w-[380px] h-[380px] rounded-full border border-grey-200 opacity-50" />
+        <div className="absolute -bottom-52 -right-52 w-[680px] h-[680px] rounded-full border border-grey-200 opacity-60" />
+        <div className="absolute -bottom-24 -right-24 w-[400px] h-[400px] rounded-full border border-grey-200 opacity-40" />
+        <div className="absolute top-1/3 left-1/4 w-[300px] h-[300px] rounded-full bg-gradient-to-br from-grey-100 to-transparent opacity-70 blur-3xl" />
+        <div className="absolute top-1/4 right-1/3 w-[220px] h-[220px] rounded-full bg-gradient-to-bl from-grey-200/60 to-transparent opacity-60 blur-3xl" />
+      </div>
+
+      {/* Close button */}
+      <button
+        type="button"
+        onClick={close}
+        aria-label="Close search"
+        className="fixed top-4 right-4 md:top-6 md:right-6 z-20 w-10 h-10 rounded-full bg-white border border-grey-300 shadow-card flex items-center justify-center hover:bg-grey-100 transition-colors"
       >
-        {/* Search input */}
-        <div className="flex items-center gap-3 border-b border-border px-4 py-3">
-          <SearchIcon className="shrink-0 text-mist/40" />
-          <input
-            ref={inputRef}
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search people, opportunities, posts..."
-            className="flex-1 bg-transparent text-base text-sand outline-none placeholder:text-mist/40"
-            autoComplete="off"
-            spellCheck={false}
-          />
-          {loading && (
-            <div className="h-4 w-4 animate-spin rounded-full border-2 border-mist/20 border-t-accent" />
+        <svg className="w-4 h-4 text-sand" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 6l12 12M18 6 6 18" />
+        </svg>
+      </button>
+
+      {/* ═══ Centered panel that "drops down" ═══ */}
+      <div
+        className="relative z-10 mx-auto max-w-4xl px-6 pb-32"
+        style={{ animation: "searchDropDown 0.35s cubic-bezier(0.34, 1.56, 0.64, 1)" }}
+      >
+        {/* Title */}
+        <div className={`text-center transition-all duration-500 ease-out ${hasQuery ? "pt-10 md:pt-14" : "pt-20 md:pt-32"}`}>
+          <h1
+            className={`font-serif italic text-sand leading-[0.9] tracking-[-0.04em] transition-all duration-500 ${
+              hasQuery
+                ? "text-[56px] md:text-[72px]"
+                : "text-[96px] md:text-[140px]"
+            }`}
+          >
+            Bizim<span>Circle</span>
+          </h1>
+          {!hasQuery && (
+            <p className="mt-4 text-mist text-sm font-medium tracking-wide">
+              Search people, circles, posts — one field, messy typos welcome.
+            </p>
           )}
-          <kbd className="hidden rounded-md border border-border bg-charcoal px-1.5 py-0.5 text-[10px] font-medium text-mist/50 sm:inline">
-            ESC
-          </kbd>
         </div>
 
-        {/* Location filter */}
-        <div className="border-b border-border px-4 py-2">
-          <CountryMultiSelect selected={countries} onChange={setCountries} />
+        {/* Circular search bar */}
+        <div className={`relative mx-auto transition-all duration-500 ${hasQuery ? "mt-8 max-w-2xl" : "mt-12 max-w-xl"}`}>
+          <div aria-hidden className="absolute -inset-6 rounded-full bg-gradient-to-br from-grey-100 via-white to-grey-100 opacity-70 blur-2xl" />
+          <div className="relative rounded-full border border-grey-300 bg-white shadow-floating">
+            <div className="flex items-center gap-4 px-6 py-4 md:py-5 rounded-full border border-grey-200/60 bg-white">
+              <svg className="w-5 h-5 text-grey-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <circle cx="11" cy="11" r="7" strokeWidth="2" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="m20 20-3.5-3.5" />
+              </svg>
+              <input
+                ref={inputRef}
+                type="text"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="What are you looking for?"
+                className="flex-1 bg-transparent outline-none text-base md:text-lg text-sand placeholder-grey-500"
+                autoComplete="off"
+                spellCheck="false"
+              />
+              {query && (
+                <button
+                  type="button"
+                  onClick={() => { setQuery(""); inputRef.current?.focus(); }}
+                  className="w-8 h-8 rounded-full bg-grey-100 hover:bg-grey-200 flex items-center justify-center flex-shrink-0 transition-colors"
+                  aria-label="Clear"
+                >
+                  <svg className="w-3.5 h-3.5 text-grey-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 6l12 12M18 6 6 18" />
+                  </svg>
+                </button>
+              )}
+              {loading && (
+                <div className="w-5 h-5 rounded-full border-2 border-grey-300 border-t-sand animate-spin flex-shrink-0" />
+              )}
+            </div>
+          </div>
+
+          {corrections.length > 0 && (
+            <div className="mt-3 text-center text-sm text-mist">
+              Showing results for{" "}
+              {corrections.map((c, i) => (
+                <span key={i}>
+                  {i > 0 && ", "}
+                  <span className="line-through text-grey-500">{c.raw}</span>
+                  {" → "}
+                  <span className="font-semibold text-sand">{c.to}</span>
+                </span>
+              ))}
+            </div>
+          )}
         </div>
 
-        {/* Type tabs */}
-        <div className="flex gap-1 border-b border-border px-4 py-2">
-          {TYPE_TABS.map((tab) => {
-            const isActive = activeTab === tab.key;
-            return (
+        {/* Filters */}
+        <div className={`mx-auto max-w-3xl transition-opacity duration-300 mt-8 ${hasQuery ? "opacity-100" : "opacity-80"}`}>
+          <div className="flex flex-wrap justify-center gap-2">
+            {TYPE_FILTERS.map(f => (
               <button
-                key={tab.key}
-                onClick={() => { setActiveTab(tab.key); setFocusedIndex(-1); }}
-                className={`rounded-lg px-3 py-1 text-xs font-medium transition-colors ${
-                  isActive
-                    ? "bg-sand/8 text-sand"
-                    : "text-mist/60 hover:text-sand hover:bg-sand/5"
+                key={f.id}
+                type="button"
+                onClick={() => setTypeFilter(f.id)}
+                className={`h-9 px-4 rounded-full text-sm font-semibold transition-all ${
+                  typeFilter === f.id
+                    ? "bg-sand text-white shadow-sm"
+                    : "bg-white border border-grey-300 text-mist hover:border-sand hover:text-sand"
                 }`}
               >
-                {tab.label}
-                {hasQuery && tab.key !== "all" && (
-                  <span className="ml-1 text-mist/30">
-                    {counts[tab.key === "users" ? "users" : tab.key === "opportunities" ? "opportunities" : "posts"] || 0}
-                  </span>
-                )}
-                {hasQuery && tab.key === "all" && totalCount > 0 && (
-                  <span className="ml-1 text-mist/30">{totalCount}</span>
-                )}
+                {f.label}
               </button>
-            );
-          })}
+            ))}
+          </div>
+
+          <div className="mt-3 flex flex-wrap justify-center gap-2">
+            {TOPIC_FILTERS.map(f => {
+              const on = topicFilters.has(f.id);
+              return (
+                <button
+                  key={f.id}
+                  type="button"
+                  onClick={() => toggleTopic(f.id)}
+                  className={`h-8 px-3.5 rounded-full text-xs font-semibold transition-all border ${
+                    on
+                      ? "bg-grey-100 border-sand text-sand"
+                      : "bg-white border-dashed border-grey-300 text-grey-600 hover:border-grey-500 hover:text-sand"
+                  }`}
+                >
+                  {f.label}
+                </button>
+              );
+            })}
+          </div>
         </div>
 
-        {/* Results area */}
-        <div className="flex-1 overflow-y-auto overscroll-contain px-2 py-1">
-          {!hasQuery && (
-            <div className="flex flex-col items-center justify-center py-12 text-center">
-              <SearchIcon className="mb-3 text-mist/20" />
-              <p className="text-sm text-mist/50">Search people by name, skill, or company</p>
-              <p className="mt-1 text-xs text-mist/30">Find opportunities and community posts</p>
+        {/* Results */}
+        {hasQuery && (
+          <div className="mt-10">
+            <div className="flex items-baseline justify-between mb-4 px-1">
+              <div>
+                <p className="text-[11px] font-bold uppercase tracking-[0.15em] text-mist">Adaptive ranking</p>
+                <h2 className="font-serif italic text-3xl text-sand mt-1">
+                  {loading ? "Searching…" : `${totalResults} result${totalResults !== 1 ? "s" : ""}`}
+                </h2>
+              </div>
+              <button
+                type="button"
+                onClick={resetMemory}
+                className="text-xs font-semibold text-grey-500 hover:text-sand transition-colors"
+              >
+                Reset memory
+              </button>
             </div>
-          )}
 
-          {hasQuery && !hasResults && !loading && (
-            <div className="flex flex-col items-center justify-center py-12 text-center">
-              <p className="text-sm text-mist/50">No results for "{query}"</p>
-              <p className="mt-1 text-xs text-mist/30">Try a different search term or location</p>
-            </div>
-          )}
-
-          {hasQuery && hasResults && (
-            <>
-              {(activeTab === "all" || activeTab === "users") && results.users.length > 0 && (
-                <div>
-                  <SectionHeader label="People" count={counts.users} />
-                  {results.users.map((user) => {
-                    const idx = flatItems.findIndex((fi) => fi.type === "user" && fi.data._id === user._id);
-                    return (
-                      <PersonResult
-                        key={user._id}
-                        user={user}
-                        focused={idx === focusedIndex}
-                        onClick={() => navigateTo({ type: "user", data: user })}
-                      />
-                    );
-                  })}
+            {!loading && totalResults === 0 && (
+              <div className="rounded-3xl border border-grey-200 bg-white p-10 text-center">
+                <div className="mx-auto w-16 h-16 rounded-full border-2 border-grey-300 flex items-center justify-center mb-4">
+                  <svg className="w-7 h-7 text-grey-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <circle cx="11" cy="11" r="7" strokeWidth="1.8" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8" d="m20 20-3.5-3.5" />
+                  </svg>
                 </div>
-              )}
+                <p className="font-semibold text-sand">No matches found</p>
+                <p className="text-sm text-mist mt-1">Try broader wording, check for typos, or remove a filter.</p>
+              </div>
+            )}
 
-              {(activeTab === "all" || activeTab === "opportunities") && results.opportunities.length > 0 && (
-                <div>
-                  <SectionHeader label="Opportunities" count={counts.opportunities} />
-                  {results.opportunities.map((opp) => {
-                    const idx = flatItems.findIndex((fi) => fi.type === "opportunity" && fi.data._id === opp._id);
-                    return (
-                      <OpportunityResult
-                        key={opp._id}
-                        opp={opp}
-                        focused={idx === focusedIndex}
-                        onClick={() => navigateTo({ type: "opportunity", data: opp })}
-                      />
-                    );
-                  })}
+            {/* ─── People (profile preview cards) ─── */}
+            {(typeFilter === "all" || typeFilter === "users") && results.users.length > 0 && (
+              <Section label="People" count={counts.users}>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {results.users.map(u => (
+                    <PersonCard key={u._id} user={u} onClick={() => handleOpenResult({ ...u, _type: "user" })} />
+                  ))}
                 </div>
-              )}
+              </Section>
+            )}
 
-              {(activeTab === "all" || activeTab === "posts") && results.posts.length > 0 && (
-                <div>
-                  <SectionHeader label="Posts" count={counts.posts} />
-                  {results.posts.map((post) => {
-                    const idx = flatItems.findIndex((fi) => fi.type === "post" && fi.data._id === post._id);
-                    return (
-                      <PostResult
-                        key={post._id}
-                        post={post}
-                        focused={idx === focusedIndex}
-                        onClick={() => navigateTo({ type: "post", data: post })}
-                      />
-                    );
-                  })}
+            {/* ─── Opportunities (opportunity-styled cards) ─── */}
+            {(typeFilter === "all" || typeFilter === "opportunities") && results.opportunities.length > 0 && (
+              <Section label="Opportunities" count={counts.opportunities}>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {results.opportunities.map(o => (
+                    <OppCard key={o._id} opp={o} onClick={() => handleOpenResult({ ...o, _type: "opportunity" })} />
+                  ))}
                 </div>
-              )}
-            </>
-          )}
-        </div>
+              </Section>
+            )}
 
-        {/* Footer */}
-        {hasQuery && hasResults && (
-          <div className="flex items-center justify-between border-t border-border px-4 py-2">
-            <button
-              onClick={() => {
-                const params = new URLSearchParams({ q: query });
-                if (countries.length) params.set("countries", countries.join(","));
-                navigate(`/search?${params}`);
-                close();
-                clear();
-              }}
-              className="text-xs font-medium text-accent hover:text-accent/80 transition-colors"
-            >
-              See all results &rarr;
-            </button>
-            <div className="hidden items-center gap-3 text-[10px] text-mist/40 sm:flex">
-              <span><kbd className="rounded border border-border bg-charcoal px-1 py-0.5 font-mono">↑↓</kbd> navigate</span>
-              <span><kbd className="rounded border border-border bg-charcoal px-1 py-0.5 font-mono">↵</kbd> open</span>
-              <span><kbd className="rounded border border-border bg-charcoal px-1 py-0.5 font-mono">esc</kbd> close</span>
+            {/* ─── Posts (post-styled cards) ─── */}
+            {(typeFilter === "all" || typeFilter === "posts") && results.posts.length > 0 && (
+              <Section label="Posts" count={counts.posts}>
+                <div className="space-y-3">
+                  {results.posts.map(p => (
+                    <PostPreview key={p._id} post={p} onClick={() => handleOpenResult({ ...p, _type: "post" })} />
+                  ))}
+                </div>
+              </Section>
+            )}
+          </div>
+        )}
+
+        {/* Suggestion chips */}
+        {!hasQuery && (
+          <div className="mt-16 text-center max-w-lg mx-auto">
+            <p className="text-xs font-bold uppercase tracking-[0.2em] text-mist mb-3">Try searching</p>
+            <div className="flex flex-wrap justify-center gap-2">
+              {["product mentor", "london internship", "ai founders", "design student"].map(q => (
+                <button
+                  key={q}
+                  type="button"
+                  onClick={() => { setQuery(q); inputRef.current?.focus(); }}
+                  className="h-8 px-3 rounded-full bg-grey-100 hover:bg-grey-200 text-xs font-medium text-grey-700 transition-colors"
+                >
+                  {q}
+                </button>
+              ))}
             </div>
           </div>
         )}
@@ -373,12 +318,198 @@ export default function SearchOverlay() {
           from { opacity: 0; }
           to { opacity: 1; }
         }
-        @keyframes searchSlideIn {
-          from { opacity: 0; transform: scale(0.98) translateY(-8px); }
-          to { opacity: 1; transform: scale(1) translateY(0); }
+        @keyframes searchDropDown {
+          from { opacity: 0; transform: translateY(-24px); }
+          to { opacity: 1; transform: translateY(0); }
         }
       `}</style>
     </div>,
     document.body
+  );
+}
+
+/* ═══ Section header ═══ */
+function Section({ label, count, children }) {
+  return (
+    <div className="mt-8 first:mt-0">
+      <div className="flex items-baseline gap-2 mb-3 px-1">
+        <h3 className="font-serif italic text-xl text-sand">{label}</h3>
+        <span className="text-xs text-mist">· {count}</span>
+      </div>
+      {children}
+    </div>
+  );
+}
+
+/* ═══ Person card (profile preview) ═══ */
+function PersonCard({ user, onClick }) {
+  const raw = user.avatarUrl || user.profilePhotoUrl || user.profilePictureUrl;
+  const avatar = raw ? (raw.startsWith("http") ? raw : `${API_ORIGIN}${raw}`) : null;
+  const initial = (user.name || "?").charAt(0).toUpperCase();
+  const location = user.locationNow?.country || user.currentRegion || user.country || "";
+  const edu = Array.isArray(user.education) && user.education[0]?.institution;
+  const sub = user.headline || [edu, location].filter(Boolean).join(" · ") || user.userType || "Community member";
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="group relative w-full text-left p-4 rounded-3xl bg-white border border-grey-200 hover:border-sand hover:shadow-card transition-all flex items-center gap-4"
+    >
+      {/* Decorative ring */}
+      <div aria-hidden className="absolute -top-2 -right-2 w-12 h-12 rounded-full border border-grey-200 opacity-0 group-hover:opacity-100 transition-opacity" />
+
+      <div className="w-14 h-14 rounded-full bg-grey-100 border border-grey-200 flex items-center justify-center flex-shrink-0 overflow-hidden">
+        {avatar ? (
+          <img src={avatar} alt="" className="w-full h-full object-cover" />
+        ) : (
+          <span className="text-lg font-bold text-grey-600">{initial}</span>
+        )}
+      </div>
+
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2">
+          <p className="font-semibold text-sand truncate">{user.name || "Unnamed"}</p>
+          {(user.mentorVerified || user.studentVerified) && (
+            <span className="flex-shrink-0 w-4 h-4 rounded-full bg-sand flex items-center justify-center" title="Verified">
+              <svg className="w-2.5 h-2.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" />
+              </svg>
+            </span>
+          )}
+        </div>
+        <p className="text-xs text-mist truncate mt-0.5">{sub}</p>
+        {user.userType && (
+          <span className="inline-block mt-2 px-2 py-0.5 rounded-full bg-grey-100 border border-grey-200 text-[10px] font-bold uppercase tracking-wider text-sand">
+            {user.userType}
+          </span>
+        )}
+      </div>
+
+      {user._boost > 0 && (
+        <span className="w-1.5 h-1.5 rounded-full bg-sand" title="Boosted by your history" />
+      )}
+    </button>
+  );
+}
+
+/* ═══ Opportunity card ═══ */
+function OppCard({ opp, onClick }) {
+  const org = opp.orgName || opp.company || "Opportunity";
+  const where = [opp.city, opp.country].filter(Boolean).join(", ") || opp.locationMode || "";
+  const tags = (opp.tags || []).slice(0, 3);
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="w-full text-left p-5 rounded-3xl bg-white border border-grey-200 hover:border-sand hover:shadow-card transition-all"
+    >
+      <div className="flex items-start gap-3">
+        <div className="w-10 h-10 rounded-2xl bg-sand text-white flex items-center justify-center flex-shrink-0">
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <rect width="18" height="13" x="3" y="7" rx="2" strokeWidth="1.8" />
+            <path strokeLinecap="round" strokeWidth="1.8" d="M16 20V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v15" />
+          </svg>
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="font-semibold text-sand truncate">{opp.title || "Untitled"}</p>
+          <p className="text-xs text-mist truncate mt-0.5">
+            {org}{where ? ` · ${where}` : ""}
+          </p>
+        </div>
+        {opp.type && (
+          <span className="flex-shrink-0 px-2 py-0.5 rounded-full bg-grey-100 border border-grey-200 text-[10px] font-bold uppercase tracking-wider text-sand">
+            {opp.type}
+          </span>
+        )}
+      </div>
+
+      {opp.description && (
+        <p className="mt-3 text-sm text-mist line-clamp-2">{opp.description}</p>
+      )}
+
+      {tags.length > 0 && (
+        <div className="mt-3 flex flex-wrap gap-1.5">
+          {tags.map((t, i) => (
+            <span key={i} className="px-2 py-0.5 rounded-full bg-grey-100 text-[10px] font-medium text-grey-700">
+              #{t}
+            </span>
+          ))}
+        </div>
+      )}
+    </button>
+  );
+}
+
+/* ═══ Post preview card ═══ */
+function PostPreview({ post, onClick }) {
+  const author = post.author || {};
+  const raw = author.avatarUrl || author.profilePhotoUrl || author.profilePictureUrl;
+  const avatar = raw ? (raw.startsWith("http") ? raw : `${API_ORIGIN}${raw}`) : null;
+  const initial = (author.name || "?").charAt(0).toUpperCase();
+  const content = post.content || "";
+  const preview = content.length > 220 ? content.slice(0, 220) + "…" : content;
+
+  const attUrl = post.attachmentUrl || "";
+  const lower = attUrl.toLowerCase();
+  const isImage = (post.attachmentContentType || "").startsWith("image/")
+    || [".png", ".jpg", ".jpeg", ".webp", ".gif"].some(ext => lower.endsWith(ext));
+  const imgSrc = isImage
+    ? (attUrl.startsWith("http") ? attUrl : `${API_ORIGIN}${attUrl}`)
+    : null;
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="w-full text-left p-5 rounded-3xl bg-white border border-grey-200 hover:border-sand hover:shadow-card transition-all"
+    >
+      <div className="flex items-start gap-3">
+        <div className="w-10 h-10 rounded-full bg-grey-100 border border-grey-200 flex items-center justify-center flex-shrink-0 overflow-hidden">
+          {avatar ? (
+            <img src={avatar} alt="" className="w-full h-full object-cover" />
+          ) : (
+            <span className="text-sm font-bold text-grey-600">{initial}</span>
+          )}
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2">
+            <p className="font-semibold text-sand truncate">{author.name || "Unknown"}</p>
+            {author.userType && (
+              <span className="px-1.5 py-0.5 rounded-full bg-grey-100 text-[10px] font-bold uppercase tracking-wider text-grey-700">
+                {author.userType}
+              </span>
+            )}
+          </div>
+          <p className="mt-2 text-sm text-sand whitespace-pre-line line-clamp-3">{preview}</p>
+
+          {imgSrc && (
+            <div className="mt-3 w-full h-40 rounded-2xl overflow-hidden bg-grey-100 border border-grey-200">
+              <img src={imgSrc} alt="" className="w-full h-full object-cover" />
+            </div>
+          )}
+
+          <div className="mt-3 flex items-center gap-4 text-[11px] text-mist">
+            {typeof post.likesCount === "number" && (
+              <span className="flex items-center gap-1">
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                </svg>
+                {post.likesCount}
+              </span>
+            )}
+            {Array.isArray(post.comments) && (
+              <span className="flex items-center gap-1">
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8" d="M8 12h.01M12 12h.01M16 12h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                {post.comments.length}
+              </span>
+            )}
+          </div>
+        </div>
+      </div>
+    </button>
   );
 }
