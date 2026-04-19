@@ -26,14 +26,6 @@ export default function BizimHeader() {
     return () => document.removeEventListener("mousedown", handler);
   }, []);
 
-  const handleSearch = (e) => {
-    e.preventDefault();
-    if (searchQuery.trim()) {
-      navigate(`/search?q=${encodeURIComponent(searchQuery)}`);
-      setSearchQuery("");
-    }
-  };
-
   const handleLogout = () => {
     setProfileOpen(false);
     logout();
