@@ -13,16 +13,7 @@ const TYPE_FILTERS = [
   { id: "posts", label: "Posts" }
 ];
 
-const TOPIC_FILTERS = [
-  { id: "mentor", label: "Mentors" },
-  { id: "student", label: "Students" },
-  { id: "london", label: "London" },
-  { id: "remote", label: "Remote" },
-  { id: "ai", label: "AI" },
-  { id: "product", label: "Product" },
-  { id: "engineering", label: "Engineering" },
-  { id: "design", label: "Design" }
-];
+/* Topic chips are derived from the user's own activity (useSmartSearch.learnedTags) */
 
 /* ═══════════════════════════════════════════════════
    OVERLAY (drop-down takeover)
