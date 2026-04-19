@@ -25,6 +25,7 @@ export default function SearchOverlay() {
   const [mounted, setMounted] = useState(false);
   const [closing, setClosing] = useState(false);
 
+  const { user } = useAuth();
   const {
     query, setQuery,
     typeFilter, setTypeFilter,
@@ -32,8 +33,15 @@ export default function SearchOverlay() {
     results, counts, loading,
     corrections,
     recordClick, resetMemory,
-    clear
+    clear,
+    docClicks
   } = useSmartSearch();
+
+  /* Topic chips personalized from profile + click history */
+  const TOPIC_FILTERS = useMemo(
+    () => pickPersonalizedTopics(user, docClicks),
+    [user, docClicks]
+  );
 
   const hasQuery = query.trim().length >= 2;
   const hasFilters = typeFilter !== "all" || topicFilters.size > 0;
