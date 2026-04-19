@@ -30,13 +30,15 @@ export default function BizimHeader() {
       <div className="mx-auto max-w-7xl px-4 md:px-6 py-2.5">
         <div className="flex items-center gap-4">
 
-          {/* ─── Logo (bizim ◯ circle) ─── */}
-          <Link to="/dashboard" className="flex items-center gap-1.5 flex-shrink-0">
-            <span className="font-display text-sm font-bold text-sand">bizim</span>
+          {/* ─── Logo (◯ bizim circle) ─── */}
+          <Link to="/dashboard" className="flex items-center gap-2 flex-shrink-0">
             <div className="w-8 h-8 rounded-full border-2 border-sand flex items-center justify-center">
               <span className="text-sand text-[10px] font-bold tracking-tight">iii</span>
             </div>
-            <span className="font-display text-sm font-bold text-sand">circle</span>
+            <div className="flex items-baseline gap-1">
+              <span className="font-display text-sm font-bold text-sand">bizim</span>
+              <span className="font-display text-sm font-bold text-sand">circle</span>
+            </div>
           </Link>
 
           {/* ─── Search bar (click-to-open) ─── */}
