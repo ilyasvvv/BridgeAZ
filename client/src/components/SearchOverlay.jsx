@@ -1,9 +1,11 @@
 import { createPortal } from "react-dom";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useSearch } from "../utils/SearchContext";
+import { useAuth } from "../utils/auth";
 import useSmartSearch from "../utils/useSmartSearch";
 import { API_ORIGIN } from "../api/client";
+import { pickPersonalizedTopics } from "../utils/personalizedTopics";
 
 /* ───────── Filter definitions ───────── */
 const TYPE_FILTERS = [
@@ -11,17 +13,6 @@ const TYPE_FILTERS = [
   { id: "users", label: "People" },
   { id: "opportunities", label: "Opportunities" },
   { id: "posts", label: "Posts" }
-];
-
-const TOPIC_FILTERS = [
-  { id: "mentor", label: "Mentors" },
-  { id: "student", label: "Students" },
-  { id: "london", label: "London" },
-  { id: "remote", label: "Remote" },
-  { id: "ai", label: "AI" },
-  { id: "product", label: "Product" },
-  { id: "engineering", label: "Engineering" },
-  { id: "design", label: "Design" }
 ];
 
 /* ═══════════════════════════════════════════════════
