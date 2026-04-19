@@ -1,5 +1,5 @@
 import { createPortal } from "react-dom";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useSearch } from "../utils/SearchContext";
 import useSmartSearch from "../utils/useSmartSearch";
