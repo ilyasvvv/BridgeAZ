@@ -83,7 +83,7 @@ export default function BizimHeader() {
           {/* ─── Search bar (click-to-open) ─── */}
           <button
             type="button"
-            onClick={() => navigate("/search")}
+            onClick={openSearch}
             className="flex-1 max-w-lg mx-auto group"
           >
             <div className="flex items-center gap-2.5 px-4 py-2 rounded-full border border-grey-300 bg-grey-100 group-hover:border-grey-500 group-hover:bg-white transition-colors">
