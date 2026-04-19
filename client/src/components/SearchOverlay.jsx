@@ -45,6 +45,8 @@ export default function SearchOverlay() {
   } = useSmartSearch();
 
   const hasQuery = query.trim().length >= 2;
+  const hasFilters = typeFilter !== "all" || topicFilters.size > 0;
+  const hasInput = hasQuery || hasFilters;
   const totalResults = counts.users + counts.opportunities + counts.posts;
 
   /* Animated unmount: keep DOM around for 250ms while exit anim plays */
