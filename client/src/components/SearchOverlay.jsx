@@ -112,9 +112,9 @@ export default function SearchOverlay() {
       className="fixed inset-0 z-[9999] overflow-y-auto"
       style={{ animation: `${closing ? "searchFadeOut" : "searchFadeIn"} 0.24s ease forwards` }}
     >
-      {/* Backdrop — visible blur, lower opacity so page shows through */}
+      {/* Backdrop — stronger blur, lower opacity so page still shows through */}
       <div
-        className="fixed inset-0 bg-white/55 backdrop-blur-[2px]"
+        className="fixed inset-0 bg-white/50 backdrop-blur-xl"
         onClick={requestClose}
         aria-hidden
       />
