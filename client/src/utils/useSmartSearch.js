@@ -86,13 +86,48 @@ const maxD = t => t.length<=3 ? 1 : t.length<=6 ? 2 : 3;
 
 /* ── Memory ── */
 function loadMem() {
+  const base = { corrections:{}, docClicks:{}, tagCounts:{} };
   try {
     const r = localStorage.getItem(STORE_KEY);
-    return r ? { corrections:{}, docClicks:{}, ...JSON.parse(r) } : { corrections:{}, docClicks:{} };
-  } catch { return { corrections:{}, docClicks:{} }; }
+    return r ? { ...base, ...JSON.parse(r) } : base;
+  } catch { return base; }
 }
 function saveMem(mem) {
   try { localStorage.setItem(STORE_KEY, JSON.stringify(mem)); } catch {}
+}
+
+/* ── Harvest tags from any search-result item (for activity tracking) ── */
+const STOP = new Set([
+  "the","a","an","and","or","of","to","in","on","at","for","with","by","is","are",
+  "was","were","be","been","being","this","that","it","as","from","community","post","member"
+]);
+function harvestTags(item) {
+  const out = new Set();
+  (item.tags || []).forEach(t => out.add(norm(t)));
+  [
+    item.userType, item.type,
+    item.locationNow?.country, item.currentRegion, item.country, item.city,
+    item.company, item.orgName, item.locationMode
+  ].forEach(v => { const n = norm(v); if (n) n.split(" ").forEach(w => out.add(w)); });
+  tok(item.headline).forEach(w => out.add(w));
+  tok(item.title).forEach(w => out.add(w));
+  return [...out].filter(t => t && t.length >= 3 && !STOP.has(t));
+}
+
+/* ── Default tags for brand-new users (no history yet) ── */
+const DEFAULT_TAGS = [
+  { id: "mentor", label: "Mentors" },
+  { id: "student", label: "Students" },
+  { id: "london", label: "London" },
+  { id: "remote", label: "Remote" },
+  { id: "ai", label: "AI" },
+  { id: "product", label: "Product" },
+  { id: "engineering", label: "Engineering" },
+  { id: "design", label: "Design" }
+];
+
+function capitalize(s) {
+  return s.length ? s.charAt(0).toUpperCase() + s.slice(1) : s;
 }
 
 /* ── Spell correction for one token ── */
