@@ -31,6 +31,8 @@ export default function SearchOverlay() {
   const { isOpen, close } = useSearch();
   const navigate = useNavigate();
   const inputRef = useRef(null);
+  const [mounted, setMounted] = useState(false);
+  const [closing, setClosing] = useState(false);
 
   const {
     query, setQuery,
@@ -45,47 +47,73 @@ export default function SearchOverlay() {
   const hasQuery = query.trim().length >= 2;
   const totalResults = counts.users + counts.opportunities + counts.posts;
 
+  /* Animated unmount: keep DOM around for 250ms while exit anim plays */
+  const requestClose = () => {
+    if (closing) return;
+    setClosing(true);
+    setTimeout(() => {
+      close();
+      setClosing(false);
+    }, 240);
+  };
+
+  /* Mount/unmount sync with isOpen */
+  useEffect(() => {
+    if (isOpen) {
+      setMounted(true);
+      setClosing(false);
+    } else {
+      setMounted(false);
+    }
+  }, [isOpen]);
+
   /* Focus input + lock scroll on open */
   useEffect(() => {
-    if (!isOpen) return;
+    if (!mounted) return;
     document.body.style.overflow = "hidden";
     const t = setTimeout(() => inputRef.current?.focus(), 80);
     return () => {
       document.body.style.overflow = "";
       clearTimeout(t);
     };
-  }, [isOpen]);
+  }, [mounted]);
 
   /* ESC to close */
   useEffect(() => {
-    if (!isOpen) return;
-    const onKey = (e) => { if (e.key === "Escape") close(); };
+    if (!mounted) return;
+    const onKey = (e) => { if (e.key === "Escape") requestClose(); };
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
-  }, [isOpen, close]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mounted]);
 
-  /* Reset local state when closed */
+  /* Reset local state when fully closed */
   useEffect(() => {
     if (!isOpen) clear();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen]);
 
-  if (!isOpen) return null;
+  if (!mounted) return null;
 
   const handleOpenResult = (item) => {
     recordClick(item._id);
     if (item._type === "user") navigate(`/profile/${item._id}`);
     else if (item._type === "opportunity") navigate(`/opportunities/${item._id}`);
     else if (item._type === "post") navigate(`/post/${item._id}`);
-    close();
+    requestClose();
   };
 
+  const animState = closing ? "closing" : "opening";
+
   return createPortal(
-    <div className="fixed inset-0 z-[9999] overflow-y-auto" style={{ animation: "searchFadeIn 0.2s ease" }}>
-      {/* Blurred backdrop */}
+    <div
+      className="fixed inset-0 z-[9999] overflow-y-auto"
+      style={{ animation: `${closing ? "searchFadeOut" : "searchFadeIn"} 0.24s ease forwards` }}
+    >
+      {/* Backdrop — light blur, mostly opacity */}
       <div
-        className="fixed inset-0 bg-white/70 backdrop-blur-xl"
-        onClick={close}
+        className="fixed inset-0 bg-white/85 backdrop-blur-[3px]"
+        onClick={requestClose}
         aria-hidden
       />
 
@@ -102,7 +130,7 @@ export default function SearchOverlay() {
       {/* Close button */}
       <button
         type="button"
-        onClick={close}
+        onClick={requestClose}
         aria-label="Close search"
         className="fixed top-4 right-4 md:top-6 md:right-6 z-20 w-10 h-10 rounded-full bg-white border border-grey-300 shadow-card flex items-center justify-center hover:bg-grey-100 transition-colors"
       >
@@ -111,24 +139,53 @@ export default function SearchOverlay() {
         </svg>
       </button>
 
-      {/* ═══ Centered panel that "drops down" ═══ */}
+      {/* ═══ Centered panel that drops in / lifts out ═══ */}
       <div
         className="relative z-10 mx-auto max-w-4xl px-6 pb-32"
-        style={{ animation: "searchDropDown 0.35s cubic-bezier(0.34, 1.56, 0.64, 1)" }}
+        data-anim={animState}
+        style={{
+          animation: `${closing ? "searchLiftOut" : "searchDropDown"} 0.32s cubic-bezier(0.34, 1.56, 0.64, 1) forwards`
+        }}
       >
-        {/* Title */}
+        {/* Title — same format as header logo (bizim ◯ circle), scaled up */}
         <div className={`text-center transition-all duration-500 ease-out ${hasQuery ? "pt-10 md:pt-14" : "pt-20 md:pt-32"}`}>
-          <h1
-            className={`font-serif italic text-sand leading-[0.9] tracking-[-0.04em] transition-all duration-500 ${
-              hasQuery
-                ? "text-[56px] md:text-[72px]"
-                : "text-[96px] md:text-[140px]"
+          <div
+            className={`flex items-center justify-center transition-all duration-500 ${
+              hasQuery ? "gap-3 md:gap-4" : "gap-4 md:gap-6"
             }`}
           >
-            Bizim<span>Circle</span>
-          </h1>
+            <span
+              className={`font-display font-bold text-sand transition-all duration-500 ${
+                hasQuery ? "text-3xl md:text-5xl" : "text-5xl md:text-7xl"
+              }`}
+            >
+              bizim
+            </span>
+            <div
+              className={`rounded-full border-sand flex items-center justify-center transition-all duration-500 ${
+                hasQuery
+                  ? "w-12 h-12 md:w-16 md:h-16 border-[3px]"
+                  : "w-20 h-20 md:w-28 md:h-28 border-[4px]"
+              }`}
+            >
+              <span
+                className={`text-sand font-bold tracking-tight transition-all duration-500 ${
+                  hasQuery ? "text-base md:text-xl" : "text-2xl md:text-4xl"
+                }`}
+              >
+                iii
+              </span>
+            </div>
+            <span
+              className={`font-display font-bold text-sand transition-all duration-500 ${
+                hasQuery ? "text-3xl md:text-5xl" : "text-5xl md:text-7xl"
+              }`}
+            >
+              circle
+            </span>
+          </div>
           {!hasQuery && (
-            <p className="mt-4 text-mist text-sm font-medium tracking-wide">
+            <p className="mt-6 text-mist text-sm font-medium tracking-wide">
               Search people, circles, posts — one field, messy typos welcome.
             </p>
           )}
