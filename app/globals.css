@@ -1,0 +1,251 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --ink: #0A0A0A;
+  --paper: #FFFFFF;
+  --warm: #FAFAF8;
+  --line: #E8E8E6;
+}
+
+html,
+body {
+  padding: 0;
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-spartan), system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+::selection {
+  background: #0A0A0A;
+  color: #FFFFFF;
+}
+
+/* Scroll-linked smoothness */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Utility: noise texture overlay used for soft paper feel */
+.bg-paper-noise {
+  background-color: var(--warm);
+  background-image:
+    radial-gradient(at 20% 10%, rgba(0,0,0,0.03) 0px, transparent 50%),
+    radial-gradient(at 80% 90%, rgba(0,0,0,0.025) 0px, transparent 50%);
+}
+
+/* Circle stamp — used across brand marks */
+.circle-stamp {
+  border-radius: 9999px;
+  background: #0A0A0A;
+  color: #FFFFFF;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Button press effect */
+.btn-press {
+  transition: transform 180ms cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 180ms ease, background 180ms ease;
+}
+.btn-press:active {
+  transform: scale(0.97);
+}
+
+/* Hover ring animation helper */
+.ring-hover::before {
+  content: "";
+  position: absolute;
+  inset: -6px;
+  border-radius: inherit;
+  border: 1px solid rgba(0,0,0,0.12);
+  opacity: 0;
+  transition: opacity 240ms ease, transform 240ms ease;
+  transform: scale(0.98);
+}
+.ring-hover:hover::before {
+  opacity: 1;
+  transform: scale(1);
+}
+
+/* Signature button — magnet translate + concentric focus ring + ripple */
+.signature-btn {
+  --mx: 0px;
+  --my: 0px;
+  transform: translate3d(var(--mx), var(--my), 0);
+  transition: transform 220ms cubic-bezier(0.2, 0.8, 0.2, 1),
+    box-shadow 220ms ease, background-color 220ms ease, color 220ms ease,
+    border-color 220ms ease;
+  isolation: isolate;
+  outline: none;
+}
+.signature-btn:active {
+  transform: translate3d(var(--mx), var(--my), 0) scale(0.97);
+}
+.signature-btn:focus-visible {
+  box-shadow:
+    0 0 0 2px var(--paper, #fff),
+    0 0 0 4px rgba(10, 10, 10, 0.85);
+}
+.signature-btn[data-state="success"] {
+  background: #0a0a0a !important;
+  color: #fff !important;
+  border-color: #0a0a0a !important;
+}
+
+@keyframes ripple {
+  from { transform: scale(0); opacity: 0.55; }
+  to { transform: scale(1); opacity: 0; }
+}
+.animate-ripple {
+  animation: ripple 600ms cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+  transform-origin: center;
+}
+
+@keyframes check-draw {
+  from { stroke-dasharray: 16; stroke-dashoffset: 16; }
+  to { stroke-dasharray: 16; stroke-dashoffset: 0; }
+}
+.animate-check-draw {
+  animation: check-draw 320ms cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+}
+
+@keyframes orbit-sweep {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes orbit-counter {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(-360deg); }
+}
+
+@keyframes orbit-drift {
+  0%, 100% {
+    transform: translate(-50%, -50%) translate3d(0, 0, 0) rotate(0deg);
+  }
+  25% {
+    transform: translate(-50%, -50%)
+      translate3d(var(--orbit-drift-x, 10px), calc(var(--orbit-drift-y, 8px) * -0.4), 0)
+      rotate(calc(var(--orbit-tilt, 1deg) * -1));
+  }
+  50% {
+    transform: translate(-50%, -50%)
+      translate3d(calc(var(--orbit-drift-x, 10px) * -0.65), var(--orbit-drift-y, 8px), 0)
+      rotate(var(--orbit-tilt, 1deg));
+  }
+  75% {
+    transform: translate(-50%, -50%)
+      translate3d(calc(var(--orbit-drift-x, 10px) * 0.35), calc(var(--orbit-drift-y, 8px) * 0.4), 0)
+      rotate(calc(var(--orbit-tilt, 1deg) * -0.35));
+  }
+}
+
+.orbit-field {
+  animation: orbit-sweep 84s linear infinite;
+}
+
+.orbit-keyword-anchor {
+  transform: translate(-50%, -50%);
+  animation: orbit-drift var(--orbit-duration, 16s) ease-in-out infinite;
+  animation-delay: var(--orbit-delay, 0s);
+}
+
+.orbit-keyword-counter-shell {
+  animation: orbit-counter 84s linear infinite;
+}
+
+.orbit-keyword-button {
+  cursor: pointer;
+  border: 1px solid rgba(10, 10, 10, 0.04);
+  background: rgba(255, 255, 255, 0.92);
+  color: #0a0a0a;
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.03),
+    0 10px 32px -14px rgba(0, 0, 0, 0.18);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 46px;
+  padding: 0 1.2rem;
+  border-radius: 9999px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.22em;
+  transition:
+    transform 180ms cubic-bezier(0.2, 0.8, 0.2, 1),
+    box-shadow 220ms ease,
+    background-color 220ms ease,
+    color 220ms ease,
+    border-color 220ms ease;
+}
+
+.orbit-keyword-button:hover,
+.orbit-keyword-button:focus-visible,
+.orbit-keyword-button-active {
+  background: #0a0a0a;
+  color: #ffffff;
+  border-color: rgba(10, 10, 10, 0.88);
+  box-shadow:
+    0 4px 12px rgba(0, 0, 0, 0.08),
+    0 18px 44px -20px rgba(0, 0, 0, 0.32);
+}
+
+.orbit-keyword-button:hover,
+.orbit-keyword-button:focus-visible {
+  transform: translateY(-2px) scale(1.02);
+}
+
+.orbit-keyword-button:active {
+  transform: translateY(0) scale(0.98);
+}
+
+.orbit-keyword-button:focus-visible {
+  outline: none;
+}
+
+/* Disappearing scrollbar for inner panes */
+.scroll-clean::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+.scroll-clean::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.15);
+  border-radius: 3px;
+}
+.scroll-clean::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* Respect reduced-motion: neutralize everything showy, keep layout intact */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+  .signature-btn {
+    transform: none !important;
+  }
+  .orbit-field,
+  .orbit-keyword-anchor,
+  .orbit-keyword-counter-shell {
+    animation: none !important;
+  }
+  .animate-ripple,
+  .animate-check-draw {
+    animation: none !important;
+    opacity: 0 !important;
+  }
+}

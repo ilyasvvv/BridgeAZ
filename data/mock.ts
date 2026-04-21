@@ -1,0 +1,145 @@
+import type { MiniProfile } from "@/components/MiniProfileCard";
+import type { Post } from "@/components/PostCard";
+
+export const CIRCLES: MiniProfile[] = [
+  {
+    name: "Azerbaijanis in Berlin",
+    handle: "azeberlin",
+    kind: "circle",
+    location: "Berlin, Germany",
+    bio: "For everyone from back home now calling Berlin home. Meetups, jobs, nights out, homesickness remedies.",
+    hue: 210,
+    stats: [
+      { label: "MEMBERS", value: "1.2K" },
+      { label: "POSTS", value: "340" },
+      { label: "EVENTS", value: "14" },
+    ],
+  },
+  {
+    name: "London Diaspora",
+    handle: "azelondon",
+    kind: "circle",
+    location: "London, UK",
+    bio: "The oldest Azerbaijani circle in the UK. Culture nights, career help, student welcomes.",
+    hue: 120,
+    stats: [
+      { label: "MEMBERS", value: "980" },
+      { label: "POSTS", value: "612" },
+      { label: "EVENTS", value: "22" },
+    ],
+  },
+  {
+    name: "Tea and Domino Lovers of Fairfax",
+    handle: "teadominofx",
+    kind: "circle",
+    location: "Fairfax, VA, USA",
+    bio: "We drink çay. We play domino. Saturdays at Tural's. All welcome.",
+    hue: 40,
+    stats: [
+      { label: "MEMBERS", value: "64" },
+      { label: "POSTS", value: "88" },
+      { label: "EVENTS", value: "31" },
+    ],
+  },
+];
+
+export const PEOPLE: MiniProfile[] = [
+  {
+    name: "Leyla Mammadova",
+    handle: "leyla",
+    kind: "personal",
+    location: "Berlin, Germany",
+    bio: "Product designer. Azerbaijani in Berlin. Football on weekends, coffee every day.",
+    hue: 200,
+    stats: [
+      { label: "POSTS", value: "247" },
+      { label: "FOLLOWERS", value: "1.2K" },
+      { label: "CIRCLES", value: "12" },
+    ],
+  },
+  {
+    name: "Rashad Aliyev",
+    handle: "rashad",
+    kind: "personal",
+    location: "London, UK",
+    bio: "Computer Science @ UCL. Student. Volunteering with London Diaspora.",
+    hue: 60,
+    stats: [
+      { label: "POSTS", value: "84" },
+      { label: "FOLLOWERS", value: "420" },
+      { label: "CIRCLES", value: "6" },
+    ],
+  },
+  {
+    name: "Nigar Huseynova",
+    handle: "nigar",
+    kind: "personal",
+    location: "New York, USA",
+    bio: "Software engineer. Mentoring newcomers to tech in NYC.",
+    hue: 320,
+    stats: [
+      { label: "POSTS", value: "156" },
+      { label: "FOLLOWERS", value: "3.4K" },
+      { label: "CIRCLES", value: "9" },
+    ],
+  },
+];
+
+export const POSTS: Post[] = [
+  {
+    id: "1",
+    author: CIRCLES[0],
+    category: "Announcement",
+    time: "2h",
+    location: "Berlin, Germany",
+    body: "We're hosting a Novruz night at Hansaplatz on March 21. Live music, tea, sweets, and a bonfire. Doors open 19:00. Bring a friend who's new to the city.",
+    tags: ["Novruz2026", "Berlin", "BizimCircle"],
+    hasMedia: true,
+    mediaHue: 40,
+    stats: { likes: 428, comments: 52, shares: 34 },
+  },
+  {
+    id: "2",
+    author: PEOPLE[0],
+    category: "Event",
+    time: "4h",
+    location: "Berlin, Germany",
+    body: "Running a weekend football pickup at Tempelhofer Feld. 4v4 on two pitches, rotating teams. Message me if you want a spot — first 16 get in.",
+    tags: ["WeekendFootball", "Tempelhof"],
+    stats: { likes: 126, comments: 34, shares: 12 },
+    eventMeta: { date: "Sat Apr 25 · 14:00", venue: "Tempelhofer Feld, Berlin" },
+  },
+  {
+    id: "3",
+    author: PEOPLE[2],
+    category: "Opportunity",
+    time: "6h",
+    location: "New York, USA",
+    body: "My team at a NYC fintech is hiring a junior product designer. Remote-friendly for anyone in the US. Happy to refer — drop me a line.",
+    tags: ["Jobs", "Design", "NYC"],
+    stats: { likes: 212, comments: 18, shares: 58 },
+    opportunityMeta: { role: "Junior Product Designer", type: "Full-time · Remote (US)" },
+  },
+  {
+    id: "4",
+    author: PEOPLE[1],
+    category: "Searching for",
+    time: "1d",
+    location: "London, UK",
+    body: "Looking for a roommate to split a flat in Camden starting June. Quiet, non-smoker, £900/mo budget. Students or early-career welcome.",
+    tags: ["Roommate", "London", "Camden"],
+    stats: { likes: 48, comments: 22, shares: 4 },
+  },
+  {
+    id: "5",
+    author: CIRCLES[2],
+    category: "Note",
+    time: "2d",
+    location: "Fairfax, VA",
+    body: "Saturday's çay gathering turned into a 6-hour domino tournament. Tural won — again. Same time next week.",
+    tags: ["Çay", "Domino", "Fairfax"],
+    hasMedia: true,
+    mediaHue: 140,
+    stats: { likes: 88, comments: 14, shares: 3 },
+  },
+];
