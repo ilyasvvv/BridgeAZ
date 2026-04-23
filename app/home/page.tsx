@@ -1,25 +1,70 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import clsx from "clsx";
 import { TopBar } from "@/components/TopBar";
 import { Composer } from "@/components/Composer";
-import { PostCard } from "@/components/PostCard";
+import { PostCard, type Post } from "@/components/PostCard";
 import { CirclesForYou, PeopleForYou, Filters } from "@/components/SideRail";
 import { TrendingCard } from "@/components/TrendingCard";
 import { MessagesDock } from "@/components/MessagesDock";
-import { CIRCLES, PEOPLE, POSTS } from "@/data/mock";
+import { CIRCLES, PEOPLE } from "@/data/mock";
+import { useAuth } from "@/lib/auth";
+import { api } from "@/lib/api";
+import { apiPostToUiPost } from "@/lib/mappers";
+import type { ApiPost } from "@/lib/types";
 
 export default function HomePage() {
+  const router = useRouter();
+  const { user, status } = useAuth();
+
   const [filter, setFilter] = useState("All");
   const [messagesOpen, setMessagesOpen] = useState(false);
 
-  const filtered =
-    filter === "All"
-      ? POSTS
-      : POSTS.filter((p) =>
-          (filter === "Searching" ? "Searching for" : filter) === p.category
-        );
+  const [posts, setPosts] = useState<Post[] | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (status === "unauthenticated") {
+      router.replace("/signin");
+    }
+  }, [status, router]);
+
+  useEffect(() => {
+    if (status !== "authenticated") return;
+    let cancelled = false;
+    const load = async () => {
+      try {
+        const raw = await api.get<ApiPost[]>("/posts");
+        if (cancelled) return;
+        setPosts(raw.map(apiPostToUiPost));
+      } catch (err: any) {
+        if (cancelled) return;
+        setLoadError(err?.message || "Failed to load feed");
+      }
+    };
+    load();
+    return () => { cancelled = true; };
+  }, [status]);
+
+  if (status === "loading" || status === "unauthenticated") {
+    return (
+      <div className="min-h-screen bg-paper-warm flex items-center justify-center text-ink/50 text-sm">
+        Loading…
+      </div>
+    );
+  }
+
+  const filtered = posts
+    ? (filter === "All"
+        ? posts
+        : posts.filter((p) =>
+            (filter === "Searching" ? "Searching for" : filter) === p.category
+          ))
+    : [];
+
+  const regionLabel = user?.currentRegion || "your region";
 
   return (
     <div className="min-h-screen bg-paper-warm">
@@ -27,7 +72,6 @@ export default function HomePage() {
 
       <main className="max-w-[1400px] mx-auto px-6 pt-6 pb-20">
         <div className="grid grid-cols-12 gap-6 items-start">
-          {/* Left rail */}
           <aside className="col-span-12 lg:col-span-3 space-y-4 lg:sticky lg:top-[88px]">
             <CirclesForYou items={CIRCLES} />
             <PeopleForYou items={PEOPLE} />
@@ -42,23 +86,37 @@ export default function HomePage() {
             </div>
           </aside>
 
-          {/* Center */}
           <div className="col-span-12 lg:col-span-6 space-y-4">
             <Composer />
             <div className="flex items-center justify-between">
               <Filters active={filter} onChange={setFilter} />
-              <span className="text-[11px] text-ink/50">Showing posts from <b className="text-ink/70">Berlin</b></span>
+              <span className="text-[11px] text-ink/50">
+                Showing posts from <b className="text-ink/70">{regionLabel}</b>
+              </span>
             </div>
             <div className="space-y-4">
+              {loadError && (
+                <div className="rounded-[18px] border border-paper-line bg-paper p-5 text-[13px] text-ink/70">
+                  Couldn't load the feed: {loadError}
+                </div>
+              )}
+              {!posts && !loadError && (
+                <div className="rounded-[22px] border border-paper-line bg-paper p-5 text-[13px] text-ink/55">
+                  Loading posts…
+                </div>
+              )}
+              {posts && filtered.length === 0 && (
+                <div className="rounded-[22px] border border-paper-line bg-paper p-8 text-center text-[13px] text-ink/60">
+                  No posts yet for this filter. Be the first.
+                </div>
+              )}
               {filtered.map((p) => (
                 <PostCard key={p.id} post={p} />
               ))}
             </div>
           </div>
 
-          {/* Right rail — Trending on top, Messages dock at bottom. */}
           <aside className="col-span-12 lg:col-span-3 lg:sticky lg:top-[88px] space-y-4 relative">
-            {/* When messages open, trending slides up out of view */}
             <div
               className={clsx(
                 "transition-all duration-500 ease-[cubic-bezier(0.6,0.05,0.3,1)]",

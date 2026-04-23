@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { League_Spartan } from "next/font/google";
 import "./globals.css";
+import { AuthProvider } from "@/lib/auth";
 
 const spartan = League_Spartan({
   subsets: ["latin"],
@@ -22,7 +23,9 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className={spartan.variable}>
-      <body className="font-sans bg-paper text-ink antialiased">{children}</body>
+      <body className="font-sans bg-paper text-ink antialiased">
+        <AuthProvider>{children}</AuthProvider>
+      </body>
     </html>
   );
 }
