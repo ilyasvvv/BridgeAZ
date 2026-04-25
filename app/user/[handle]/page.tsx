@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { use, useEffect, useMemo, useState } from "react";
 import clsx from "clsx";
 import { useRouter } from "next/navigation";
 import { TopBar } from "@/components/TopBar";
@@ -17,8 +17,9 @@ import type { ApiUser } from "@/lib/types";
 export default function UserProfilePage({
   params,
 }: {
-  params: { handle: string };
+  params: Promise<{ handle: string }>;
 }) {
+  const { handle } = use(params);
   const router = useRouter();
   const { user, status } = useAuth();
   const [profileUser, setProfileUser] = useState<ApiUser | null>(null);
@@ -40,7 +41,7 @@ export default function UserProfilePage({
       setLoading(true);
       setError(null);
       try {
-        const resolved = await resolveHandle(params.handle);
+        const resolved = await resolveHandle(handle);
         if (!resolved) {
           setError("Profile not found.");
           setProfileUser(null);
@@ -67,7 +68,7 @@ export default function UserProfilePage({
     return () => {
       cancelled = true;
     };
-  }, [params.handle, status]);
+  }, [handle, status]);
 
   const isOwner = !!user && !!profileUser && user._id === profileUser._id;
   const profile = useMemo(

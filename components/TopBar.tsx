@@ -2,31 +2,15 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import clsx from "clsx";
 import { usePathname, useRouter } from "next/navigation";
 import { Icon } from "./Icon";
 import { SearchOverlay } from "./SearchOverlay";
 import { useAuth } from "@/lib/auth";
 
-const COUNTRIES = [
-  "Global",
-  "Germany",
-  "United States",
-  "United Kingdom",
-  "UAE",
-  "Canada",
-  "France",
-  "Türkiye",
-  "Netherlands",
-  "Sweden",
-];
-
-export function TopBar({ country = "Germany" }: { country?: string }) {
+export function TopBar() {
   const pathname = usePathname();
   const router = useRouter();
   const { logout } = useAuth();
-  const [open, setOpen] = useState(false);
-  const [selected, setSelected] = useState(country);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchDraft, setSearchDraft] = useState("");
 
@@ -51,61 +35,14 @@ export function TopBar({ country = "Germany" }: { country?: string }) {
   return (
     <header className="sticky top-0 z-40 bg-paper/85 backdrop-blur-xl border-b border-paper-line">
       <div className="max-w-[1400px] mx-auto px-6 h-16 flex items-center gap-5">
-        {/* Logo lockup with country picker between 'bizim' and 'circle' */}
         <Link href="/home" className="flex items-center gap-2.5 shrink-0 group">
           <span className="relative inline-flex items-center justify-center rounded-full bg-ink text-paper w-7 h-7">
             <span className="absolute inset-[4px] rounded-full border border-paper/50" />
             <span className="relative text-[10px] font-black">b</span>
           </span>
-          <span className="font-display text-[16px] font-semibold tracking-[-0.02em]">bizim</span>
-        </Link>
-
-        <div className="relative">
-          <button
-            onClick={() => setOpen((v) => !v)}
-            className={clsx(
-              "group inline-flex items-center gap-1.5 h-9 pl-3 pr-2.5 rounded-pill border text-[12px] font-semibold tracking-tight",
-              "bg-paper hover:border-ink/40 transition-colors",
-              open ? "border-ink/40" : "border-paper-line"
-            )}
-          >
-            <Icon.Globe size={13} className="text-ink/60" />
-            {selected}
-            <svg width="10" height="10" viewBox="0 0 10 10" className={clsx("transition-transform", open && "rotate-180")}>
-              <path d="m2 3.5 3 3 3-3" stroke="currentColor" strokeWidth="1.6" fill="none" strokeLinecap="round" />
-            </svg>
-          </button>
-          {open && (
-            <>
-              <div
-                className="fixed inset-0 z-40"
-                onClick={() => setOpen(false)}
-                aria-hidden
-              />
-              <div className="absolute left-0 top-full mt-2 w-56 bg-paper rounded-[18px] border border-paper-line shadow-pop p-1.5 z-50 max-h-80 overflow-auto scroll-clean">
-                {COUNTRIES.map((c) => (
-                  <button
-                    key={c}
-                    onClick={() => {
-                      setSelected(c);
-                      setOpen(false);
-                    }}
-                    className={clsx(
-                      "w-full flex items-center justify-between px-3 h-9 rounded-pill text-[13px] text-left hover:bg-paper-cool",
-                      c === selected && "bg-paper-cool font-semibold"
-                    )}
-                  >
-                    {c}
-                    {c === selected && <Icon.Check size={14} className="text-ink" />}
-                  </button>
-                ))}
-              </div>
-            </>
-          )}
-        </div>
-
-        <Link href="/home" className="font-display text-[16px] font-light tracking-[-0.02em] text-ink/60 -ml-2">
-          circle
+          <span className="font-display text-[16px] font-semibold tracking-[-0.02em]">
+            bizim <span className="font-light text-ink/60">circle</span>
+          </span>
         </Link>
 
         {/* Search */}

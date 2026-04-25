@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { use, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { TopBar } from "@/components/TopBar";
 import { ProfileHeader, ProfileTabs } from "@/components/ProfileHeader";
@@ -14,8 +14,9 @@ import type { ApiCircle } from "@/lib/types";
 export default function CircleProfilePage({
   params,
 }: {
-  params: { handle: string };
+  params: Promise<{ handle: string }>;
 }) {
+  const { handle } = use(params);
   const router = useRouter();
   const { status } = useAuth();
   const [circle, setCircle] = useState<ApiCircle | null>(null);
@@ -38,8 +39,8 @@ export default function CircleProfilePage({
       setError(null);
       try {
         const [nextCircle, rawPosts] = await Promise.all([
-          circlesApi.get(params.handle),
-          circlesApi.posts(params.handle),
+          circlesApi.get(handle),
+          circlesApi.posts(handle),
         ]);
         if (cancelled) return;
         setCircle(nextCircle);
@@ -55,7 +56,7 @@ export default function CircleProfilePage({
     return () => {
       cancelled = true;
     };
-  }, [params.handle, status]);
+  }, [handle, status]);
 
   const profile = useMemo(() => (circle ? circleToProfileMeta(circle) : null), [circle]);
 

@@ -23,7 +23,6 @@ export default function NewCirclePage() {
   const [city, setCity] = useState("");
   const [country, setCountry] = useState("");
   const [visibility, setVisibility] = useState<Visibility>("public");
-  const [minAge, setMinAge] = useState(false);
   const [creating, setCreating] = useState(false);
   const [created, setCreated] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -56,7 +55,6 @@ export default function NewCirclePage() {
         currentRegion: country.trim(),
         location: { city: city.trim(), country: country.trim() },
         visibility,
-        minAge,
       });
       setCreated(true);
       router.push(`/circle/${circle.handle}`);
@@ -234,24 +232,6 @@ export default function NewCirclePage() {
                 ))}
               </div>
 
-              <label className="flex items-start gap-3 p-4 rounded-[18px] border border-paper-line bg-paper-warm">
-                <input
-                  type="checkbox"
-                  checked={minAge}
-                  onChange={() => setMinAge((v) => !v)}
-                  className="mt-1 accent-black"
-                />
-                <div>
-                  <div className="text-[13.5px] font-semibold">
-                    18+ circle
-                  </div>
-                  <div className="text-[12px] text-ink/55">
-                    Minors can't see or join. Recommended for
-                    nightlife, dating, certain housing.
-                  </div>
-                </div>
-              </label>
-
               <div className="p-4 rounded-[18px] bg-paper-cool text-[12px] text-ink/65 leading-relaxed">
                 <b className="text-ink">Community guidelines</b> apply
                 automatically. You'll be able to write a circle-specific
@@ -286,7 +266,6 @@ export default function NewCirclePage() {
                       ? "By request"
                       : "Private"}
                   </Chip>
-                  {minAge && <Chip icon="User">18+</Chip>}
                 </div>
               </div>
             </div>
