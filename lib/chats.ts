@@ -82,4 +82,16 @@ export const chatsApi = {
     api.post<ChatThread>(`/chats/threads/${threadId}/reject`, {}),
   react: (messageId: string, emoji: string) =>
     api.post<ChatMessage>(`/chats/messages/${messageId}/react`, { emoji }),
+  blockedUsers: () => api.get<string[]>("/q/blocks"),
+  blockUser: (userId: string) =>
+    api.post<{ message: string }>(`/q/block/${userId}`, {}),
+  unblockUser: (userId: string) =>
+    api.delete<{ message: string }>(`/q/block/${userId}`),
+  reportUser: (input: { userId: string; reason: string; details?: string }) =>
+    api.post<{ _id: string }>("/q/report", {
+      targetType: "user",
+      targetId: input.userId,
+      reason: input.reason,
+      details: input.details,
+    }),
 };
