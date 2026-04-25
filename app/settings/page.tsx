@@ -1,10 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import clsx from "clsx";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { TopBar } from "@/components/TopBar";
 import { Icon } from "@/components/Icon";
+import { useAuth } from "@/lib/auth";
 
 type Section =
   | "account"
@@ -24,8 +26,14 @@ const SECTIONS: { key: Section; label: string; icon: keyof typeof Icon }[] = [
 ];
 
 export default function SettingsPage() {
-  const [active, setActive] = useState<Section>("privacy");
+  const router = useRouter();
+  const { user, status, logout } = useAuth();
+  const [active, setActive] = useState<Section>("account");
   const [panic, setPanic] = useState(false);
+
+  useEffect(() => {
+    if (status === "unauthenticated") router.replace("/signin");
+  }, [status, router]);
 
   return (
     <div className="min-h-screen bg-paper-warm">
@@ -72,14 +80,32 @@ export default function SettingsPage() {
 
           <section className="col-span-12 md:col-span-8 lg:col-span-9 rounded-[22px] bg-paper border border-paper-line p-6 md:p-8">
             {active === "account" && (
-              <Panel title="Account" blurb="Basics about you.">
-                <Field label="Display name" value="Leyla Mammadova" />
-                <Field label="Handle" value="leyla" />
-                <Field label="Email" value="leyla@mail.com" />
-                <Field label="Phone" value="+49 151 000 0000" />
+              <Panel title="Account" blurb="Basics about you. Edit details on your profile.">
+                <Field label="Display name" value={user?.name || "—"} editHref="/profile?tab=edit" />
+                <Field label="Handle" value={user?.username ? `@${user.username}` : "—"} editHref="/profile?tab=edit" />
+                <Field label="Email" value={user?.email || "—"} />
+                <Field label="Region" value={user?.currentRegion || "—"} editHref="/profile?tab=edit" />
+                <div className="mt-4 rounded-[18px] border border-paper-line bg-paper-warm p-4 flex items-center gap-3">
+                  <span className="w-9 h-9 rounded-full bg-ink text-paper flex items-center justify-center">
+                    <Icon.SignOut size={14} />
+                  </span>
+                  <div className="flex-1">
+                    <div className="text-[13.5px] font-semibold">Sign out</div>
+                    <div className="text-[12px] text-ink/55">End this browser session.</div>
+                  </div>
+                  <button
+                    onClick={() => {
+                      logout();
+                      router.replace("/");
+                    }}
+                    className="btn-press h-9 px-4 rounded-pill border border-paper-line text-[12px] font-semibold hover:border-ink/40"
+                  >
+                    Sign out
+                  </button>
+                </div>
                 <Danger
                   title="Delete account"
-                  body="We'll keep your data for 30 days in case you change your mind, then it's gone forever."
+                  body="Account deletion isn't available yet. Email support if you need this."
                 />
               </Panel>
             )}
@@ -351,7 +377,7 @@ function Toggle({
   );
 }
 
-function Field({ label, value }: { label: string; value: string }) {
+function Field({ label, value, editHref }: { label: string; value: string; editHref?: string }) {
   return (
     <div className="flex items-center gap-4 p-3 rounded-[14px] hover:bg-paper-warm transition">
       <div className="flex-1 min-w-0">
@@ -362,9 +388,14 @@ function Field({ label, value }: { label: string; value: string }) {
           {value}
         </div>
       </div>
-      <button className="btn-press h-8 px-3 rounded-pill border border-paper-line text-[11.5px] font-semibold hover:border-ink/40">
-        Edit
-      </button>
+      {editHref && (
+        <Link
+          href={editHref}
+          className="btn-press h-8 px-3 rounded-pill border border-paper-line text-[11.5px] font-semibold hover:border-ink/40"
+        >
+          Edit
+        </Link>
+      )}
     </div>
   );
 }
