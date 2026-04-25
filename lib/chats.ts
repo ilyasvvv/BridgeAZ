@@ -8,6 +8,9 @@ export type ChatParticipant = ApiAuthor & {
 export type ChatThread = {
   _id: string;
   participants: ChatParticipant[];
+  name?: string;
+  title?: string;
+  isGroup?: boolean;
   status?: "pending" | "active" | "rejected";
   requestedBy?: string;
   acceptedAt?: string | null;
@@ -71,6 +74,8 @@ export const chatsApi = {
     api.post<ChatMessage>(`/chats/threads/${threadId}/messages`, input),
   startThread: (userId: string) =>
     api.post<ChatThread>("/chats/threads", { userId }),
+  startGroup: (input: { name?: string; participantIds: string[] }) =>
+    api.post<ChatThread>("/chats/threads", input),
   markRead: (threadId: string) =>
     api.post<{ ok: true; threadId: string; lastReadAt: string }>(
       `/chats/threads/${threadId}/read`,
