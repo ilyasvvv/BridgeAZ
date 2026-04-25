@@ -1,47 +1,37 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import clsx from "clsx";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Avatar } from "./Avatar";
 import { Icon } from "./Icon";
+import { useAuth } from "@/lib/auth";
+import { chatsApi, type ChatMessage, type ChatParticipant, type ChatThread } from "@/lib/chats";
+import { hueFromString, relativeTime } from "@/lib/format";
+import { usePolling } from "@/hooks/usePolling";
 
-type Contact = {
-  id: string;
-  name: string;
-  last: string;
-  at: string;
-  unread?: number;
-  hue: number;
-  online?: boolean;
-};
+function otherFor(thread: ChatThread, userId?: string): ChatParticipant | undefined {
+  return thread.otherParticipant || thread.participants?.find((p) => p._id !== userId);
+}
 
-const CONTACTS: Contact[] = [
-  { id: "1", name: "Leyla Mammadova", last: "Berlin pickup game Saturday? ⚽", at: "2m", unread: 2, hue: 210, online: true },
-  { id: "2", name: "Rashad Aliyev", last: "thanks for the intro 🙏", at: "14m", hue: 60 },
-  { id: "3", name: "Nigar Huseynova", last: "sharing the deck now", at: "1h", hue: 320, online: true },
-  { id: "4", name: "Elvin Kazimov", last: "Novruz planning thread on the circle", at: "3h", hue: 150, unread: 1 },
-  { id: "5", name: "Aysel Jabbarova", last: "hafta sonu çay içirik?", at: "1d", hue: 20 },
-  { id: "6", name: "Farid Mustafayev", last: "kept notes from the meetup", at: "2d", hue: 280 },
-];
+function participantId(value?: string | ChatParticipant | null): string | undefined {
+  if (!value) return undefined;
+  return typeof value === "string" ? value : value._id;
+}
 
-const MESSAGES = [
-  { from: "them", text: "Heyy — are you around this weekend?" },
-  { from: "me", text: "Yep! What's the plan?" },
-  { from: "them", text: "Berlin circle is organizing a pickup football game at Tempelhof Saturday 2pm. Rashad and Elvin are in too." },
-  { from: "me", text: "Count me in. Should I bring anything?" },
-  { from: "them", text: "Just cleats. Water + snacks covered." },
-];
+function unreadCount(thread: ChatThread, userId?: string): number {
+  if (!thread.lastMessageAt || !userId) return 0;
+  const lastReadAt = thread.myLastReadAt;
+  const lastMessageAt = thread.lastMessageAt;
+  if (!lastReadAt) return thread.lastMessageSenderId && participantId(thread.lastMessageSenderId) !== userId ? 1 : 0;
+  if (new Date(lastMessageAt).getTime() > new Date(lastReadAt).getTime()
+    && thread.lastMessageSenderId && participantId(thread.lastMessageSenderId) !== userId) {
+    return 1;
+  }
+  return 0;
+}
 
-/**
- * Controlled messages dock. Two states:
- *  - collapsed: compact pill at bottom-right of the right rail
- *  - expanded: occupies the whole right rail, while the TrendingCard slides
- *    up and out of view
- *
- * The expansion is driven from the Home page via the `open` prop so the
- * Trending card can react to it with a transform.
- */
 export function MessagesDock({
   open,
   onToggle,
@@ -49,8 +39,68 @@ export function MessagesDock({
   open: boolean;
   onToggle: () => void;
 }) {
-  const [selected, setSelected] = useState<Contact | null>(CONTACTS[0]);
+  const router = useRouter();
+  const { user, status } = useAuth();
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   const [query, setQuery] = useState("");
+  const [draft, setDraft] = useState("");
+  const [sending, setSending] = useState(false);
+
+  const enabled = status === "authenticated";
+
+  const threadsPoll = usePolling<ChatThread[]>(
+    async () => (enabled ? chatsApi.threads() : []),
+    open ? 6000 : 30000,
+    [enabled, open]
+  );
+  const threads = threadsPoll.data || [];
+
+  useEffect(() => {
+    if (!selectedId && threads[0]?._id) {
+      setSelectedId(threads[0]._id);
+    }
+  }, [threads, selectedId]);
+
+  const messagesPoll = usePolling<ChatMessage[]>(
+    async () => (selectedId && open ? chatsApi.messages(selectedId) : []),
+    4000,
+    [selectedId, open]
+  );
+  const messages = messagesPoll.data || [];
+
+  useEffect(() => {
+    if (selectedId && open) {
+      chatsApi.markRead(selectedId).catch(() => undefined);
+    }
+  }, [selectedId, open, messages.length]);
+
+  const selected = useMemo(
+    () => threads.find((t) => t._id === selectedId) || null,
+    [threads, selectedId]
+  );
+  const other = selected ? otherFor(selected, user?._id) : null;
+  const totalUnread = threads.reduce((sum, t) => sum + unreadCount(t, user?._id), 0);
+  const filtered = threads.filter((t) => {
+    const person = otherFor(t, user?._id);
+    return (person?.name || "").toLowerCase().includes(query.toLowerCase());
+  });
+
+  async function send() {
+    const body = draft.trim();
+    if (!selectedId || !body || sending) return;
+    setSending(true);
+    setDraft("");
+    try {
+      const msg = await chatsApi.send(selectedId, { body });
+      messagesPoll.setData((cur) => [...(cur || []), msg]);
+      messagesPoll.refetch();
+      threadsPoll.refetch();
+    } catch {
+      setDraft(body);
+    } finally {
+      setSending(false);
+    }
+  }
 
   if (!open) {
     return (
@@ -61,13 +111,17 @@ export function MessagesDock({
         <div className="flex items-center gap-3">
           <span className="w-10 h-10 rounded-full bg-ink text-paper inline-flex items-center justify-center relative">
             <Icon.Chat size={16} />
-            <span className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-paper text-ink text-[10px] font-bold flex items-center justify-center border-2 border-paper">
-              3
-            </span>
+            {totalUnread > 0 && (
+              <span className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-paper text-ink text-[10px] font-bold flex items-center justify-center border-2 border-paper">
+                {totalUnread}
+              </span>
+            )}
           </span>
           <div className="text-left">
             <div className="text-[13px] font-bold tracking-tight">Messages</div>
-            <div className="text-[11px] text-ink/50">3 unread · click to open</div>
+            <div className="text-[11px] text-ink/50">
+              {totalUnread > 0 ? `${totalUnread} unread · click to open` : "click to open"}
+            </div>
           </div>
         </div>
         <Icon.Plus size={16} className="text-ink/50 rotate-45 group-hover:text-ink transition" />
@@ -102,7 +156,6 @@ export function MessagesDock({
       </div>
 
       <div className="flex flex-1 min-h-0">
-        {/* Contacts list */}
         <div className="w-[42%] border-r border-paper-line flex flex-col min-h-0">
           <div className="p-2.5 border-b border-paper-line">
             <div className="flex items-center gap-2 h-9 px-3 rounded-pill bg-paper-cool">
@@ -116,33 +169,38 @@ export function MessagesDock({
             </div>
           </div>
           <ul className="flex-1 overflow-auto scroll-clean">
-            {CONTACTS.filter((c) => c.name.toLowerCase().includes(query.toLowerCase())).map((c) => {
-              const active = selected?.id === c.id;
+            {threadsPoll.loading && threads.length === 0 && (
+              <li className="p-3 text-[12px] text-ink/50">Loading chats…</li>
+            )}
+            {!threadsPoll.loading && threads.length === 0 && (
+              <li className="p-3 text-[12px] text-ink/50">No chats yet.</li>
+            )}
+            {filtered.map((t) => {
+              const person = otherFor(t, user?._id);
+              const active = selectedId === t._id;
+              const unread = unreadCount(t, user?._id);
               return (
-                <li key={c.id}>
+                <li key={t._id}>
                   <button
-                    onClick={() => setSelected(c)}
+                    onClick={() => setSelectedId(t._id)}
                     className={clsx(
                       "w-full flex items-center gap-2.5 p-2.5 text-left hover:bg-paper-cool transition",
                       active && "bg-paper-cool"
                     )}
                   >
-                    <div className="relative">
-                      <Avatar size={36} hue={c.hue} />
-                      {c.online && (
-                        <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-ink rounded-full border-2 border-paper" />
-                      )}
-                    </div>
+                    <Avatar size={36} hue={hueFromString(person?._id || t._id)} />
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between gap-2">
-                        <div className="text-[12.5px] font-semibold truncate">{c.name}</div>
-                        <div className="text-[10px] text-ink/40">{c.at}</div>
+                        <div className="text-[12.5px] font-semibold truncate">{person?.name || "Unknown"}</div>
+                        <div className="text-[10px] text-ink/40">{relativeTime(t.lastMessageAt || t.updatedAt || t.createdAt)}</div>
                       </div>
-                      <div className="text-[11.5px] text-ink/55 truncate">{c.last}</div>
+                      <div className="text-[11.5px] text-ink/55 truncate">
+                        {t.status === "pending" ? "Message request" : t.lastMessageSnippet || "—"}
+                      </div>
                     </div>
-                    {c.unread && (
+                    {unread > 0 && (
                       <span className="w-4 h-4 text-[9px] rounded-full bg-ink text-paper inline-flex items-center justify-center font-bold">
-                        {c.unread}
+                        {unread}
                       </span>
                     )}
                   </button>
@@ -151,58 +209,91 @@ export function MessagesDock({
             })}
           </ul>
           <div className="p-2 border-t border-paper-line">
-            <button className="btn-press w-full h-9 rounded-pill bg-ink text-paper text-[12px] font-semibold inline-flex items-center justify-center gap-1.5">
+            <button
+              onClick={() => router.push("/messages")}
+              className="btn-press w-full h-9 rounded-pill bg-ink text-paper text-[12px] font-semibold inline-flex items-center justify-center gap-1.5"
+            >
               <Icon.Plus size={13} />
               New message
             </button>
           </div>
         </div>
 
-        {/* Conversation pane */}
         <div className="flex-1 flex flex-col min-h-0 bg-paper-warm">
-          <div className="p-3 border-b border-paper-line bg-paper flex items-center gap-2.5">
-            {selected && <Avatar size={32} hue={selected.hue} />}
-            <div className="flex-1 min-w-0">
-              <div className="text-[12.5px] font-semibold leading-tight truncate">{selected?.name}</div>
-              <div className="text-[10.5px] text-ink/50">
-                {selected?.online ? "online now" : "offline"} · replies optional
-              </div>
+          {!selected ? (
+            <div className="flex-1 flex items-center justify-center text-[12px] text-ink/50">
+              Pick a chat to start.
             </div>
-            <button className="w-8 h-8 rounded-full hover:bg-paper-cool flex items-center justify-center text-ink/60">
-              <Icon.More size={14} />
-            </button>
-          </div>
+          ) : (
+            <>
+              <div className="p-3 border-b border-paper-line bg-paper flex items-center gap-2.5">
+                <Avatar size={32} hue={hueFromString(other?._id || selected._id)} />
+                <div className="flex-1 min-w-0">
+                  <div className="text-[12.5px] font-semibold leading-tight truncate">{other?.name || "Unknown"}</div>
+                  <div className="text-[10.5px] text-ink/50">
+                    {selected.status === "pending" ? "Pending request" : "Active chat"}
+                  </div>
+                </div>
+                <Link
+                  href={`/messages?thread=${selected._id}`}
+                  className="w-8 h-8 rounded-full hover:bg-paper-cool flex items-center justify-center text-ink/60"
+                  title="Open full"
+                >
+                  <Icon.More size={14} />
+                </Link>
+              </div>
 
-          <div className="flex-1 overflow-auto scroll-clean p-3 space-y-2">
-            {MESSAGES.map((m, i) => (
-              <div
-                key={i}
-                className={clsx(
-                  "max-w-[80%] px-3 py-2 rounded-[14px] text-[13px] leading-snug",
-                  m.from === "me"
-                    ? "ml-auto bg-ink text-paper rounded-br-[4px]"
-                    : "bg-paper border border-paper-line rounded-bl-[4px]"
+              <div className="flex-1 overflow-auto scroll-clean p-3 space-y-2">
+                {messagesPoll.loading && messages.length === 0 && (
+                  <div className="text-center text-[12px] text-ink/45">Loading…</div>
                 )}
-              >
-                {m.text}
+                {messages.length === 0 && !messagesPoll.loading && (
+                  <div className="text-center text-[12px] text-ink/45">No messages yet.</div>
+                )}
+                {messages.map((m) => {
+                  const mine = participantId(m.senderId) === user?._id;
+                  return (
+                    <div
+                      key={m._id}
+                      className={clsx(
+                        "max-w-[80%] px-3 py-2 rounded-[14px] text-[13px] leading-snug whitespace-pre-wrap",
+                        mine
+                          ? "ml-auto bg-ink text-paper rounded-br-[4px]"
+                          : "bg-paper border border-paper-line rounded-bl-[4px]"
+                      )}
+                    >
+                      {m.body || "(attachment)"}
+                    </div>
+                  );
+                })}
               </div>
-            ))}
-          </div>
 
-          <div className="p-2.5 bg-paper border-t border-paper-line">
-            <div className="flex items-center gap-2 h-11 px-2 rounded-pill bg-paper-cool">
-              <button className="w-8 h-8 rounded-full hover:bg-paper flex items-center justify-center text-ink/50">
-                <Icon.Plus size={14} />
-              </button>
-              <input
-                placeholder="Message…"
-                className="flex-1 bg-transparent text-[13px] outline-none placeholder:text-ink/40"
-              />
-              <button className="btn-press w-9 h-9 rounded-full bg-ink text-paper flex items-center justify-center">
-                <Icon.Send size={13} />
-              </button>
-            </div>
-          </div>
+              <div className="p-2.5 bg-paper border-t border-paper-line">
+                <div className="flex items-center gap-2 h-11 px-2 rounded-pill bg-paper-cool">
+                  <input
+                    value={draft}
+                    onChange={(e) => setDraft(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && !e.shiftKey) {
+                        e.preventDefault();
+                        send();
+                      }
+                    }}
+                    placeholder="Message…"
+                    disabled={selected.status === "pending" && participantId(selected.requestedBy) !== user?._id}
+                    className="flex-1 bg-transparent text-[13px] outline-none placeholder:text-ink/40 disabled:opacity-50"
+                  />
+                  <button
+                    onClick={send}
+                    disabled={!draft.trim() || sending}
+                    className="btn-press w-9 h-9 rounded-full bg-ink text-paper flex items-center justify-center disabled:opacity-50"
+                  >
+                    <Icon.Send size={13} />
+                  </button>
+                </div>
+              </div>
+            </>
+          )}
         </div>
       </div>
     </div>

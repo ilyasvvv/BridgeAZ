@@ -6,13 +6,43 @@ import { usePathname, useRouter } from "next/navigation";
 import { Icon } from "./Icon";
 import { SearchOverlay } from "./SearchOverlay";
 import { useAuth } from "@/lib/auth";
+import { notificationsApi } from "@/lib/notifications";
+import { chatsApi } from "@/lib/chats";
+import { usePolling } from "@/hooks/usePolling";
 
 export function TopBar() {
   const pathname = usePathname();
   const router = useRouter();
-  const { logout } = useAuth();
+  const { user, status, logout } = useAuth();
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchDraft, setSearchDraft] = useState("");
+
+  const enabled = status === "authenticated";
+  const { data: notifs } = usePolling(
+    async () => (enabled ? notificationsApi.list() : []),
+    30000,
+    [enabled]
+  );
+  const { data: threads } = usePolling(
+    async () => (enabled ? chatsApi.threads() : []),
+    30000,
+    [enabled]
+  );
+
+  const unreadNotifs = (notifs || []).filter((n) => !n.read).length;
+  const unreadChats = (threads || []).reduce((sum, t) => {
+    const lastMessageAt = t.lastMessageAt;
+    if (!lastMessageAt) return sum;
+    const senderId = typeof t.lastMessageSenderId === "string"
+      ? t.lastMessageSenderId
+      : t.lastMessageSenderId?._id;
+    if (senderId && senderId === user?._id) return sum;
+    const lastReadAt = t.myLastReadAt;
+    if (!lastReadAt || new Date(lastMessageAt).getTime() > new Date(lastReadAt).getTime()) {
+      return sum + 1;
+    }
+    return sum;
+  }, 0);
 
   useEffect(() => {
     const next = new URLSearchParams(window.location.search).get("q") ?? "";
@@ -81,14 +111,22 @@ export function TopBar() {
             aria-label="Messages"
           >
             <Icon.Chat size={16} />
-            <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-ink" />
+            {unreadChats > 0 && (
+              <span className="absolute top-1 right-1 min-w-[16px] h-[16px] px-1 rounded-full bg-ink text-paper text-[9px] font-bold flex items-center justify-center">
+                {unreadChats > 9 ? "9+" : unreadChats}
+              </span>
+            )}
           </Link>
           <Link
             href="/notifications"
             className="relative w-10 h-10 rounded-full border border-paper-line bg-paper hover:border-ink/30 flex items-center justify-center btn-press"
           >
             <Icon.Bell size={16} />
-            <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-ink" />
+            {unreadNotifs > 0 && (
+              <span className="absolute top-1 right-1 min-w-[16px] h-[16px] px-1 rounded-full bg-ink text-paper text-[9px] font-bold flex items-center justify-center">
+                {unreadNotifs > 9 ? "9+" : unreadNotifs}
+              </span>
+            )}
           </Link>
           <Link
             href="/profile"

@@ -13,6 +13,8 @@ export type ChatThread = {
   acceptedAt?: string | null;
   rejectedAt?: string | null;
   lastMessageAt?: string;
+  lastMessageSnippet?: string;
+  lastMessageSenderId?: string | ChatParticipant;
   createdAt?: string;
   updatedAt?: string;
   otherParticipant?: ChatParticipant;
