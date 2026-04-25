@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import { Avatar } from "./Avatar";
 import { Icon } from "./Icon";
 import { useAuth } from "@/lib/auth";
+import { useLive, useThreadsFast } from "@/lib/live";
 import { chatsApi, type ChatMessage, type ChatParticipant, type ChatThread } from "@/lib/chats";
 import { hueFromString, relativeTime } from "@/lib/format";
 import { usePolling } from "@/hooks/usePolling";
@@ -48,12 +49,9 @@ export function MessagesDock({
 
   const enabled = status === "authenticated";
 
-  const threadsPoll = usePolling<ChatThread[]>(
-    async () => (enabled ? chatsApi.threads() : []),
-    open ? 6000 : 30000,
-    [enabled, open]
-  );
-  const threads = threadsPoll.data || [];
+  const { threads, refreshThreads } = useLive();
+  useThreadsFast(open && enabled);
+  const threadsLoading = enabled && threads.length === 0;
 
   useEffect(() => {
     if (!selectedId && threads[0]?._id) {
@@ -94,7 +92,7 @@ export function MessagesDock({
       const msg = await chatsApi.send(selectedId, { body });
       messagesPoll.setData((cur) => [...(cur || []), msg]);
       messagesPoll.refetch();
-      threadsPoll.refetch();
+      refreshThreads();
     } catch {
       setDraft(body);
     } finally {
@@ -169,10 +167,10 @@ export function MessagesDock({
             </div>
           </div>
           <ul className="flex-1 overflow-auto scroll-clean">
-            {threadsPoll.loading && threads.length === 0 && (
+            {threadsLoading && (
               <li className="p-3 text-[12px] text-ink/50">Loading chats…</li>
             )}
-            {!threadsPoll.loading && threads.length === 0 && (
+            {!threadsLoading && threads.length === 0 && (
               <li className="p-3 text-[12px] text-ink/50">No chats yet.</li>
             )}
             {filtered.map((t) => {

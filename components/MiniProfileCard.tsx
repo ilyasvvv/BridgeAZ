@@ -3,8 +3,12 @@
 import { ReactNode, useRef, useState } from "react";
 import clsx from "clsx";
 import Link from "next/link";
+import { profileHref } from "@/lib/format";
+import { useAuth } from "@/lib/auth";
+import { usersApi } from "@/lib/users";
 
 export type MiniProfile = {
+  id?: string;
   name: string;
   handle: string;
   kind: "personal" | "circle";
@@ -28,7 +32,12 @@ export function MiniProfileCard({
   children: ReactNode;
   placement?: "bottom" | "top" | "right";
 }) {
+  const { user } = useAuth();
   const [open, setOpen] = useState(false);
+  const [following, setFollowing] = useState(false);
+  const [followTouched, setFollowTouched] = useState(false);
+  const [followBusy, setFollowBusy] = useState(false);
+  const [followError, setFollowError] = useState<string | null>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   function show() {
@@ -45,6 +54,32 @@ export function MiniProfileCard({
     profile.kind === "personal"
       ? "w-full h-14 rounded-[14px] bg-gradient-to-br from-ink to-ink/70"
       : "";
+  const canFollow = profile.kind === "personal" && !!profile.id && profile.id !== user?._id;
+
+  async function toggleFollow() {
+    if (!canFollow || !profile.id || followBusy) return;
+    const wasFollowing = following;
+    setFollowBusy(true);
+    setFollowTouched(true);
+    setFollowError(null);
+    setFollowing(!wasFollowing);
+
+    try {
+      const result = wasFollowing
+        ? await usersApi.unfollow(profile.id)
+        : await usersApi.follow(profile.id);
+      setFollowing(result.following);
+    } catch (err: any) {
+      if (err?.status === 409 && !wasFollowing) {
+        setFollowing(true);
+        return;
+      }
+      setFollowing(wasFollowing);
+      setFollowError(err?.message || "Follow failed");
+    } finally {
+      setFollowBusy(false);
+    }
+  }
 
   return (
     <span
@@ -130,15 +165,34 @@ export function MiniProfileCard({
 
           <span className="flex items-center gap-2 mt-4">
             <Link
-              href={`/${profile.kind === "circle" ? "circle" : "user"}/${profile.handle}`}
+              href={profileHref(profile.kind, profile.handle)}
               className="btn-press flex-1 h-9 rounded-pill bg-ink text-paper text-[12px] font-semibold inline-flex items-center justify-center"
             >
               View profile
             </Link>
-            <button className="btn-press h-9 px-3 rounded-pill border border-paper-line text-[12px] font-semibold hover:border-ink/30">
-              {profile.kind === "personal" ? "Follow" : "Join"}
-            </button>
+            {canFollow ? (
+              <button
+                type="button"
+                onClick={toggleFollow}
+                disabled={followBusy}
+                className={clsx(
+                  "btn-press h-9 px-3 rounded-pill border text-[12px] font-semibold disabled:opacity-50",
+                  following
+                    ? "border-ink bg-ink text-paper"
+                    : "border-paper-line hover:border-ink/30"
+                )}
+              >
+                {followBusy ? "..." : following ? "Following" : "Follow"}
+              </button>
+            ) : (
+              <span className="h-9 px-3 rounded-pill border border-paper-line text-[12px] font-semibold inline-flex items-center justify-center text-ink/45">
+                {profile.kind === "personal" ? "Follow" : "Join"}
+              </span>
+            )}
           </span>
+          {followTouched && followError && (
+            <span className="block mt-2 text-[11px] text-red-700">{followError}</span>
+          )}
         </span>
       </span>
     </span>

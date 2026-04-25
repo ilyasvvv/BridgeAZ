@@ -5,32 +5,25 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { Icon } from "./Icon";
 import { SearchOverlay } from "./SearchOverlay";
+import { BizimLogoLockup } from "./AnimatedLogo";
 import { useAuth } from "@/lib/auth";
-import { notificationsApi } from "@/lib/notifications";
-import { chatsApi } from "@/lib/chats";
-import { usePolling } from "@/hooks/usePolling";
+import { useLive } from "@/lib/live";
 
-export function TopBar() {
+export function TopBar({
+  logoVariant = "default",
+}: {
+  logoVariant?: "default" | "canva";
+}) {
   const pathname = usePathname();
   const router = useRouter();
-  const { user, status, logout } = useAuth();
+  const { user, logout } = useAuth();
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchDraft, setSearchDraft] = useState("");
 
-  const enabled = status === "authenticated";
-  const { data: notifs } = usePolling(
-    async () => (enabled ? notificationsApi.list() : []),
-    30000,
-    [enabled]
-  );
-  const { data: threads } = usePolling(
-    async () => (enabled ? chatsApi.threads() : []),
-    30000,
-    [enabled]
-  );
+  const { notifs, threads } = useLive();
 
-  const unreadNotifs = (notifs || []).filter((n) => !n.read).length;
-  const unreadChats = (threads || []).reduce((sum, t) => {
+  const unreadNotifs = notifs.filter((n) => !n.read).length;
+  const unreadChats = threads.reduce((sum, t) => {
     const lastMessageAt = t.lastMessageAt;
     if (!lastMessageAt) return sum;
     const senderId = typeof t.lastMessageSenderId === "string"
@@ -66,43 +59,53 @@ export function TopBar() {
     <header className="sticky top-0 z-40 bg-paper/85 backdrop-blur-xl border-b border-paper-line">
       <div className="max-w-[1400px] mx-auto px-6 h-16 flex items-center gap-5">
         <Link href="/home" className="flex items-center gap-2.5 shrink-0 group">
-          <span className="relative inline-flex items-center justify-center rounded-full bg-ink text-paper w-7 h-7">
-            <span className="absolute inset-[4px] rounded-full border border-paper/50" />
-            <span className="relative text-[10px] font-black">b</span>
-          </span>
-          <span className="font-display text-[16px] font-semibold tracking-[-0.02em]">
-            bizim <span className="font-light text-ink/60">circle</span>
-          </span>
+          {logoVariant === "canva" ? (
+            <BizimLogoLockup size={42} motion="side-to-side" />
+          ) : (
+            <>
+              <span className="relative inline-flex items-center justify-center rounded-full bg-ink text-paper w-7 h-7">
+                <span className="absolute inset-[4px] rounded-full border border-paper/50" />
+                <span className="relative text-[10px] font-black">b</span>
+              </span>
+              <span className="font-display text-[16px] font-semibold tracking-[-0.02em]">
+                bizim <span className="font-light text-ink/60">circle</span>
+              </span>
+            </>
+          )}
         </Link>
 
-        {/* Search */}
-        <div className="flex-1 max-w-xl">
-          <div className="group relative flex items-center h-10 rounded-pill bg-paper-cool hover:bg-paper focus-within:bg-paper border border-transparent hover:border-paper-line focus-within:border-ink/30 focus-within:shadow-soft transition">
-            <Icon.Search size={15} className="ml-3.5 text-ink/50" />
-            <input
-              value={searchDraft}
-              onFocus={() => setSearchOpen(true)}
-              onChange={(event) => {
-                setSearchDraft(event.target.value);
-                setSearchOpen(true);
-              }}
-              onKeyDown={(event) => {
-                if (event.key !== "Enter") return;
+        {/* Search — hidden on /search where the page has its own primary input */}
+        {pathname !== "/search" ? (
+          <div className="flex-1 max-w-xl">
+            <div className="group relative flex items-center h-10 rounded-pill bg-paper-cool hover:bg-paper focus-within:bg-paper border border-transparent hover:border-paper-line focus-within:border-ink/30 focus-within:shadow-soft transition">
+              <Icon.Search size={15} className="ml-3.5 text-ink/50" />
+              <input
+                value={searchDraft}
+                onFocus={() => setSearchOpen(true)}
+                onChange={(event) => {
+                  setSearchDraft(event.target.value);
+                  setSearchOpen(true);
+                }}
+                onKeyDown={(event) => {
+                  if (event.key !== "Enter") return;
 
-                event.preventDefault();
-                const params = new URLSearchParams();
-                if (searchDraft.trim()) params.set("q", searchDraft.trim());
-                router.push(params.toString() ? `/search?${params.toString()}` : "/search");
-              }}
-              placeholder="Search people, circles, posts, tags…"
-              className="flex-1 bg-transparent px-3 text-[13.5px] outline-none placeholder:text-ink/40"
-              spellCheck={false}
-            />
-            <span className="mr-2 inline-flex items-center gap-1 text-[10.5px] text-ink/45 font-semibold">
-              <kbd className="px-1.5 h-5 inline-flex items-center rounded border border-paper-line bg-paper/90">⌘K</kbd>
-            </span>
+                  event.preventDefault();
+                  const params = new URLSearchParams();
+                  if (searchDraft.trim()) params.set("q", searchDraft.trim());
+                  router.push(params.toString() ? `/search?${params.toString()}` : "/search");
+                }}
+                placeholder="Search people, circles, posts, tags…"
+                className="flex-1 bg-transparent px-3 text-[13.5px] outline-none placeholder:text-ink/40"
+                spellCheck={false}
+              />
+              <span className="mr-2 inline-flex items-center gap-1 text-[10.5px] text-ink/45 font-semibold">
+                <kbd className="px-1.5 h-5 inline-flex items-center rounded border border-paper-line bg-paper/90">⌘K</kbd>
+              </span>
+            </div>
           </div>
-        </div>
+        ) : (
+          <div className="flex-1" />
+        )}
 
         <div className="flex items-center gap-2 shrink-0">
           <Link
@@ -120,6 +123,7 @@ export function TopBar() {
           <Link
             href="/notifications"
             className="relative w-10 h-10 rounded-full border border-paper-line bg-paper hover:border-ink/30 flex items-center justify-center btn-press"
+            aria-label="Notifications"
           >
             <Icon.Bell size={16} />
             {unreadNotifs > 0 && (
@@ -131,6 +135,7 @@ export function TopBar() {
           <Link
             href="/profile"
             className="w-10 h-10 rounded-full border border-paper-line bg-paper overflow-hidden btn-press hover:border-ink/30 flex items-center justify-center"
+            aria-label="Profile"
           >
             <Icon.User size={15} />
           </Link>

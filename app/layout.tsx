@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { League_Spartan } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/lib/auth";
+import { LiveProvider } from "@/lib/live";
 
 const spartan = League_Spartan({
   subsets: ["latin"],
@@ -22,9 +23,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className={spartan.variable}>
+    <html lang="en" className={spartan.variable} data-scroll-behavior="smooth">
       <body className="font-sans bg-paper text-ink antialiased">
-        <AuthProvider>{children}</AuthProvider>
+        <AuthProvider>
+          <LiveProvider>{children}</LiveProvider>
+        </AuthProvider>
       </body>
     </html>
   );

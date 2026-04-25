@@ -57,7 +57,7 @@ export default function NewCirclePage() {
         visibility,
       });
       setCreated(true);
-      router.push(`/circle/${circle.handle}`);
+      router.push(`/circle/${encodeURIComponent(circle.handle)}`);
     } catch (err: any) {
       setError(err?.message || "Failed to create circle");
     } finally {

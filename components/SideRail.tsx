@@ -11,7 +11,7 @@ export function CirclesForYou({ items }: { items: MiniProfile[] }) {
     <section className="rounded-[22px] bg-paper border border-paper-line p-4">
       <div className="flex items-center justify-between">
         <h3 className="text-[11px] font-bold tracking-[0.18em] text-ink/55">CIRCLES FOR YOU</h3>
-        <Link href="/discover" className="text-[11px] text-ink/50 hover:text-ink">see all</Link>
+        <Link href="/search?scope=circles" className="text-[11px] text-ink/50 hover:text-ink">see all</Link>
       </div>
       <ul className="mt-3 space-y-2.5">
         {items.map((c, i) => (
@@ -38,7 +38,7 @@ export function PeopleForYou({ items }: { items: MiniProfile[] }) {
     <section className="rounded-[22px] bg-paper border border-paper-line p-4">
       <div className="flex items-center justify-between">
         <h3 className="text-[11px] font-bold tracking-[0.18em] text-ink/55">PEOPLE FOR YOU</h3>
-        <Link href="/discover" className="text-[11px] text-ink/50 hover:text-ink">see all</Link>
+        <Link href="/search?scope=people" className="text-[11px] text-ink/50 hover:text-ink">see all</Link>
       </div>
       <ul className="mt-3 space-y-2.5">
         {items.map((p, i) => (

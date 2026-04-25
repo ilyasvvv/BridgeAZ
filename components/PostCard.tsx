@@ -7,7 +7,7 @@ import { Avatar } from "./Avatar";
 import { Icon } from "./Icon";
 import { MiniProfileCard, MiniProfile } from "./MiniProfileCard";
 import { postsApi } from "@/lib/posts";
-import { relativeTime } from "@/lib/format";
+import { relativeTime, profileHref } from "@/lib/format";
 import { useAuth } from "@/lib/auth";
 import { hueFromString } from "@/lib/format";
 
@@ -114,7 +114,7 @@ export function PostCard({ post }: { post: Post }) {
       <div className="p-5">
         <div className="flex items-start gap-3">
           <MiniProfileCard profile={post.author}>
-            <Link href={`/${post.author.kind === "circle" ? "circle" : "user"}/${post.author.handle}`}>
+            <Link href={profileHref(post.author.kind, post.author.handle)}>
               <Avatar size={42} hue={post.author.hue ?? 220} kind={post.author.kind} />
             </Link>
           </MiniProfileCard>
@@ -123,7 +123,7 @@ export function PostCard({ post }: { post: Post }) {
             <div className="flex items-center gap-2 flex-wrap">
               <MiniProfileCard profile={post.author}>
                 <Link
-                  href={`/${post.author.kind === "circle" ? "circle" : "user"}/${post.author.handle}`}
+                  href={profileHref(post.author.kind, post.author.handle)}
                   className="text-[14px] font-semibold tracking-tight hover:underline"
                 >
                   {post.author.name}

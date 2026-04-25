@@ -2,12 +2,13 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import clsx from "clsx";
 import { Logo } from "@/components/Logo";
 import { CircleMark } from "@/components/CircleMark";
 import { Button } from "@/components/Button";
 import { useAuth } from "@/lib/auth";
+import { warmApi } from "@/lib/api";
 
 type Step = 1 | 2 | 3;
 type Role = "personal" | "circle";
@@ -38,6 +39,10 @@ export default function SignupPage({
 
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    void warmApi();
+  }, []);
 
   async function handleSignup(e: FormEvent) {
     e.preventDefault();
@@ -276,6 +281,7 @@ export default function SignupPage({
                       <div className="mt-6 grid gap-3">
                         <Field label="Email" placeholder="you@mail.com" type="email" value={email} onChange={setEmail} required autoComplete="email" />
                         <Field label="Password" placeholder="At least 8 characters" type="password" value={password} onChange={setPassword} required minLength={8} autoComplete="new-password" />
+                        <PasswordStrength value={password} />
                       </div>
 
                       <label className="mt-4 flex items-start gap-3 text-[12px] text-ink/60">
@@ -415,6 +421,43 @@ function Field({
       />
       {hint && <span className="block mt-1 text-[11px] text-ink/45">{hint}</span>}
     </label>
+  );
+}
+
+function scorePassword(value: string): { score: 0 | 1 | 2 | 3 | 4; label: string } {
+  if (!value) return { score: 0, label: "" };
+  let score = 0;
+  if (value.length >= 8) score++;
+  if (value.length >= 12) score++;
+  if (/[A-Z]/.test(value) && /[a-z]/.test(value)) score++;
+  if (/\d/.test(value) && /[^A-Za-z0-9]/.test(value)) score++;
+  const label =
+    value.length < 8 ? "Too short" : ["Weak", "Okay", "Good", "Strong"][Math.max(0, score - 1)] || "Weak";
+  return { score: Math.min(4, score) as 0 | 1 | 2 | 3 | 4, label };
+}
+
+function PasswordStrength({ value }: { value: string }) {
+  if (!value) return null;
+  const { score, label } = scorePassword(value);
+  const bars = [0, 1, 2, 3];
+  return (
+    <div className="mt-1">
+      <div className="flex gap-1">
+        {bars.map((i) => (
+          <span
+            key={i}
+            className={clsx(
+              "h-1.5 flex-1 rounded-full transition-colors",
+              i < score ? "bg-ink" : "bg-paper-cool"
+            )}
+          />
+        ))}
+      </div>
+      <div className="mt-1.5 flex items-center justify-between text-[11px] text-ink/55">
+        <span>{label}</span>
+        <span className="text-ink/40">8+ chars · mix cases, numbers, symbols</span>
+      </div>
+    </div>
   );
 }
 

@@ -1,3 +1,11 @@
+export function profileHref(
+  kind: "user" | "circle" | "personal",
+  handle: string | undefined | null
+): string {
+  const safe = encodeURIComponent(handle || "");
+  return kind === "circle" ? `/circle/${safe}` : `/user/${safe}`;
+}
+
 export function relativeTime(iso?: string): string {
   if (!iso) return "";
   const t = new Date(iso).getTime();

@@ -9,7 +9,7 @@ import { Icon } from "@/components/Icon";
 import { Avatar } from "@/components/Avatar";
 import { searchApi, type SearchResponse, type SearchTypes } from "@/lib/search";
 import { apiPostToUiPost, circleToMiniProfile } from "@/lib/mappers";
-import { hueFromString } from "@/lib/format";
+import { hueFromString, profileHref } from "@/lib/format";
 
 type Scope = "all" | "people" | "circles" | "posts" | "opportunities";
 
@@ -117,7 +117,7 @@ export function SearchOverlay({
       id: user._id,
       title: user.name,
       meta: `@${user.username || user._id} · ${user.currentRegion || user.locationNow?.country || "Member"}`,
-      href: `/user/${user.username || user._id}`,
+      href: profileHref("user", user.username || user._id),
       kind: "Person",
       hue: hueFromString(user._id),
     }));
@@ -127,7 +127,7 @@ export function SearchOverlay({
         id: circle._id,
         title: circle.name,
         meta: `@${circle.handle} · ${mini.location}`,
-        href: `/circle/${circle.handle}`,
+        href: profileHref("circle", circle.handle),
         kind: "Circle",
         hue: mini.hue ?? hueFromString(circle._id),
       };

@@ -1,0 +1,73 @@
+import Link from "next/link";
+import { Logo } from "@/components/Logo";
+
+export const metadata = {
+  title: "Terms — bizim circle",
+};
+
+export default function TermsPage() {
+  return (
+    <main className="min-h-screen bg-paper-warm text-ink">
+      <header className="max-w-[1100px] mx-auto px-6 lg:px-10 h-20 flex items-center justify-between">
+        <Logo />
+        <Link href="/" className="text-[13px] text-ink/60 hover:text-ink">← Back</Link>
+      </header>
+
+      <section className="max-w-[760px] mx-auto px-6 lg:px-10 pt-10 pb-24">
+        <span className="inline-flex items-center px-3 py-1 rounded-pill bg-paper border border-paper-line shadow-soft text-[10.5px] font-semibold tracking-[0.18em]">
+          TERMS
+        </span>
+        <h1 className="mt-5 font-display text-[clamp(40px,5vw,72px)] leading-[0.95] tracking-[-0.035em] font-medium">
+          A simple agreement, <span className="italic font-light">in plain words.</span>
+        </h1>
+        <p className="mt-3 text-[12.5px] text-ink/45 tracking-[0.04em]">Last updated April 2026</p>
+
+        <div className="mt-8 space-y-6 text-[15px] leading-relaxed text-ink/75">
+          <Section title="Who can use bizim circle">
+            You must be at least 16 years old. You agree to provide accurate information
+            and to keep your account credentials safe.
+          </Section>
+          <Section title="What you post is yours">
+            You keep ownership of what you publish. By posting, you grant bizim circle a
+            non-exclusive license to display and distribute that content within the
+            platform.
+          </Section>
+          <Section title="What we ask of you">
+            Don't post hateful, harassing, illegal, or sexually explicit material. Don't
+            spam, scrape, or impersonate others. Don't use the platform to deceive people
+            financially. We may remove content or accounts that break these rules.
+          </Section>
+          <Section title="The service is provided as-is">
+            We do our best, but we offer no warranties. To the extent permitted by law, we
+            aren't liable for indirect or consequential damages.
+          </Section>
+          <Section title="Ending the relationship">
+            You can stop using bizim circle at any time. We can suspend or end accounts
+            that violate these terms or applicable law.
+          </Section>
+          <Section title="Changes">
+            If we change these terms in a material way, we'll update this page and notify
+            active accounts. Continued use after changes means you accept them.
+          </Section>
+        </div>
+
+        <p className="mt-12 text-[12.5px] text-ink/45">
+          This page is a placeholder while our full terms are finalized. Questions?{" "}
+          <a href="mailto:hello@bizim.circle" className="underline hover:text-ink">
+            hello@bizim.circle
+          </a>
+          .
+        </p>
+      </section>
+    </main>
+  );
+}
+
+function Section({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <h2 className="font-display text-[20px] font-semibold tracking-[-0.01em]">{title}</h2>
+      <p className="mt-2">{children}</p>
+    </div>
+  );
+}

@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useEffect, useMemo, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { TopBar } from "@/components/TopBar";
 import { ProfileHeader, ProfileTabs } from "@/components/ProfileHeader";
 import { PostCard, type Post } from "@/components/PostCard";
@@ -13,11 +13,21 @@ import { apiPostToUiPost, userToProfileMeta } from "@/lib/mappers";
 import type { ApiUser } from "@/lib/types";
 
 export default function ProfilePage() {
+  return (
+    <Suspense fallback={<ProfileLoading />}>
+      <ProfilePageContent />
+    </Suspense>
+  );
+}
+
+function ProfilePageContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const initialTab = searchParams.get("tab") || "posts";
   const { user, status, refresh } = useAuth();
   const [profileUser, setProfileUser] = useState<ApiUser | null>(null);
   const [posts, setPosts] = useState<Post[]>([]);
-  const [tab, setTab] = useState("posts");
+  const [tab, setTab] = useState(initialTab);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
@@ -125,14 +135,7 @@ export default function ProfilePage() {
   ];
 
   if (status === "loading" || !profileUser || !profile) {
-    return (
-      <div className="min-h-screen bg-paper-warm">
-        <TopBar />
-        <main className="max-w-[900px] mx-auto px-6 py-16 text-[14px] text-ink/60">
-          Loading profile...
-        </main>
-      </div>
-    );
+    return <ProfileLoading />;
   }
 
   return (
@@ -174,6 +177,17 @@ export default function ProfilePage() {
             {tab === "about" && <AboutPanel user={profileUser} />}
           </div>
         </div>
+      </main>
+    </div>
+  );
+}
+
+function ProfileLoading() {
+  return (
+    <div className="min-h-screen bg-paper-warm">
+      <TopBar />
+      <main className="max-w-[900px] mx-auto px-6 py-16 text-[14px] text-ink/60">
+        Loading profile...
       </main>
     </div>
   );
