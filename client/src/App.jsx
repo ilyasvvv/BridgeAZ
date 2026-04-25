@@ -11,6 +11,9 @@ import ResetPassword from "./pages/ResetPassword";
 import Dashboard from "./pages/Dashboard";
 import Profile from "./pages/Profile";
 import Search from "./pages/Search";
+import Chats from "./pages/Chats";
+import Notifications from "./pages/Notifications";
+import QovshaqApp from "./qovshaq/QovshaqApp";
 
 const ProtectedRoute = ({ children }) => {
   const { user, loading } = useAuth();
@@ -57,6 +60,23 @@ export default function App() {
             </ProtectedRoute>
           }
         />
+        <Route
+          path="/chats"
+          element={
+            <ProtectedRoute>
+              <Chats />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/notifications"
+          element={
+            <ProtectedRoute>
+              <Notifications />
+            </ProtectedRoute>
+          }
+        />
+        <Route path="/q/*" element={<QovshaqApp />} />
 
         {/* Catch-all: redirect to home */}
         <Route path="*" element={<Navigate to="/" replace />} />

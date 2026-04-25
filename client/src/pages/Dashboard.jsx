@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../utils/auth";
 import { apiClient, uploadViaPresign } from "../api/client";
 import BizimHeader from "../components/BizimHeader";
@@ -14,8 +15,11 @@ const POST_TABS = [
 const resolveAvatarUrl = (u) =>
   u?.avatarUrl || u?.photoUrl || u?.profilePhoto || u?.profilePhotoUrl || u?.profilePictureUrl || null;
 
+const getId = (value) => String(value?._id || value?.id || value || "");
+
 export default function Dashboard() {
   const { user, token } = useAuth();
+  const navigate = useNavigate();
   const fileInputRef = useRef(null);
   const composeRef = useRef(null);
 
@@ -30,6 +34,9 @@ export default function Dashboard() {
   const [attachment, setAttachment] = useState(null);
   const [attachmentPreview, setAttachmentPreview] = useState("");
   const [posting, setPosting] = useState(false);
+  const [chatThreads, setChatThreads] = useState([]);
+  const [chatPreviews, setChatPreviews] = useState({});
+  const [messageSearch, setMessageSearch] = useState("");
 
   // Load posts
   const loadPosts = async () => {
@@ -47,6 +54,53 @@ export default function Dashboard() {
   useEffect(() => {
     if (token) loadPosts();
   }, [token]);
+
+  useEffect(() => {
+    if (!token) return;
+    let cancelled = false;
+
+    const toPreviewText = (message) => {
+      if (!message) return "No messages yet.";
+      const text =
+        (message.body || "").trim() ||
+        (message.share?.title ? `Shared: ${message.share.title}` : "") ||
+        (message.attachments?.length || message.attachmentUrl ? "Attachment" : "No messages yet.");
+      const prefix = getId(message.senderId) === getId(user?._id) ? "You: " : "";
+      const combined = `${prefix}${text}`;
+      return combined.length > 54 ? `${combined.slice(0, 53)}...` : combined;
+    };
+
+    const loadChatThreads = async () => {
+      try {
+        const threads = await apiClient.get("/chats/threads", token);
+        if (cancelled) return;
+        const limited = (threads || []).slice(0, 6);
+        setChatThreads(limited);
+
+        const previews = await Promise.all(
+          limited.map(async (thread) => {
+            try {
+              const messages = await apiClient.get(`/chats/threads/${thread._id}/messages`, token);
+              return [thread._id, toPreviewText(messages[messages.length - 1])];
+            } catch {
+              return [thread._id, "Tap to open conversation"];
+            }
+          })
+        );
+        if (!cancelled) setChatPreviews(Object.fromEntries(previews));
+      } catch {
+        if (!cancelled) {
+          setChatThreads([]);
+          setChatPreviews({});
+        }
+      }
+    };
+
+    loadChatThreads();
+    return () => {
+      cancelled = true;
+    };
+  }, [token, user?._id]);
 
   // Attachment preview
   useEffect(() => {
@@ -100,6 +154,15 @@ export default function Dashboard() {
       setError(err.message);
     }
   };
+
+  const filteredChatThreads = chatThreads.filter((thread) => {
+    const query = messageSearch.trim().toLowerCase();
+    if (!query) return true;
+    const participant = thread.otherParticipant || {};
+    return [participant.name, participant.username, chatPreviews[thread._id]]
+      .filter(Boolean)
+      .some((value) => value.toLowerCase().includes(query));
+  });
 
   return (
     <>
@@ -324,7 +387,9 @@ export default function Dashboard() {
           <div className="rounded-2xl bg-white border border-grey-300 p-5 sticky top-[72px]">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-sm font-semibold text-sand">Messages</h3>
-              <button className="text-mist hover:text-sand text-lg leading-none">&middot;&middot;&middot;</button>
+              <Link to="/chats" className="text-xs font-medium text-mist hover:text-sand">
+                Open
+              </Link>
             </div>
 
             {/* Search messages */}
@@ -334,6 +399,8 @@ export default function Dashboard() {
               </svg>
               <input
                 type="text"
+                value={messageSearch}
+                onChange={(event) => setMessageSearch(event.target.value)}
                 placeholder="Search messages..."
                 className="flex-1 bg-transparent outline-none text-xs text-sand placeholder-grey-500"
               />
@@ -341,25 +408,62 @@ export default function Dashboard() {
 
             {/* Message list */}
             <div className="space-y-1">
-              {Array.from({ length: 6 }, (_, i) => (
-                <div key={i} className="flex items-center gap-3 p-2.5 rounded-lg hover:bg-grey-100 transition-colors cursor-pointer">
-                  <div className="relative flex-shrink-0">
-                    <div className="w-10 h-10 rounded-full bg-grey-300" />
-                    {i < 3 && <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-green-500 rounded-full border-2 border-white" />}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex justify-between items-baseline">
-                      <p className="text-xs font-semibold text-sand truncate">Contact Name {i + 1}</p>
-                      <span className="text-[10px] text-mist flex-shrink-0">2h</span>
-                    </div>
-                    <p className="text-[11px] text-mist truncate">Last message preview te...</p>
-                  </div>
+              {filteredChatThreads.length === 0 ? (
+                <div className="rounded-xl border border-grey-300 bg-grey-100 px-3 py-4 text-center">
+                  <p className="text-xs font-medium text-sand">No conversations yet</p>
+                  <p className="mt-1 text-[11px] text-mist">Open messages to start a thread.</p>
                 </div>
-              ))}
+              ) : (
+                filteredChatThreads.map((thread) => {
+                  const participant = thread.otherParticipant || {};
+                  const isUnread =
+                    thread.lastMessageAt &&
+                    (!thread.myLastReadAt || new Date(thread.myLastReadAt) < new Date(thread.lastMessageAt));
+                  return (
+                    <button
+                      key={thread._id}
+                      type="button"
+                      onClick={() => navigate(`/chats?thread=${thread._id}`)}
+                      className="flex w-full items-center gap-3 rounded-lg p-2.5 text-left transition-colors hover:bg-grey-100"
+                    >
+                      <div className="relative flex-shrink-0">
+                        <Avatar
+                          url={resolveAvatarUrl(participant)}
+                          alt={`${participant.name || "Member"} avatar`}
+                          size={40}
+                          className="border border-grey-300"
+                        />
+                        {isUnread && (
+                          <span className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full border-2 border-white bg-blue-500" />
+                        )}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-baseline justify-between gap-2">
+                          <p className={`truncate text-xs ${isUnread ? "font-bold" : "font-semibold"} text-sand`}>
+                            {participant.name || participant.username || "Member"}
+                          </p>
+                          {thread.status === "pending" && (
+                            <span className="flex-shrink-0 rounded-full bg-amber-50 px-1.5 py-0.5 text-[9px] font-semibold uppercase text-amber-700">
+                              Pending
+                            </span>
+                          )}
+                        </div>
+                        <p className={`truncate text-[11px] ${isUnread ? "font-medium text-sand" : "text-mist"}`}>
+                          {chatPreviews[thread._id] || "Loading preview..."}
+                        </p>
+                      </div>
+                    </button>
+                  );
+                })
+              )}
             </div>
 
             {/* New message button */}
-            <button className="w-full mt-4 rounded-full bg-blue-500 text-white text-xs font-semibold py-2.5 hover:bg-blue-600 transition-colors flex items-center justify-center gap-2">
+            <button
+              type="button"
+              onClick={() => navigate("/chats")}
+              className="w-full mt-4 rounded-full bg-blue-500 text-white text-xs font-semibold py-2.5 hover:bg-blue-600 transition-colors flex items-center justify-center gap-2"
+            >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
               </svg>

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate, useParams, Link } from "react-router-dom";
+import { useLocation, useNavigate, useParams, Link } from "react-router-dom";
 import { apiClient, uploadViaPresign } from "../api/client";
 import { useAuth } from "../utils/auth";
 import BizimHeader from "../components/BizimHeader";
@@ -9,8 +9,10 @@ const TABS = ["Posts", "Circles", "Opportunities"];
 export default function Profile() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const { user, token, setUser } = useAuth();
   const isOwner = user?._id && id && String(user._id) === String(id);
+  const isEditRoute = location.pathname.endsWith("/edit");
 
   const [profile, setProfile] = useState(null);
   const [activeTab, setActiveTab] = useState("Posts");
@@ -18,10 +20,11 @@ export default function Profile() {
   const [form, setForm] = useState({});
   const [message, setMessage] = useState("");
   const [isSaving, setIsSaving] = useState(false);
+  const [messageLoading, setMessageLoading] = useState(false);
 
   const loadProfile = async () => {
     try {
-      const data = await apiClient.get("/users/me", token);
+      const data = await apiClient.get(isOwner ? "/users/me" : `/users/${id}`, token);
       setProfile(data);
       setForm({
         name: data.name || "",
@@ -39,12 +42,12 @@ export default function Profile() {
 
   useEffect(() => {
     if (!token) return;
-    if (id && user?._id && String(id) !== String(user._id)) {
-      navigate(`/profile/${user._id}/edit`, { replace: true });
+    if (isEditRoute && id && user?._id && String(id) !== String(user._id)) {
+      navigate(`/profile/${id}`, { replace: true });
       return;
     }
     loadProfile();
-  }, [id, token, user?._id]);
+  }, [id, token, user?._id, isEditRoute]);
 
   const handleSave = async () => {
     setIsSaving(true);
@@ -67,6 +70,20 @@ export default function Profile() {
       setMessage(err.message || "Failed to update profile");
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const handleMessage = async () => {
+    if (!profile?._id || isOwner) return;
+    setMessageLoading(true);
+    setMessage("");
+    try {
+      const thread = await apiClient.post("/chats/threads", { userId: profile._id }, token);
+      navigate(`/chats?thread=${thread._id}`);
+    } catch (err) {
+      setMessage(err.message || "Failed to start chat");
+    } finally {
+      setMessageLoading(false);
     }
   };
 
@@ -186,11 +203,16 @@ export default function Profile() {
             <div className="flex gap-3 mt-6 w-full max-w-md">
               {!isOwner ? (
                 <>
-                  <button className="circular-btn flex-1 flex items-center justify-center gap-2">
+                  <button
+                    type="button"
+                    onClick={handleMessage}
+                    disabled={messageLoading}
+                    className="circular-btn flex-1 flex items-center justify-center gap-2 disabled:opacity-60"
+                  >
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
                     </svg>
-                    Message
+                    {messageLoading ? "Opening..." : "Message"}
                   </button>
                   <button className="circular-btn-outline flex-1 flex items-center justify-center gap-2">
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

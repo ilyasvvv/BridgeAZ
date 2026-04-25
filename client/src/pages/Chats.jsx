@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { apiClient, uploadViaPresign } from "../api/client";
+import { API_BASE, apiClient, uploadViaPresign } from "../api/client";
 import { useAuth } from "../utils/auth";
 import UserChip, { USER_CHIP_SIZES } from "../components/UserChip";
 import Avatar from "../components/Avatar";
+import BizimHeader from "../components/BizimHeader";
 
 const allowedAttachmentTypes = new Set([
   "image/png",
@@ -23,7 +24,10 @@ const inlineTokenRegex =
 const markdownLinkRegex = /\[([^\]]+)\]\(((?:https?:\/\/|www\.)[^\s)]+)\)/g;
 const plainUrlRegex = /(?:https?:\/\/|www\.)[^\s<>"']+/g;
 
-export default function Chats() {
+const getEntityId = (value) => String(value?._id || value?.id || value || "");
+const sameEntity = (left, right) => getEntityId(left) === getEntityId(right);
+
+export default function Chats({ showHeader = true }) {
   const { token, user } = useAuth();
   const location = useLocation();
   const [threads, setThreads] = useState([]);
@@ -52,6 +56,7 @@ export default function Chats() {
   const forceScrollToBottomRef = useRef(false);
   const fetchedSharePostIdsRef = useRef(new Set());
   const newMessageThresholdRef = useRef(0);
+  const activeThreadIdRef = useRef("");
   const requestedThreadId = useMemo(() => {
     const params = new URLSearchParams(location.search);
     return params.get("thread");
@@ -168,8 +173,8 @@ export default function Chats() {
   };
 
   const getSenderName = (senderId) => {
-    if (String(senderId) === String(user?._id)) return "You";
-    if (String(senderId) === String(activeThread?.otherParticipant?._id)) {
+    if (sameEntity(senderId, user?._id)) return "You";
+    if (sameEntity(senderId, activeThread?.otherParticipant?._id)) {
       return activeThread?.otherParticipant?.name || "Member";
     }
     return "Member";
@@ -351,7 +356,7 @@ export default function Chats() {
     const hasAttachment = normalizeMessageAttachments(message).length > 0;
     const fallback = shareText || (hasAttachment ? "Attachment" : "No messages yet.");
     const text = base || fallback;
-    const prefix = message.senderId === user?._id ? "You: " : "";
+    const prefix = sameEntity(message.senderId, user?._id) ? "You: " : "";
     const combined = `${prefix}${text}`;
     return combined.length > 80 ? `${combined.slice(0, 79)}…` : combined;
   };
@@ -516,6 +521,134 @@ export default function Chats() {
       })();
     }
   }, [activeThread?._id]);
+
+  useEffect(() => {
+    activeThreadIdRef.current = activeThread?._id || "";
+  }, [activeThread?._id]);
+
+  useEffect(() => {
+    if (!token) return undefined;
+
+    const controller = new AbortController();
+    let buffer = "";
+
+    const reloadThreads = async () => {
+      try {
+        const data = await apiClient.get("/chats/threads", token);
+        setThreads(data);
+        setActiveThread((prev) => {
+          if (!prev?._id) return prev;
+          return data.find((thread) => thread._id === prev._id) || prev;
+        });
+      } catch {
+        // Keep the existing view if a background realtime refresh fails.
+      }
+    };
+
+    const parseEventBlock = (block) => {
+      const lines = block.split("\n");
+      let event = "message";
+      const dataLines = [];
+
+      for (const line of lines) {
+        if (line.startsWith("event:")) {
+          event = line.slice(6).trim();
+        } else if (line.startsWith("data:")) {
+          dataLines.push(line.slice(5).trim());
+        }
+      }
+
+      if (!dataLines.length || event === "heartbeat" || event === "ready") return;
+
+      let payload;
+      try {
+        payload = JSON.parse(dataLines.join("\n"));
+      } catch {
+        return;
+      }
+
+      if (event === "chat:thread") {
+        reloadThreads();
+        return;
+      }
+
+      if (event === "chat:message" && payload?.threadId && payload?.message) {
+        const incoming = payload.message;
+        const threadId = String(payload.threadId);
+        setThreadPreviews((prev) => ({ ...prev, [threadId]: toPreviewText(incoming) }));
+        setThreads((prev) =>
+          prev.map((thread) =>
+            thread._id === threadId
+              ? { ...thread, lastMessageAt: incoming.createdAt || new Date().toISOString() }
+              : thread
+          )
+        );
+
+        if (activeThreadIdRef.current === threadId) {
+          setMessages((prev) =>
+            prev.some((message) => message._id === incoming._id) ? prev : [...prev, incoming]
+          );
+          if (!sameEntity(incoming.senderId, user?._id)) {
+            apiClient.post(`/chats/threads/${threadId}/read`, {}, token).catch(() => {});
+          }
+        } else {
+          reloadThreads();
+        }
+        return;
+      }
+
+      if (event === "chat:reaction" && payload?.messageId) {
+        setMessages((prev) =>
+          prev.map((message) =>
+            message._id === payload.messageId ? { ...message, reactions: payload.reactions } : message
+          )
+        );
+        return;
+      }
+
+      if (event === "chat:read" && payload?.threadId && payload?.userId) {
+        const threadId = String(payload.threadId);
+        const isMine = sameEntity(payload.userId, user?._id);
+        const readKey = isMine ? "myLastReadAt" : "otherLastReadAt";
+        setThreads((prev) =>
+          prev.map((thread) =>
+            thread._id === threadId ? { ...thread, [readKey]: payload.lastReadAt } : thread
+          )
+        );
+        setActiveThread((prev) =>
+          prev && prev._id === threadId ? { ...prev, [readKey]: payload.lastReadAt } : prev
+        );
+      }
+    };
+
+    const connect = async () => {
+      try {
+        const response = await fetch(`${API_BASE}/realtime`, {
+          headers: { Authorization: `Bearer ${token}` },
+          signal: controller.signal
+        });
+        if (!response.ok || !response.body) return;
+
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        while (!controller.signal.aborted) {
+          const { value, done } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+          const blocks = buffer.split("\n\n");
+          buffer = blocks.pop() || "";
+          blocks.forEach(parseEventBlock);
+        }
+      } catch (streamError) {
+        if (!controller.signal.aborted) {
+          // The polling-free realtime channel is opportunistic; manual refresh still works.
+        }
+      }
+    };
+
+    connect();
+    return () => controller.abort();
+  }, [token, user?._id]);
 
   useEffect(() => {
     setReplyingTo(null);
@@ -878,7 +1011,7 @@ export default function Chats() {
   };
 
   const activeStatus = normalizeThreadStatus(activeThread);
-  const lastOutgoingMessage = [...messages].reverse().find((message) => message.senderId === user?._id);
+  const lastOutgoingMessage = [...messages].reverse().find((message) => sameEntity(message.senderId, user?._id));
   const seenMessageId =
     lastOutgoingMessage &&
     activeThread?.otherLastReadAt &&
@@ -1109,7 +1242,9 @@ export default function Chats() {
   };
 
   return (
-    <div className="mx-auto grid max-w-6xl gap-4 md:h-[calc(100vh-72px)] md:grid-cols-[minmax(280px,360px)_minmax(0,1fr)] md:overflow-hidden" style={{ "--accent": "29 29 68", "--accent-soft": "95 96 116" }}>
+    <>
+      {showHeader && <BizimHeader />}
+      <div className="mx-auto grid max-w-6xl gap-4 px-4 py-6 md:h-[calc(100vh-72px)] md:grid-cols-[minmax(280px,360px)_minmax(0,1fr)] md:overflow-hidden" style={{ "--accent": "29 29 68", "--accent-soft": "95 96 116" }}>
 
       {/* ── Thread list sidebar ── */}
       <section className="rounded-2xl bg-white/80 backdrop-blur-md border border-white/40 shadow-card p-4 md:flex md:min-h-0 md:flex-col">
@@ -1274,7 +1409,7 @@ export default function Chats() {
                   const myId = String(user?._id || "");
                   const quote = message.replyTo;
                   const isMenuOpen = openMenuMessageId === message._id;
-                  const isOwn = message.senderId === user?._id;
+                  const isOwn = sameEntity(message.senderId, user?._id);
                   const previewUrl = extractUrlsFromText(message.body || "")[0];
                   const previewData = previewUrl ? linkPreviews[previewUrl] : null;
                   const isNewMessage = msgIndex >= newMessageThresholdRef.current;
@@ -1715,6 +1850,7 @@ export default function Chats() {
           </div>
         </div>
       )}
-    </div>
+      </div>
+    </>
   );
 }
