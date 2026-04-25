@@ -92,11 +92,20 @@ export const chatsApi = {
     api.post<{ message: string }>(`/q/block/${userId}`, {}),
   unblockUser: (userId: string) =>
     api.delete<{ message: string }>(`/q/block/${userId}`),
-  reportUser: (input: { userId: string; reason: string; details?: string }) =>
+  reportUser: (input: {
+    userId: string;
+    reason: string;
+    details?: string;
+    messageId?: string;
+  }) =>
     api.post<{ _id: string }>("/q/report", {
-      targetType: "user",
-      targetId: input.userId,
+      targetType: input.messageId ? "message" : "user",
+      targetId: input.messageId || input.userId,
       reason: input.reason,
-      details: input.details,
+      details: input.details
+        ? input.messageId
+          ? `${input.details}\n\nReferenced user: ${input.userId}`
+          : input.details
+        : undefined,
     }),
 };

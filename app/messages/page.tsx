@@ -6,7 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { TopBar } from "@/components/TopBar";
 import { Avatar } from "@/components/Avatar";
 import { Icon } from "@/components/Icon";
-import { AnimatedLogo, BizimLogoLockup } from "@/components/AnimatedLogo";
+import { AnimatedLogo, BizimLogoLockup, type LogoMotion } from "@/components/AnimatedLogo";
 import { useAuth } from "@/lib/auth";
 import { chatsApi, type ChatMessage, type ChatParticipant, type ChatThread } from "@/lib/chats";
 import type { ChatAttachment } from "@/lib/chats";
@@ -30,11 +30,14 @@ const reportReasons = [
   "Other safety concern",
 ];
 
+const quickReactions = ["💚", "✨", "😂", "👏", "👀"];
+
 const sensitiveInfoRegex =
   /(\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b|\b(?:\+?\d[\d\s().-]{7,}\d)\b|\b(?:password|passport|ssn|social security|credit card|bank account|iban|cvv)\b)/i;
 
 const settingsKey = "bc_messages_settings_v3";
 const threadSettingsKey = "bc_messages_thread_settings_v3";
+const pollVotesKey = "bc_messages_poll_votes_v1";
 
 type ChatSettings = {
   enterToSend: boolean;
@@ -52,6 +55,7 @@ type ThreadLocalSettings = {
   pinned?: boolean;
   muted?: boolean;
   hidePreviews?: boolean;
+  restricted?: boolean;
 };
 
 type ThreadSettings = Record<string, ThreadLocalSettings>;
@@ -179,6 +183,8 @@ function MessagesClient() {
   const [loadingMessages, setLoadingMessages] = useState(false);
   const [sending, setSending] = useState(false);
   const [sendPulse, setSendPulse] = useState(false);
+  const [sparkKey, setSparkKey] = useState(0);
+  const [headerMotion, setHeaderMotion] = useState<LogoMotion>("landing-loop");
   const [error, setError] = useState<string | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [detailsOpen, setDetailsOpen] = useState(false);
@@ -188,6 +194,10 @@ function MessagesClient() {
   const [threadSettings, setThreadSettings] = useState<ThreadSettings>(() =>
     readLocal(threadSettingsKey, {})
   );
+  const [pollVotes, setPollVotes] = useState<Record<string, number>>(() =>
+    readLocal(pollVotesKey, {})
+  );
+  const [messageReport, setMessageReport] = useState<ChatMessage | null>(null);
   const [blockedIds, setBlockedIds] = useState<Set<string>>(new Set());
   const [reportReason, setReportReason] = useState(reportReasons[0]);
   const [reportDetails, setReportDetails] = useState("");
@@ -205,6 +215,7 @@ function MessagesClient() {
 
   useEffect(() => writeLocal(settingsKey, settings), [settings]);
   useEffect(() => writeLocal(threadSettingsKey, threadSettings), [threadSettings]);
+  useEffect(() => writeLocal(pollVotesKey, pollVotes), [pollVotes]);
   useEffect(() => setSensitiveAck(false), [draft, selectedId]);
 
   useEffect(() => {
@@ -346,8 +357,9 @@ function MessagesClient() {
   const selectedStyle = selectedLocal.style || settings.defaultStyle;
   const otherId = other?._id || "";
   const isBlocked = !!otherId && blockedIds.has(otherId);
+  const isRestricted = !!selectedLocal.restricted;
   const canSend = baseCanSend && !isBlocked;
-  const hidePreviews = !!selectedLocal.hidePreviews;
+  const hidePreviews = !!selectedLocal.hidePreviews || isRestricted;
   const hasSensitiveDraft = settings.safetyNudges && !!draft.trim() && sensitiveInfoRegex.test(draft);
   const activePollOptions = pollDraft.options.map((option) => option.trim()).filter(Boolean);
   const hasPollDraft = !!pollDraft.question.trim() && activePollOptions.length >= 2;
@@ -373,6 +385,13 @@ function MessagesClient() {
     setSelectedId(id);
     setDetailsOpen(false);
     router.replace(`/messages?thread=${id}`);
+  }
+
+  function playMotion(motion: LogoMotion) {
+    if (!settings.subtleMotion) return;
+    setHeaderMotion(motion);
+    setSparkKey((key) => key + 1);
+    window.setTimeout(() => setHeaderMotion("landing-loop"), 900);
   }
 
   async function startThread(match: UserSearchResult) {
@@ -416,6 +435,7 @@ function MessagesClient() {
         setSendPulse(true);
         window.setTimeout(() => setSendPulse(false), 420);
       }
+      playMotion(body.match(/\b(yay|congrats|birthday|good news|love|bizim)\b/i) ? "spark" : "rocket");
     } catch (err: any) {
       setDraft(previous.draft);
       setPendingAttachments(previous.pendingAttachments);
@@ -433,8 +453,49 @@ function MessagesClient() {
       const updated =
         action === "accept" ? await chatsApi.accept(selectedId) : await chatsApi.reject(selectedId);
       setThreads((current) => current.map((thread) => (thread._id === updated._id ? updated : thread)));
+      playMotion(action === "accept" ? "high-five" : "shy");
     } catch (err: any) {
       setError(err?.message || `Failed to ${action} chat.`);
+    }
+  }
+
+  function votePoll(messageId: string, optionIndex: number) {
+    setPollVotes((current) => ({ ...current, [messageId]: optionIndex }));
+    playMotion("pop");
+  }
+
+  async function reactToMessage(message: ChatMessage, emoji: string) {
+    try {
+      const updated = await chatsApi.react(message._id, emoji);
+      setMessages((current) =>
+        current.map((item) => (item._id === updated._id ? updated : item))
+      );
+      playMotion("bop");
+    } catch (err: any) {
+      setError(err?.message || "Failed to add reaction.");
+    }
+  }
+
+  async function reportMessage() {
+    if (!messageReport) return;
+    const targetUserId = participantId(messageReport.senderId);
+    if (!targetUserId || targetUserId === user?._id) {
+      setMessageReport(null);
+      return;
+    }
+    setSafetyStatus(null);
+    try {
+      await chatsApi.reportUser({
+        userId: targetUserId,
+        messageId: messageReport._id,
+        reason: reportReason,
+        details: reportDetails,
+      });
+      setReportDetails("");
+      setMessageReport(null);
+      setSafetyStatus("Message report sent for review.");
+    } catch (err: any) {
+      setSafetyStatus(err?.message || "Failed to send message report.");
     }
   }
 
@@ -722,12 +783,20 @@ function MessagesClient() {
             </div>
           </aside>
 
-          <section className="flex min-h-[640px] flex-col overflow-hidden rounded-[22px] border border-paper-line bg-paper shadow-soft">
+          <section className="relative flex min-h-[640px] flex-col overflow-hidden rounded-[22px] border border-paper-line bg-paper shadow-soft">
+            {settings.subtleMotion && sparkKey > 0 && <LimeBurst key={sparkKey} />}
             {!selected ? (
               <EmptyConversation />
             ) : (
               <>
                 <div className="flex items-center gap-3 border-b border-paper-line bg-paper/90 p-4">
+                  <span className="hidden shrink-0 sm:inline-flex">
+                    <AnimatedLogo
+                      key={`${headerMotion}-${sparkKey}`}
+                      size={36}
+                      motion={settings.subtleMotion ? headerMotion : "none"}
+                    />
+                  </span>
                   <Avatar size={46} hue={hueFromString(other?._id || selected._id)} />
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
@@ -745,6 +814,8 @@ function MessagesClient() {
                         ? "Pending request"
                         : isBlocked
                         ? "Blocked"
+                        : isRestricted
+                        ? "Restricted locally"
                         : selectedLocal.hidePreviews
                         ? "Previews hidden"
                         : selected.otherLastReadAt
@@ -836,6 +907,17 @@ function MessagesClient() {
                           compact={settings.compactBubbles}
                           showLinkPreviews={settings.linkPreviews && !hidePreviews}
                           showMediaPreviews={settings.mediaPreviews && !hidePreviews}
+                          pollVote={pollVotes[message._id]}
+                          onVotePoll={(optionIndex) => votePoll(message._id, optionIndex)}
+                          onReact={(emoji) => reactToMessage(message, emoji)}
+                          onReport={
+                            mine
+                              ? undefined
+                              : () => {
+                                  setReportDetails("");
+                                  setMessageReport(message);
+                                }
+                          }
                         />
                       );
                     })}
@@ -1039,6 +1121,19 @@ function MessagesClient() {
           onClose={() => setDetailsOpen(false)}
         />
       )}
+
+      {messageReport && (
+        <MessageReportModal
+          message={messageReport}
+          reason={reportReason}
+          details={reportDetails}
+          status={safetyStatus}
+          setReason={setReportReason}
+          setDetails={setReportDetails}
+          onReport={reportMessage}
+          onClose={() => setMessageReport(null)}
+        />
+      )}
     </div>
   );
 }
@@ -1062,6 +1157,28 @@ function EmptyConversation() {
         <p className="font-display text-[22px] font-semibold tracking-[-0.02em]">Select a chat</p>
         <p className="mt-1 text-[13px] text-ink/50">Search or choose a thread from the inbox.</p>
       </div>
+    </div>
+  );
+}
+
+function LimeBurst() {
+  const dots = [
+    { left: 42, top: 16, delay: 0 },
+    { left: 52, top: 6, delay: 80 },
+    { left: 62, top: 18, delay: 130 },
+    { left: 35, top: 30, delay: 170 },
+    { left: 68, top: 34, delay: 210 },
+    { left: 50, top: 42, delay: 260 },
+  ];
+  return (
+    <div className="pointer-events-none absolute right-7 top-[84px] z-20 h-24 w-24" aria-hidden>
+      {dots.map((dot) => (
+        <span
+          key={`${dot.left}-${dot.top}`}
+          className="absolute h-2.5 w-2.5 rounded-full border border-ink/60 bg-[#C1FF72] shadow-soft animate-ping"
+          style={{ left: `${dot.left}%`, top: `${dot.top}%`, animationDelay: `${dot.delay}ms` }}
+        />
+      ))}
     </div>
   );
 }
@@ -1174,6 +1291,10 @@ function MessageBubble({
   compact,
   showLinkPreviews,
   showMediaPreviews,
+  pollVote,
+  onVotePoll,
+  onReact,
+  onReport,
 }: {
   message: ChatMessage;
   mine: boolean;
@@ -1181,7 +1302,12 @@ function MessageBubble({
   compact: boolean;
   showLinkPreviews: boolean;
   showMediaPreviews: boolean;
+  pollVote?: number;
+  onVotePoll: (optionIndex: number) => void;
+  onReact: (emoji: string) => void;
+  onReport?: () => void;
 }) {
+  const dark = mine && styleKey === "ink";
   const bubbleTone = mine
     ? styleKey === "ink"
       ? "bg-ink text-paper"
@@ -1190,48 +1316,126 @@ function MessageBubble({
       : "bg-[#C1FF72] text-ink"
     : "bg-paper border border-paper-line text-ink";
   const attachments = normalizedAttachments(message);
+  const structured = extractStructuredContent(message.body || "");
 
   return (
-    <div className={clsx("flex", mine ? "justify-end" : "justify-start")}>
+    <div className={clsx("group flex", mine ? "justify-end" : "justify-start")}>
       <div
         className={clsx(
-          "max-w-[76%] rounded-[20px] shadow-soft",
+          "max-w-[92%] rounded-[20px] shadow-soft sm:max-w-[80%]",
           compact ? "px-3 py-2 text-[12.5px]" : "px-4 py-2.5 text-[13.5px]",
           bubbleTone
         )}
       >
-        {message.body && <MessageBody body={message.body} mine={mine && styleKey === "ink"} />}
-        {showLinkPreviews && <MessageLinkPreview body={message.body} dark={mine && styleKey === "ink"} />}
+        {structured.body && <RichMessageBody body={structured.body} dark={dark} />}
+        {structured.location && <LocationCard location={structured.location} dark={dark} />}
+        {structured.poll && (
+          <PollCard
+            poll={structured.poll}
+            selectedIndex={pollVote}
+            dark={dark}
+            onVote={onVotePoll}
+          />
+        )}
+        {showLinkPreviews && <MessageLinkPreview body={message.body} dark={dark} />}
         {showMediaPreviews ? (
-          <MessageAttachments attachments={attachments} dark={mine && styleKey === "ink"} />
+          <MessageAttachments attachments={attachments} dark={dark} />
         ) : attachments.length > 0 ? (
           <div className="mt-2 text-[11px] opacity-70">{attachments.length} attachment(s)</div>
         ) : null}
         {!message.body && attachments.length === 0 && <span>(attachment)</span>}
-        <div className={clsx("mt-1 text-[10.5px]", mine && styleKey === "ink" ? "text-paper/55" : "text-ink/40")}>
-          {relativeTime(message.createdAt)}
+        <MessageReactions reactions={message.reactions} dark={dark} />
+        <div className="mt-1 flex items-center justify-between gap-3">
+          <span className={clsx("text-[10.5px]", dark ? "text-paper/55" : "text-ink/40")}>
+            {relativeTime(message.createdAt)}
+          </span>
+          <span className="flex items-center gap-1 opacity-100 transition sm:opacity-0 sm:group-hover:opacity-100 sm:focus-within:opacity-100">
+            {quickReactions.map((emoji) => (
+              <button
+                key={emoji}
+                type="button"
+                onClick={() => onReact(emoji)}
+                className={clsx(
+                  "inline-flex h-6 w-6 items-center justify-center rounded-full text-[12px] transition hover:-translate-y-0.5",
+                  dark ? "bg-paper/10 hover:bg-paper/20" : "bg-paper-warm hover:bg-paper"
+                )}
+                aria-label={`React ${emoji}`}
+              >
+                {emoji}
+              </button>
+            ))}
+            {onReport && (
+              <button
+                type="button"
+                onClick={onReport}
+                className={clsx(
+                  "inline-flex h-6 items-center rounded-full px-2 text-[10px] font-semibold transition",
+                  dark ? "bg-paper/10 text-paper/70 hover:bg-paper/20" : "bg-paper-warm text-ink/55 hover:bg-red-50 hover:text-red-700"
+                )}
+              >
+                Report
+              </button>
+            )}
+          </span>
         </div>
       </div>
     </div>
   );
 }
 
-function MessageBody({ body, mine }: { body: string; mine: boolean }) {
-  const parts = body.split(urlRegex);
+function RichMessageBody({ body, dark }: { body: string; dark: boolean }) {
+  const blocks = richBlocks(body);
   return (
-    <div className="whitespace-pre-wrap">
-      {parts.map((part, index) => {
-        if (!isUrl(part)) return <span key={`${part}-${index}`}>{part}</span>;
+    <div className="space-y-2">
+      {blocks.map((block, index) => {
+        if (block.type === "code") {
+          return (
+            <pre
+              key={`${block.type}-${index}`}
+              className={clsx(
+                "overflow-x-auto rounded-[12px] border px-3 py-2 text-[12px]",
+                dark ? "border-paper/20 bg-paper/10 text-paper" : "border-paper-line bg-paper-warm text-ink"
+              )}
+            >
+              <code>{block.value}</code>
+            </pre>
+          );
+        }
+        if (block.type === "list") {
+          return (
+            <ul key={`${block.type}-${index}`} className="space-y-1 pl-4">
+              {block.items.map((item, itemIndex) => (
+                <li key={`${item}-${itemIndex}`} className="list-disc">
+                  {renderInline(item, dark)}
+                </li>
+              ))}
+            </ul>
+          );
+        }
+        if (block.type === "quote") {
+          return (
+            <blockquote
+              key={`${block.type}-${index}`}
+              className={clsx(
+                "border-l-2 pl-3",
+                dark ? "border-paper/35 text-paper/80" : "border-ink/20 text-ink/70"
+              )}
+            >
+              {renderInline(block.value, dark)}
+            </blockquote>
+          );
+        }
+        if (block.type === "heading") {
+          return (
+            <p key={`${block.type}-${index}`} className="text-[15px] font-bold tracking-[-0.01em]">
+              {renderInline(block.value, dark)}
+            </p>
+          );
+        }
         return (
-          <a
-            key={`${part}-${index}`}
-            href={part}
-            target="_blank"
-            rel="noreferrer"
-            className={clsx("underline underline-offset-2", mine ? "text-paper" : "text-ink")}
-          >
-            {part}
-          </a>
+          <p key={`${block.type}-${index}`} className="whitespace-pre-wrap leading-relaxed">
+            {renderInline(block.value, dark)}
+          </p>
         );
       })}
     </div>
@@ -1247,18 +1451,130 @@ function MessageLinkPreview({ body, dark }: { body?: string; dark: boolean }) {
       target="_blank"
       rel="noreferrer"
       className={clsx(
-        "mt-2 block rounded-[14px] border p-2",
+        "mt-2 flex items-center gap-3 rounded-[14px] border p-2 transition hover:-translate-y-0.5",
         dark ? "border-paper/20 bg-paper/10" : "border-paper-line bg-paper-warm"
       )}
     >
-      <span className="flex items-center gap-2 text-[11px] font-semibold">
-        <Icon.Link size={12} />
-        {preview.host}
+      <span
+        className={clsx(
+          "inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-[12px] text-[14px] font-black uppercase",
+          dark ? "bg-paper/15 text-paper" : "bg-[#C1FF72] text-ink"
+        )}
+      >
+        {preview.host[0]}
       </span>
-      <span className={clsx("mt-0.5 block truncate text-[10.5px]", dark ? "text-paper/65" : "text-ink/50")}>
-        {preview.url}
+      <span className="min-w-0">
+        <span className="flex items-center gap-2 text-[11px] font-semibold">
+          <Icon.Link size={12} />
+          {preview.host}
+        </span>
+        <span className={clsx("mt-0.5 block truncate text-[10.5px]", dark ? "text-paper/65" : "text-ink/50")}>
+          {preview.url}
+        </span>
       </span>
     </a>
+  );
+}
+
+function LocationCard({ location, dark }: { location: LocationDraft; dark: boolean }) {
+  return (
+    <a
+      href={location.url}
+      target="_blank"
+      rel="noreferrer"
+      className={clsx(
+        "mt-2 flex items-center gap-3 rounded-[16px] border p-3 transition hover:-translate-y-0.5",
+        dark ? "border-paper/20 bg-paper/10" : "border-paper-line bg-paper-warm"
+      )}
+    >
+      <span className={clsx("inline-flex h-10 w-10 items-center justify-center rounded-[14px]", dark ? "bg-paper/15" : "bg-[#C1FF72]")}>
+        <Icon.Pin size={16} />
+      </span>
+      <span className="min-w-0">
+        <span className="block text-[12px] font-semibold">Shared location</span>
+        <span className={clsx("block truncate text-[11px]", dark ? "text-paper/60" : "text-ink/50")}>
+          {location.label}
+        </span>
+      </span>
+    </a>
+  );
+}
+
+function PollCard({
+  poll,
+  selectedIndex,
+  dark,
+  onVote,
+}: {
+  poll: PollDraft;
+  selectedIndex?: number;
+  dark: boolean;
+  onVote: (optionIndex: number) => void;
+}) {
+  return (
+    <div
+      className={clsx(
+        "mt-2 rounded-[16px] border p-3",
+        dark ? "border-paper/20 bg-paper/10" : "border-paper-line bg-paper-warm"
+      )}
+    >
+      <div className="flex items-center gap-2 text-[12px] font-bold">
+        <Icon.Poll size={14} />
+        {poll.question}
+      </div>
+      <div className="mt-2 space-y-1.5">
+        {poll.options.map((option, index) => {
+          const picked = selectedIndex === index;
+          return (
+            <button
+              key={`${option}-${index}`}
+              type="button"
+              onClick={() => onVote(index)}
+              className={clsx(
+                "relative flex min-h-9 w-full items-center justify-between overflow-hidden rounded-[12px] border px-3 text-left text-[12px] font-semibold transition hover:-translate-y-0.5",
+                picked
+                  ? dark
+                    ? "border-paper/40 bg-paper/20"
+                    : "border-ink/20 bg-[#C1FF72]"
+                  : dark
+                  ? "border-paper/15 bg-paper/5"
+                  : "border-paper-line bg-paper"
+              )}
+            >
+              <span className="relative z-10">{option}</span>
+              {picked && <span className="relative z-10 text-[10px] uppercase tracking-[0.12em]">Picked</span>}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function MessageReactions({
+  reactions,
+  dark,
+}: {
+  reactions?: Record<string, string[]>;
+  dark: boolean;
+}) {
+  const entries = Object.entries(reactions || {}).filter(([, users]) => users.length > 0);
+  if (entries.length === 0) return null;
+  return (
+    <div className="mt-2 flex flex-wrap gap-1">
+      {entries.map(([emoji, users]) => (
+        <span
+          key={emoji}
+          className={clsx(
+            "inline-flex h-7 items-center gap-1 rounded-full px-2 text-[11px] font-semibold",
+            dark ? "bg-paper/10 text-paper/80" : "bg-paper-warm text-ink/70"
+          )}
+        >
+          <span>{emoji}</span>
+          <span>{users.length}</span>
+        </span>
+      ))}
+    </div>
   );
 }
 
@@ -1275,6 +1591,16 @@ function MessageAttachments({
       {attachments.map((attachment, index) => {
         const isImage = attachment.contentType?.startsWith("image/") || attachment.kind === "image";
         const isVideo = attachment.contentType?.startsWith("video/");
+        const isPdf =
+          attachment.kind === "pdf" ||
+          attachment.contentType === "application/pdf" ||
+          attachment.name?.toLowerCase().endsWith(".pdf");
+        const isResume =
+          attachment.name?.toLowerCase().includes("resume") ||
+          attachment.name?.toLowerCase().includes("cv") ||
+          attachment.contentType?.includes("wordprocessingml") ||
+          attachment.name?.toLowerCase().endsWith(".doc") ||
+          attachment.name?.toLowerCase().endsWith(".docx");
         if (isImage) {
           return (
             <a key={`${attachment.url}-${index}`} href={attachment.url} target="_blank" rel="noreferrer">
@@ -1291,6 +1617,45 @@ function MessageAttachments({
             <video key={`${attachment.url}-${index}`} src={attachment.url} controls className="max-h-72 w-full rounded-[14px] bg-black" />
           );
         }
+        if (isPdf) {
+          return (
+            <div
+              key={`${attachment.url}-${index}`}
+              className={clsx(
+                "overflow-hidden rounded-[14px] border",
+                dark ? "border-paper/20 bg-paper/10" : "border-paper-line bg-paper-warm"
+              )}
+            >
+              <div className="flex items-center justify-between gap-3 p-2">
+                <span className="min-w-0 text-[12px] font-semibold">
+                  <span className="block truncate">{attachment.name || "PDF preview"}</span>
+                  <span className={clsx("block text-[10.5px]", dark ? "text-paper/55" : "text-ink/45")}>PDF</span>
+                </span>
+                <a
+                  href={attachment.url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className={clsx(
+                    "h-7 shrink-0 rounded-full px-3 text-[10.5px] font-semibold leading-7",
+                    dark ? "bg-paper/15 text-paper" : "bg-[#C1FF72] text-ink"
+                  )}
+                >
+                  Open
+                </a>
+              </div>
+              <object
+                data={attachment.url}
+                type="application/pdf"
+                className="h-64 w-full bg-paper"
+                aria-label={attachment.name || "PDF preview"}
+              >
+                <a href={attachment.url} target="_blank" rel="noreferrer">
+                  Open PDF
+                </a>
+              </object>
+            </div>
+          );
+        }
         return (
           <a
             key={`${attachment.url}-${index}`}
@@ -1302,8 +1667,15 @@ function MessageAttachments({
               dark ? "border-paper/20 bg-paper/10" : "border-paper-line bg-paper-warm"
             )}
           >
-            <Icon.Note size={14} />
-            <span className="truncate">{attachment.name || attachmentLabel(attachment)}</span>
+            <span className={clsx("inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-[12px]", dark ? "bg-paper/10" : "bg-[#C1FF72]")}>
+              <Icon.Note size={15} />
+            </span>
+            <span className="min-w-0">
+              <span className="block truncate">{attachment.name || attachmentLabel(attachment)}</span>
+              <span className={clsx("block text-[10.5px] font-medium", dark ? "text-paper/55" : "text-ink/45")}>
+                {isResume ? "Resume or document" : attachmentLabel(attachment)}
+              </span>
+            </span>
           </a>
         );
       })}
@@ -1558,7 +1930,8 @@ function DetailsModal({
           </label>
           <ToggleRow label="Pin conversation" checked={!!local.pinned} onChange={(checked) => updateThreadSetting({ pinned: checked })} />
           <ToggleRow label="Mute locally" checked={!!local.muted} onChange={(checked) => updateThreadSetting({ muted: checked })} />
-          <ToggleRow label="Hide previews" checked={!!local.hidePreviews} onChange={(checked) => updateThreadSetting({ hidePreviews: checked })} />
+          <ToggleRow label="Restrict this chat locally" checked={!!local.restricted} onChange={(checked) => updateThreadSetting({ restricted: checked })} />
+          <ToggleRow label="Hide rich previews" checked={!!local.hidePreviews} onChange={(checked) => updateThreadSetting({ hidePreviews: checked })} />
           {group && (
             <div className="rounded-[18px] border border-paper-line bg-paper-warm p-3">
               <div className="text-[11px] text-ink/55">Members</div>
@@ -1630,6 +2003,88 @@ function DetailsModal({
   );
 }
 
+function MessageReportModal({
+  message,
+  reason,
+  details,
+  status,
+  setReason,
+  setDetails,
+  onReport,
+  onClose,
+}: {
+  message: ChatMessage;
+  reason: string;
+  details: string;
+  status: string | null;
+  setReason: (value: string) => void;
+  setDetails: (value: string) => void;
+  onReport: () => void;
+  onClose: () => void;
+}) {
+  return (
+    <ModalFrame onClose={onClose} width="max-w-lg">
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h2 className="font-display text-[24px] font-semibold tracking-[-0.02em]">
+            Report message
+          </h2>
+          <p className="mt-1 text-[12px] text-ink/55">
+            This sends the selected message and context to the safety queue.
+          </p>
+        </div>
+        <CloseButton onClick={onClose} label="Close message report" />
+      </div>
+
+      <div className="mt-4 rounded-[18px] border border-paper-line bg-paper-warm p-3 text-[12.5px] text-ink/70">
+        {(message.body || "Attachment message").slice(0, 240)}
+      </div>
+
+      <label className="mt-4 block">
+        <span className="text-[11px] text-ink/55">Report reason</span>
+        <select
+          value={reason}
+          onChange={(event) => setReason(event.target.value)}
+          className="mt-1 h-11 w-full rounded-[16px] border border-paper-line bg-paper-warm px-3 text-[13px] outline-none"
+        >
+          {reportReasons.map((item) => (
+            <option key={item} value={item}>
+              {item}
+            </option>
+          ))}
+        </select>
+      </label>
+
+      <textarea
+        value={details}
+        onChange={(event) => setDetails(event.target.value)}
+        rows={3}
+        placeholder="Add context"
+        className="mt-3 w-full resize-none rounded-[16px] border border-paper-line bg-paper-warm px-3 py-2 text-[13px] outline-none"
+      />
+
+      {status && <p className="mt-3 text-[12px] text-ink/60">{status}</p>}
+
+      <div className="mt-5 flex justify-end gap-2">
+        <button
+          type="button"
+          onClick={onClose}
+          className="h-9 rounded-pill border border-paper-line px-4 text-[12px] font-semibold"
+        >
+          Close
+        </button>
+        <button
+          type="button"
+          onClick={onReport}
+          className="h-9 rounded-pill bg-red-700 px-4 text-[12px] font-semibold text-white"
+        >
+          Send report
+        </button>
+      </div>
+    </ModalFrame>
+  );
+}
+
 function ModalFrame({
   children,
   width,
@@ -1696,6 +2151,192 @@ function ToggleRow({
       />
     </label>
   );
+}
+
+type RichBlock =
+  | { type: "paragraph"; value: string }
+  | { type: "heading"; value: string }
+  | { type: "quote"; value: string }
+  | { type: "code"; value: string }
+  | { type: "list"; items: string[] };
+
+function extractStructuredContent(body: string): {
+  body: string;
+  location: LocationDraft | null;
+  poll: PollDraft | null;
+} {
+  const lines = body.split("\n");
+  const remove = new Set<number>();
+  let location: LocationDraft | null = null;
+  let poll: PollDraft | null = null;
+
+  for (let index = 0; index < lines.length; index += 1) {
+    const line = lines[index].trim();
+    if (!location && line.toLowerCase().startsWith("location:")) {
+      const label = line.replace(/^location:\s*/i, "").trim();
+      const next = lines[index + 1]?.trim();
+      if (next && isUrl(next)) {
+        location = { label, url: next };
+        remove.add(index);
+        remove.add(index + 1);
+      }
+    }
+
+    if (!poll && line.toLowerCase().startsWith("poll:")) {
+      const question = line.replace(/^poll:\s*/i, "").trim();
+      const options: string[] = [];
+      let cursor = index + 1;
+      while (cursor < lines.length) {
+        const match = lines[cursor].trim().match(/^\d+\.\s+(.+)$/);
+        if (!match) break;
+        options.push(match[1].trim());
+        remove.add(cursor);
+        cursor += 1;
+      }
+      if (question && options.length >= 2) {
+        poll = { question, options };
+        remove.add(index);
+      }
+    }
+  }
+
+  const cleaned = lines
+    .filter((_, index) => !remove.has(index))
+    .join("\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+
+  return { body: cleaned, location, poll };
+}
+
+function richBlocks(body: string): RichBlock[] {
+  const lines = body.split("\n");
+  const blocks: RichBlock[] = [];
+  let paragraph: string[] = [];
+  let list: string[] = [];
+  let code: string[] | null = null;
+
+  function flushParagraph() {
+    if (paragraph.length) {
+      blocks.push({ type: "paragraph", value: paragraph.join("\n") });
+      paragraph = [];
+    }
+  }
+
+  function flushList() {
+    if (list.length) {
+      blocks.push({ type: "list", items: list });
+      list = [];
+    }
+  }
+
+  for (const rawLine of lines) {
+    const line = rawLine.trimEnd();
+    const trimmed = line.trim();
+
+    if (trimmed.startsWith("```")) {
+      if (code) {
+        blocks.push({ type: "code", value: code.join("\n") });
+        code = null;
+      } else {
+        flushParagraph();
+        flushList();
+        code = [];
+      }
+      continue;
+    }
+
+    if (code) {
+      code.push(line);
+      continue;
+    }
+
+    if (!trimmed) {
+      flushParagraph();
+      flushList();
+      continue;
+    }
+
+    const listMatch = trimmed.match(/^[-*]\s+(.+)$/);
+    if (listMatch) {
+      flushParagraph();
+      list.push(listMatch[1]);
+      continue;
+    }
+
+    flushList();
+
+    if (trimmed.startsWith(">")) {
+      flushParagraph();
+      blocks.push({ type: "quote", value: trimmed.replace(/^>\s?/, "") });
+      continue;
+    }
+
+    const headingMatch = trimmed.match(/^#{1,3}\s+(.+)$/);
+    if (headingMatch) {
+      flushParagraph();
+      blocks.push({ type: "heading", value: headingMatch[1] });
+      continue;
+    }
+
+    paragraph.push(line);
+  }
+
+  if (code) blocks.push({ type: "code", value: code.join("\n") });
+  flushParagraph();
+  flushList();
+  return blocks;
+}
+
+function renderInline(text: string, dark: boolean): React.ReactNode[] {
+  const inlineRegex = /(https?:\/\/[^\s]+)|(\*\*[^*]+\*\*)|(`[^`]+`)|(_[^_]+_)|(\*[^*]+\*)/g;
+  const output: React.ReactNode[] = [];
+  let lastIndex = 0;
+  let match: RegExpExecArray | null;
+
+  while ((match = inlineRegex.exec(text))) {
+    if (match.index > lastIndex) {
+      output.push(text.slice(lastIndex, match.index));
+    }
+    const token = match[0];
+    const key = `${token}-${match.index}`;
+    if (isUrl(token)) {
+      output.push(
+        <a
+          key={key}
+          href={token}
+          target="_blank"
+          rel="noreferrer"
+          className={clsx("underline underline-offset-2", dark ? "text-paper" : "text-ink")}
+        >
+          {token}
+        </a>
+      );
+    } else if (token.startsWith("**")) {
+      output.push(<strong key={key}>{token.slice(2, -2)}</strong>);
+    } else if (token.startsWith("`")) {
+      output.push(
+        <code
+          key={key}
+          className={clsx(
+            "rounded px-1 py-0.5 text-[0.92em]",
+            dark ? "bg-paper/15" : "bg-paper-warm"
+          )}
+        >
+          {token.slice(1, -1)}
+        </code>
+      );
+    } else {
+      output.push(<em key={key}>{token.slice(1, -1)}</em>);
+    }
+    lastIndex = match.index + token.length;
+  }
+
+  if (lastIndex < text.length) {
+    output.push(text.slice(lastIndex));
+  }
+
+  return output;
 }
 
 const urlRegex = /(https?:\/\/[^\s]+)/g;
