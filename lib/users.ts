@@ -39,6 +39,20 @@ export type UpdateProfileInput = Partial<{
   mentorshipAvailability: string;
 }>;
 
+export type UserRelationship = {
+  bridged: boolean;
+  bridgePending: boolean;
+  bridgeDirection: "sent" | "received" | null;
+  connectionId: string | null;
+  isMentor: boolean;
+  isMentee: boolean;
+  mentorshipId: string | null;
+  following: boolean;
+  mentorshipRequestPending: boolean;
+  mentorshipRequestDirection: "sent" | "received" | null;
+  mentorshipRequestId: string | null;
+};
+
 export const usersApi = {
   me: () => api.get<ApiUser>("/auth/me"),
   updateMe: (input: UpdateProfileInput) =>
@@ -50,6 +64,12 @@ export const usersApi = {
   get: (id: string) => api.get<ApiUser>(`/users/${id}`),
   getByHandle: (username: string) =>
     api.get<ApiUser>(`/users/handle/${encodeURIComponent(username)}`),
+  relationship: (id: string) =>
+    api.get<UserRelationship>(`/users/${encodeURIComponent(id)}/relationship`),
+  follow: (id: string) =>
+    api.post<{ following: true }>(`/users/${encodeURIComponent(id)}/follow`, {}),
+  unfollow: (id: string) =>
+    api.delete<{ following: false }>(`/users/${encodeURIComponent(id)}/follow`),
   list: (params?: {
     region?: string;
     accountType?: "personal" | "circle";
