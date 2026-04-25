@@ -31,20 +31,24 @@ const {
 
 const app = express();
 
+const defaultAllowedOrigins = [
+  "http://localhost:3000",
+  "http://localhost:5173",
+  "http://127.0.0.1:3000",
+  "http://127.0.0.1:5173",
+  "http://127.0.0.1:57148",
+  "https://bridge-az.vercel.app"
+];
+
+const configuredAllowedOrigins = [
+  process.env.SERVER_ALLOWED_ORIGINS,
+  process.env.CLIENT_URL
+]
+  .filter(Boolean)
+  .join(",");
+
 const allowedOrigins = new Set(
-  (
-    process.env.SERVER_ALLOWED_ORIGINS ||
-    process.env.CLIENT_URL ||
-    [
-      "http://localhost:3000",
-      "http://localhost:5173",
-      "http://127.0.0.1:3000",
-      "http://127.0.0.1:5173",
-      "http://127.0.0.1:57148",
-      "https://bridge-az.vercel.app"
-    ].join(",")
-  )
-    .split(",")
+  [...defaultAllowedOrigins, ...configuredAllowedOrigins.split(",")]
     .map((origin) => origin.trim())
     .filter(Boolean)
 );
