@@ -1,10 +1,32 @@
-export const API_BASE =
-  process.env.NEXT_PUBLIC_API_URL || "http://localhost:5001/api";
+const RAW_API_BASE =
+  process.env.NEXT_PUBLIC_API_URL ||
+  (process.env.NODE_ENV === "production"
+    ? "https://bridgeaz.onrender.com/api"
+    : "http://localhost:5001/api");
+
+export const API_BASE = normalizeApiBase(RAW_API_BASE);
 
 export type ApiError = Error & { status?: number; code?: string };
 
 const TOKEN_KEY = "bc_token";
 const DEFAULT_TIMEOUT_MS = 15000;
+
+function normalizeApiBase(value: string): string {
+  const trimmed = value.trim().replace(/\/+$/, "");
+  if (!trimmed) return "https://bridgeaz.onrender.com/api";
+
+  try {
+    const url = new URL(trimmed);
+    if (url.pathname === "" || url.pathname === "/") {
+      url.pathname = "/api";
+      return url.toString().replace(/\/+$/, "");
+    }
+  } catch {
+    if (trimmed === "" || trimmed === "/") return "/api";
+  }
+
+  return trimmed;
+}
 
 export const tokenStore = {
   get(): string | null {

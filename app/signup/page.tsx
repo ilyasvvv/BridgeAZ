@@ -42,6 +42,10 @@ export default function SignupPage({
   async function handleSignup(e: FormEvent) {
     e.preventDefault();
     setError(null);
+    if (!name.trim() || username.trim().length < 3 || !email.trim() || password.length < 8) {
+      setError("Please complete all fields with a valid email and an 8+ character password.");
+      return;
+    }
     if (!agreed) {
       setError("Please agree to the terms.");
       return;
@@ -67,6 +71,10 @@ export default function SignupPage({
   async function handleLogin(e: FormEvent) {
     e.preventDefault();
     setError(null);
+    if (!loginId.trim() || !loginPassword) {
+      setError("Please enter your email or username and password.");
+      return;
+    }
     setSubmitting(true);
     try {
       await login(loginId.trim(), loginPassword);
@@ -266,8 +274,8 @@ export default function SignupPage({
                       <p className="mt-1 text-[13px] text-ink/55">Email and a password. We'll keep it safe.</p>
 
                       <div className="mt-6 grid gap-3">
-                        <Field label="Email" placeholder="you@mail.com" type="email" value={email} onChange={setEmail} />
-                        <Field label="Password" placeholder="At least 8 characters" type="password" value={password} onChange={setPassword} />
+                        <Field label="Email" placeholder="you@mail.com" type="email" value={email} onChange={setEmail} required autoComplete="email" />
+                        <Field label="Password" placeholder="At least 8 characters" type="password" value={password} onChange={setPassword} required minLength={8} autoComplete="new-password" />
                       </div>
 
                       <label className="mt-4 flex items-start gap-3 text-[12px] text-ink/60">
@@ -311,8 +319,8 @@ export default function SignupPage({
                 <p className="mt-1 text-[13px] text-ink/55">Good to see you again.</p>
 
                 <div className="mt-6 grid gap-3">
-                  <Field label="Email or username" placeholder="you@mail.com" type="text" value={loginId} onChange={setLoginId} />
-                  <Field label="Password" placeholder="••••••••" type="password" value={loginPassword} onChange={setLoginPassword} />
+                  <Field label="Email or username" placeholder="you@mail.com" type="text" value={loginId} onChange={setLoginId} required autoComplete="username" />
+                  <Field label="Password" placeholder="••••••••" type="password" value={loginPassword} onChange={setLoginPassword} required autoComplete="current-password" />
                 </div>
 
                 {error && <div className="mt-4"><ErrorText>{error}</ErrorText></div>}
@@ -378,6 +386,9 @@ function Field({
   value,
   onChange,
   hint,
+  required,
+  minLength,
+  autoComplete,
 }: {
   label: string;
   placeholder: string;
@@ -385,6 +396,9 @@ function Field({
   value: string;
   onChange: (v: string) => void;
   hint?: string;
+  required?: boolean;
+  minLength?: number;
+  autoComplete?: string;
 }) {
   return (
     <label className="block">
@@ -394,6 +408,9 @@ function Field({
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
+        required={required}
+        minLength={minLength}
+        autoComplete={autoComplete}
         className="mt-1.5 w-full h-12 rounded-pill border border-paper-line bg-paper px-5 text-[14px] outline-none focus:border-ink/40 focus:ring-4 focus:ring-ink/[0.04] transition"
       />
       {hint && <span className="block mt-1 text-[11px] text-ink/45">{hint}</span>}
