@@ -13,6 +13,7 @@ export type ApiError = Error & { status?: number; code?: string };
 
 const TOKEN_KEY = "bc_token";
 const DEFAULT_TIMEOUT_MS = 15000;
+export const AUTH_TIMEOUT_MS = 45000;
 
 function normalizeApiBase(value: string): string {
   const fallback = process.env.NODE_ENV === "production"
@@ -55,6 +56,24 @@ export const tokenStore = {
     window.localStorage.removeItem(TOKEN_KEY);
   },
 };
+
+export async function warmApi(timeoutMs = 8000): Promise<boolean> {
+  if (typeof window === "undefined") return false;
+  const controller = new AbortController();
+  const timer = globalThis.setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const res = await fetch(`${API_BASE}/health`, {
+      method: "GET",
+      cache: "no-store",
+      signal: controller.signal,
+    });
+    return res.ok;
+  } catch {
+    return false;
+  } finally {
+    globalThis.clearTimeout(timer);
+  }
+}
 
 async function request<T>(
   path: string,
@@ -113,26 +132,53 @@ async function request<T>(
 }
 
 export const api = {
-  get: <T>(path: string, opts?: { auth?: boolean; signal?: AbortSignal }) =>
-    request<T>(path, { method: "GET", auth: opts?.auth, signal: opts?.signal }),
-  post: <T>(path: string, body?: unknown, opts?: { auth?: boolean }) =>
+  get: <T>(
+    path: string,
+    opts?: { auth?: boolean; signal?: AbortSignal; timeoutMs?: number }
+  ) =>
+    request<T>(path, {
+      method: "GET",
+      auth: opts?.auth,
+      signal: opts?.signal,
+      timeoutMs: opts?.timeoutMs,
+    }),
+  post: <T>(
+    path: string,
+    body?: unknown,
+    opts?: { auth?: boolean; timeoutMs?: number }
+  ) =>
     request<T>(path, {
       method: "POST",
       body: body != null ? JSON.stringify(body) : undefined,
       auth: opts?.auth,
+      timeoutMs: opts?.timeoutMs,
     }),
-  put: <T>(path: string, body?: unknown, opts?: { auth?: boolean }) =>
+  put: <T>(
+    path: string,
+    body?: unknown,
+    opts?: { auth?: boolean; timeoutMs?: number }
+  ) =>
     request<T>(path, {
       method: "PUT",
       body: body != null ? JSON.stringify(body) : undefined,
       auth: opts?.auth,
+      timeoutMs: opts?.timeoutMs,
     }),
-  patch: <T>(path: string, body?: unknown, opts?: { auth?: boolean }) =>
+  patch: <T>(
+    path: string,
+    body?: unknown,
+    opts?: { auth?: boolean; timeoutMs?: number }
+  ) =>
     request<T>(path, {
       method: "PATCH",
       body: body != null ? JSON.stringify(body) : undefined,
       auth: opts?.auth,
+      timeoutMs: opts?.timeoutMs,
     }),
-  delete: <T>(path: string, opts?: { auth?: boolean }) =>
-    request<T>(path, { method: "DELETE", auth: opts?.auth }),
+  delete: <T>(path: string, opts?: { auth?: boolean; timeoutMs?: number }) =>
+    request<T>(path, {
+      method: "DELETE",
+      auth: opts?.auth,
+      timeoutMs: opts?.timeoutMs,
+    }),
 };
