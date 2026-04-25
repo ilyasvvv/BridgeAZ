@@ -1,8 +1,11 @@
+const PRODUCTION_API_BASE = "https://bridgeaz.onrender.com/api";
+const DEVELOPMENT_API_BASE = "http://localhost:5001/api";
+
 const RAW_API_BASE =
   process.env.NEXT_PUBLIC_API_URL ||
   (process.env.NODE_ENV === "production"
-    ? "https://bridgeaz.onrender.com/api"
-    : "http://localhost:5001/api");
+    ? PRODUCTION_API_BASE
+    : DEVELOPMENT_API_BASE);
 
 export const API_BASE = normalizeApiBase(RAW_API_BASE);
 
@@ -12,20 +15,30 @@ const TOKEN_KEY = "bc_token";
 const DEFAULT_TIMEOUT_MS = 15000;
 
 function normalizeApiBase(value: string): string {
+  const fallback = process.env.NODE_ENV === "production"
+    ? PRODUCTION_API_BASE
+    : DEVELOPMENT_API_BASE;
   const trimmed = value.trim().replace(/\/+$/, "");
-  if (!trimmed) return "https://bridgeaz.onrender.com/api";
+  if (!trimmed) return fallback;
 
   try {
     const url = new URL(trimmed);
+    if (
+      process.env.NODE_ENV === "production" &&
+      ["localhost", "127.0.0.1", "::1"].includes(url.hostname)
+    ) {
+      return PRODUCTION_API_BASE;
+    }
     if (url.pathname === "" || url.pathname === "/") {
       url.pathname = "/api";
       return url.toString().replace(/\/+$/, "");
     }
+    if (!url.pathname.endsWith("/api")) return url.toString().replace(/\/+$/, "");
+    return url.toString().replace(/\/+$/, "");
   } catch {
-    if (trimmed === "" || trimmed === "/") return "/api";
+    if (trimmed === "/api" || trimmed.startsWith("/api/")) return trimmed;
+    return fallback;
   }
-
-  return trimmed;
 }
 
 export const tokenStore = {
