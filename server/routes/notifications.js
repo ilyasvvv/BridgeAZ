@@ -1,6 +1,7 @@
 const express = require("express");
 const Notification = require("../models/Notification");
 const { authMiddleware, blockBanned } = require("../middleware/auth");
+const realtime = require("../utils/realtime");
 
 const router = express.Router();
 
@@ -21,6 +22,10 @@ router.patch("/read-all", authMiddleware, blockBanned, async (req, res) => {
       { userId: req.user._id, read: false },
       { read: true }
     );
+    realtime.publishToUser(req.user._id, "notifications:read_all", {
+      userId: req.user._id,
+      at: new Date().toISOString()
+    });
     res.json({ message: "All notifications marked as read" });
   } catch (error) {
     res.status(500).json({ message: "Failed to mark all as read" });
@@ -37,6 +42,7 @@ router.patch("/:id/read", authMiddleware, blockBanned, async (req, res) => {
     if (!notification) {
       return res.status(404).json({ message: "Notification not found" });
     }
+    realtime.publishToUser(req.user._id, "notification:read", notification);
     res.json(notification);
   } catch (error) {
     res.status(500).json({ message: "Failed to mark notification" });

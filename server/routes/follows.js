@@ -3,7 +3,9 @@ const Follow = require("../models/Follow");
 const Connection = require("../models/Connection");
 const Mentorship = require("../models/Mentorship");
 const MentorshipRequest = require("../models/MentorshipRequest");
+const Notification = require("../models/Notification");
 const { authMiddleware, blockBanned } = require("../middleware/auth");
+const realtime = require("../utils/realtime");
 
 const router = express.Router();
 
@@ -24,6 +26,27 @@ router.post("/:userId/follow", authMiddleware, blockBanned, async (req, res) => 
     }
 
     await Follow.create({ followerId: req.user._id, followingId: userId });
+    const notification = await Notification.findOneAndUpdate(
+      {
+        type: "follow",
+        userId,
+        actorId: req.user._id
+      },
+      {
+        $set: {
+          type: "follow",
+          userId,
+          actorId: req.user._id,
+          title: `${req.user.name} started following you`,
+          body: req.user.headline || req.user.currentRegion || "New follower",
+          link: `/user/${req.user.username || req.user._id}`,
+          metadata: { actorName: req.user.name },
+          read: false
+        }
+      },
+      { upsert: true, new: true }
+    );
+    realtime.publishToUser(userId, "notification", notification);
     res.status(201).json({ following: true });
   } catch (error) {
     if (error && error.code === 11000) {

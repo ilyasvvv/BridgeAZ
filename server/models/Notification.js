@@ -25,18 +25,6 @@ notificationSchema.index(
   {
     unique: true,
     partialFilterExpression: {
-      type: "chat_message",
-      "metadata.threadId": { $exists: true }
-    }
-  }
-);
-
-notificationSchema.index(
-  { type: 1, userId: 1, actorId: 1, "metadata.threadId": 1 },
-  {
-    unique: true,
-    partialFilterExpression: {
-      type: "chat_request",
       "metadata.threadId": { $exists: true }
     }
   }

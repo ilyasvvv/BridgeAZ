@@ -12,6 +12,12 @@ const postSchema = new mongoose.Schema(
     attachmentUrl: String,
     attachmentContentType: String,
     attachmentKind: { type: String, enum: ["image", "pdf", "file"] },
+    circle: { type: mongoose.Schema.Types.ObjectId, ref: "Circle" },
+    postedAs: {
+      type: String,
+      enum: ["user", "circle"],
+      default: "user"
+    },
     visibilityRegion: {
       type: String,
       trim: true,

@@ -1,5 +1,6 @@
 const express = require("express");
 const User = require("../models/User");
+const Circle = require("../models/Circle");
 const Opportunity = require("../models/Opportunity");
 const Post = require("../models/Post");
 const { authMiddleware, blockBanned } = require("../middleware/auth");
@@ -15,8 +16,9 @@ router.get("/", authMiddleware, blockBanned, async (req, res) => {
     const limitRaw = Number.parseInt(req.query.limit, 10);
     const limit = Number.isFinite(limitRaw) ? Math.max(1, Math.min(limitRaw, 20)) : 5;
 
-    const typesParam = typeof req.query.types === "string" ? req.query.types.split(",").map((t) => t.trim()).filter(Boolean) : ["users", "opportunities", "posts"];
+    const typesParam = typeof req.query.types === "string" ? req.query.types.split(",").map((t) => t.trim()).filter(Boolean) : ["users", "circles", "opportunities", "posts"];
     const wantUsers = typesParam.includes("users");
+    const wantCircles = typesParam.includes("circles");
     const wantOpportunities = typesParam.includes("opportunities");
     const wantPosts = typesParam.includes("posts");
 
@@ -28,7 +30,13 @@ router.get("/", authMiddleware, blockBanned, async (req, res) => {
 
     // Require either q>=2 or at least one narrowing filter
     if (q.length < 2 && !hasFilters) {
-      return res.json({ users: [], opportunities: [], posts: [], counts: { users: 0, opportunities: 0, posts: 0 } });
+      return res.json({
+        users: [],
+        circles: [],
+        opportunities: [],
+        posts: [],
+        counts: { users: 0, circles: 0, opportunities: 0, posts: 0 }
+      });
     }
 
     // Tokenize q so multi-word searches match tokens in any order
@@ -88,6 +96,19 @@ router.get("/", authMiddleware, blockBanned, async (req, res) => {
       return filter;
     };
 
+    const circleQuery = () => {
+      const filter = { visibility: { $ne: "private" } };
+      if (tokenRegexes.length) {
+        filter.$and = tokenRegexes.map((re) => ({
+          $or: [{ name: re }, { handle: re }, { bio: re }, { currentRegion: re }]
+        }));
+      }
+      if (countriesParam.length) {
+        filter["location.country"] = { $in: countriesParam };
+      }
+      return filter;
+    };
+
     const postQuery = () => {
       const filter = {};
       if (tokenRegexes.length) {
@@ -136,12 +157,29 @@ router.get("/", authMiddleware, blockBanned, async (req, res) => {
       tasks.push(Promise.resolve({ key: "opportunities", docs: [], count: 0 }));
     }
 
+    if (wantCircles) {
+      const filter = circleQuery();
+      tasks.push(
+        Promise.all([
+          Circle.find(filter)
+            .select("name handle bio currentRegion location visibility avatarUrl memberCount postCount createdAt")
+            .sort({ updatedAt: -1 })
+            .limit(limit)
+            .lean(),
+          Circle.countDocuments(filter)
+        ]).then(([docs, count]) => ({ key: "circles", docs, count }))
+      );
+    } else {
+      tasks.push(Promise.resolve({ key: "circles", docs: [], count: 0 }));
+    }
+
     if (wantPosts) {
       const filter = postQuery();
       tasks.push(
         Promise.all([
           Post.find(filter)
-            .populate("author", "name avatarUrl profilePhotoUrl profilePictureUrl")
+            .populate("author", "name username accountType avatarUrl profilePhotoUrl profilePictureUrl currentRegion headline")
+            .populate("circle", "name handle avatarUrl currentRegion")
             .sort({ createdAt: -1 })
             .limit(limit)
             .lean(),
@@ -154,7 +192,13 @@ router.get("/", authMiddleware, blockBanned, async (req, res) => {
 
     const results = await Promise.all(tasks);
 
-    const response = { users: [], opportunities: [], posts: [], counts: { users: 0, opportunities: 0, posts: 0 } };
+    const response = {
+      users: [],
+      circles: [],
+      opportunities: [],
+      posts: [],
+      counts: { users: 0, circles: 0, opportunities: 0, posts: 0 }
+    };
     for (const r of results) {
       response[r.key] = r.docs;
       response.counts[r.key] = r.count;

@@ -3,23 +3,51 @@ const mongoose = require("mongoose");
 const Post = require("../models/Post");
 const Comment = require("../models/Comment");
 const Notification = require("../models/Notification");
+const Circle = require("../models/Circle");
 const { authMiddleware, blockBanned } = require("../middleware/auth");
 const { sanitizeString, FIELD_LIMITS } = require("../middleware/sanitize");
+const realtime = require("../utils/realtime");
 
 const router = express.Router();
 const normalizeToken = (value) => (typeof value === "string" ? value.trim() : "");
 const authorSelect =
-  "name avatarUrl photoUrl profilePhoto profilePhotoUrl profilePictureUrl currentRegion accountType isMentor";
+  "name username avatarUrl photoUrl profilePhoto profilePhotoUrl profilePictureUrl currentRegion accountType isMentor headline";
 const commentAuthorSelect =
-  "name avatarUrl photoUrl profilePhoto profilePhotoUrl profilePictureUrl";
+  "name username avatarUrl photoUrl profilePhoto profilePhotoUrl profilePictureUrl currentRegion accountType";
+const circleSelect = "name handle avatarUrl currentRegion visibility memberCount";
+
+const isCircleAdmin = (circle, userId) => {
+  const id = String(userId);
+  if (String(circle.owner) === id) return true;
+  return (circle.members || []).some(
+    (member) =>
+      String(member.userId) === id &&
+      member.status === "active" &&
+      ["owner", "admin"].includes(member.role)
+  );
+};
+
+const isCircleMember = (circle, userId) => {
+  const id = String(userId);
+  if (String(circle.owner) === id) return true;
+  return (circle.members || []).some(
+    (member) => String(member.userId) === id && member.status === "active"
+  );
+};
 
 router.get("/", authMiddleware, blockBanned, async (req, res) => {
   try {
     const region = normalizeToken(req.query.region || req.user.currentRegion);
     const visibility = region && region.toUpperCase() !== "ALL" ? ["ALL", region] : ["ALL"];
 
-    const posts = await Post.find({ visibilityRegion: { $in: visibility } })
+    const query = { visibilityRegion: { $in: visibility } };
+    if (req.query.circleId && mongoose.Types.ObjectId.isValid(req.query.circleId)) {
+      query.circle = req.query.circleId;
+    }
+
+    const posts = await Post.find(query)
       .populate("author", authorSelect)
+      .populate("circle", circleSelect)
       .populate({
         path: "comments",
         select: "author content createdAt",
@@ -45,7 +73,13 @@ router.get("/", authMiddleware, blockBanned, async (req, res) => {
 router.post("/", authMiddleware, blockBanned, async (req, res) => {
   try {
     const rawContent = req.body.content;
-    const { attachmentUrl, attachmentContentType, visibilityRegion } = req.body;
+    const {
+      attachmentUrl,
+      attachmentContentType,
+      visibilityRegion,
+      circleId,
+      postedAs
+    } = req.body;
     if (!rawContent) {
       return res.status(400).json({ message: "Post content is required" });
     }
@@ -76,16 +110,52 @@ router.post("/", authMiddleware, blockBanned, async (req, res) => {
       attachmentContentType || inferContentTypeFromUrl(attachmentUrl) || undefined;
     const attachmentKind = attachmentUrl ? resolveKind(normalizedContentType, attachmentUrl) : undefined;
 
+    let circle = null;
+    const normalizedCircleId = normalizeToken(circleId);
+    if (normalizedCircleId) {
+      if (!mongoose.Types.ObjectId.isValid(normalizedCircleId)) {
+        return res.status(400).json({ message: "Invalid circle id" });
+      }
+      circle = await Circle.findById(normalizedCircleId);
+      if (!circle) {
+        return res.status(404).json({ message: "Circle not found" });
+      }
+      if (!isCircleMember(circle, req.user._id)) {
+        return res.status(403).json({ message: "Join the circle before posting" });
+      }
+      if (postedAs === "circle" && !isCircleAdmin(circle, req.user._id)) {
+        return res.status(403).json({ message: "Only circle admins can post as the circle" });
+      }
+    }
+
     const post = await Post.create({
       author: req.user._id,
       content,
       attachmentUrl,
       attachmentContentType: normalizedContentType,
       attachmentKind,
+      circle: circle?._id,
+      postedAs: circle && postedAs === "circle" ? "circle" : "user",
       visibilityRegion: normalizeToken(visibilityRegion) || "ALL"
     });
 
-    const populated = await post.populate("author", authorSelect);
+    if (circle) {
+      circle.postCount = (circle.postCount || 0) + 1;
+      await circle.save();
+    }
+
+    const populated = await post.populate([
+      { path: "author", select: authorSelect },
+      { path: "circle", select: circleSelect }
+    ]);
+    realtime.publishToUser(req.user._id, "post:created", populated);
+    if (circle) {
+      realtime.publishToUsers(
+        (circle.members || []).map((member) => member.userId),
+        "circle:post_created",
+        populated
+      );
+    }
     res.status(201).json(populated);
   } catch (error) {
     res.status(500).json({ message: "Failed to create post" });
@@ -116,11 +186,16 @@ router.post("/:id/like", authMiddleware, blockBanned, async (req, res) => {
         actorId: req.user._id,
         postId: post._id
       });
+      realtime.publishToUser(post.author, "notification:deleted", {
+        type: "post_like",
+        actorId: req.user._id,
+        postId: post._id
+      });
     }
 
     if (!alreadyLiked && !post.author.equals(req.user._id)) {
       const preview = post.content ? post.content.slice(0, 140) : "";
-      await Notification.findOneAndUpdate(
+      const notification = await Notification.findOneAndUpdate(
         {
           type: "post_like",
           userId: post.author,
@@ -141,7 +216,10 @@ router.post("/:id/like", authMiddleware, blockBanned, async (req, res) => {
         },
         { upsert: true, new: true }
       );
+      realtime.publishToUser(post.author, "notification", notification);
     }
+    const payload = { postId: post._id, likesCount: post.likes.length, likedByMe: !alreadyLiked };
+    realtime.publishToUser(post.author, "post:liked", payload);
     res.json({ likesCount: post.likes.length, likedByMe: !alreadyLiked });
   } catch (error) {
     res.status(500).json({ message: "Failed to toggle like" });
@@ -156,6 +234,7 @@ router.get("/:id", authMiddleware, blockBanned, async (req, res) => {
 
     const post = await Post.findById(req.params.id)
       .populate("author", authorSelect)
+      .populate("circle", circleSelect)
       .populate({
         path: "comments",
         select: "author content createdAt",
@@ -205,6 +284,7 @@ const handleCreateComment = async (req, res) => {
 
     const populated = await Post.findById(req.params.id)
       .populate("author", authorSelect)
+      .populate("circle", circleSelect)
       .populate({
         path: "comments",
         select: "author content createdAt",
@@ -213,6 +293,36 @@ const handleCreateComment = async (req, res) => {
       });
 
     const populatedComment = await comment.populate("author", commentAuthorSelect);
+    if (!post.author.equals(req.user._id)) {
+      const notification = await Notification.findOneAndUpdate(
+        {
+          type: "post_comment",
+          userId: post.author,
+          actorId: req.user._id,
+          postId: post._id,
+          "metadata.commentId": comment._id
+        },
+        {
+          $setOnInsert: {
+            type: "post_comment",
+            userId: post.author,
+            actorId: req.user._id,
+            postId: post._id,
+            title: `${req.user.name} commented on your post`,
+            body: content.slice(0, 140),
+            link: `/posts/${post._id}`,
+            metadata: { postId: post._id, commentId: comment._id, actorName: req.user.name },
+            read: false
+          }
+        },
+        { upsert: true, new: true }
+      );
+      realtime.publishToUser(post.author, "notification", notification);
+    }
+    realtime.publishToUser(post.author, "post:commented", {
+      postId: post._id,
+      comment: populatedComment
+    });
     res.status(201).json({ ...populated.toObject(), createdComment: populatedComment });
   } catch (error) {
     res.status(500).json({ message: "Failed to add comment" });
@@ -260,7 +370,10 @@ router.patch("/:id", authMiddleware, blockBanned, async (req, res) => {
 
     post.content = content;
     await post.save();
-    const populated = await post.populate("author", authorSelect);
+    const populated = await post.populate([
+      { path: "author", select: authorSelect },
+      { path: "circle", select: circleSelect }
+    ]);
     res.json(populated);
   } catch (error) {
     res.status(500).json({ message: "Failed to update post" });

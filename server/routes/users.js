@@ -20,6 +20,17 @@ const normalizeUsername = (value = "") =>
     .replace(/[^a-z0-9._]/g, "")
     .replace(/^[._]+|[._]+$/g, "");
 
+const PUBLIC_USER_SELECT =
+  "name username accountType currentRegion locationNow profilePhotoUrl avatarUrl profilePictureUrl headline bio education experience skills links socialLinks createdAt isMentor mentorshipAvailability";
+
+const serializePublicUser = (user) => {
+  const obj = user.toObject ? user.toObject() : user;
+  return {
+    ...obj,
+    avatarUrl: obj.avatarUrl || obj.profilePhotoUrl || obj.profilePictureUrl || ""
+  };
+};
+
 router.get("/me", authMiddleware, blockBanned, async (req, res) => {
   res.json(req.user);
 });
@@ -62,6 +73,28 @@ router.put("/me", authMiddleware, blockBanned, async (req, res) => {
     if (updates.headline !== undefined) updates.headline = sanitizeString(updates.headline, FIELD_LIMITS.headline);
     if (updates.bio !== undefined) updates.bio = sanitizeString(updates.bio, FIELD_LIMITS.bio);
     if (updates.currentRegion !== undefined) updates.currentRegion = sanitizeString(updates.currentRegion, 100);
+    if (updates.locationNow !== undefined && updates.locationNow && typeof updates.locationNow === "object") {
+      updates.locationNow = {
+        city: sanitizeString(updates.locationNow.city || "", 100),
+        country: sanitizeString(updates.locationNow.country || "", 100)
+      };
+    }
+    if (updates.links !== undefined && Array.isArray(updates.links)) {
+      updates.links = updates.links
+        .slice(0, 20)
+        .map((link) => ({
+          label: sanitizeString(link?.label || "", 100),
+          url: sanitizeString(link?.url || "", 500)
+        }))
+        .filter((link) => link.url);
+    }
+    if (updates.socialLinks !== undefined && updates.socialLinks && typeof updates.socialLinks === "object") {
+      updates.socialLinks = {
+        linkedin: sanitizeString(updates.socialLinks.linkedin || "", 500),
+        github: sanitizeString(updates.socialLinks.github || "", 500),
+        website: sanitizeString(updates.socialLinks.website || "", 500)
+      };
+    }
 
     // Validate name is not empty after sanitization
     if (updates.name !== undefined && !updates.name) {
@@ -126,7 +159,7 @@ router.get("/search", authMiddleware, blockBanned, async (req, res) => {
     }
 
     const users = await User.find(query)
-      .select("name username accountType avatarUrl profilePhotoUrl profilePictureUrl currentRegion locationNow education experience headline")
+      .select("name username accountType avatarUrl profilePhotoUrl profilePictureUrl currentRegion locationNow education experience headline bio skills")
       .sort({ updatedAt: -1 })
       .limit(limit);
 
@@ -141,6 +174,11 @@ router.get("/search", authMiddleware, blockBanned, async (req, res) => {
         avatarUrl: member.avatarUrl || member.profilePhotoUrl || member.profilePictureUrl || "",
         profilePhotoUrl: member.profilePhotoUrl || member.avatarUrl || "",
         profilePictureUrl: member.profilePictureUrl || "",
+        accountType: member.accountType,
+        headline: member.headline || "",
+        bio: member.bio || "",
+        skills: member.skills || [],
+        currentRegion: member.currentRegion || "",
         country: member.locationNow?.country || member.currentRegion || "",
         university: firstEducation?.institution || "",
         company
@@ -153,18 +191,48 @@ router.get("/search", authMiddleware, blockBanned, async (req, res) => {
   }
 });
 
+router.get("/handle/:username", authMiddleware, blockBanned, async (req, res) => {
+  try {
+    const username = normalizeUsername(req.params.username);
+    if (!username) {
+      return res.status(400).json({ message: "Invalid username" });
+    }
+
+    const user = await User.findOne({ username }).select(PUBLIC_USER_SELECT);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    const isOwner = user._id.equals(req.user._id);
+    const isAdmin = req.user.isAdmin || (req.user.roles || []).includes("adminA");
+    const isPrivate = user.isPrivate || user.profileVisibility === "private";
+    if (isPrivate && !isOwner && !isAdmin) {
+      return res.json({
+        _id: user._id,
+        name: user.name,
+        username: user.username,
+        headline: user.headline,
+        avatarUrl: user.profilePhotoUrl || user.avatarUrl || user.profilePictureUrl,
+        currentRegion: user.currentRegion
+      });
+    }
+
+    res.json(serializePublicUser(user));
+  } catch (error) {
+    res.status(500).json({ message: "Failed to load user" });
+  }
+});
+
 router.get("/:id/public", authMiddleware, blockBanned, async (req, res) => {
   try {
     if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
       return res.status(400).json({ message: "Invalid user id" });
     }
-    const user = await User.findById(req.params.id).select(
-      "name username accountType currentRegion profilePhotoUrl avatarUrl headline bio education experience skills links socialLinks createdAt isMentor mentorshipAvailability"
-    );
+    const user = await User.findById(req.params.id).select(PUBLIC_USER_SELECT);
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
-    res.json(user);
+    res.json(serializePublicUser(user));
   } catch (error) {
     res.status(500).json({ message: "Failed to load user" });
   }

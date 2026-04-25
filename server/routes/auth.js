@@ -187,7 +187,23 @@ const signToken = (user) => {
 router.post("/register", async (req, res) => {
   try {
     const rawName = req.body.name;
-    const { email, password, userType, accountType, currentRegion, username } = req.body;
+    const {
+      email,
+      password,
+      userType,
+      accountType,
+      currentRegion,
+      username,
+      headline,
+      bio,
+      locationNow,
+      skills,
+      links,
+      socialLinks,
+      avatarUrl,
+      profilePhotoUrl,
+      profilePictureUrl
+    } = req.body;
     const name = sanitizeString(rawName, FIELD_LIMITS.name);
     const normalizedEmail = normalizeEmail(email);
     const normalizedUsername = normalizeUsername(username);
@@ -219,8 +235,37 @@ router.post("/register", async (req, res) => {
       authProviders: ["password"],
       accountType: signupType.accountType,
       userType: signupType.userType,
-      currentRegion: (currentRegion || "").trim(),
-      roles: [signupType.role]
+      currentRegion: sanitizeString(currentRegion || "", 100),
+      roles: [signupType.role],
+      headline: sanitizeString(headline || "", FIELD_LIMITS.headline),
+      bio: sanitizeString(bio || "", FIELD_LIMITS.bio),
+      locationNow:
+        locationNow && typeof locationNow === "object"
+          ? {
+              city: sanitizeString(locationNow.city || "", 100),
+              country: sanitizeString(locationNow.country || "", 100)
+            }
+          : undefined,
+      skills: Array.isArray(skills)
+        ? skills.slice(0, 50).map((skill) => sanitizeString(skill, FIELD_LIMITS.skill)).filter(Boolean)
+        : [],
+      links: Array.isArray(links)
+        ? links.slice(0, 20).map((link) => ({
+            label: sanitizeString(link?.label || "", 100),
+            url: sanitizeString(link?.url || "", 500)
+          })).filter((link) => link.url)
+        : [],
+      socialLinks:
+        socialLinks && typeof socialLinks === "object"
+          ? {
+              linkedin: sanitizeString(socialLinks.linkedin || "", 500),
+              github: sanitizeString(socialLinks.github || "", 500),
+              website: sanitizeString(socialLinks.website || "", 500)
+            }
+          : undefined,
+      avatarUrl: sanitizeString(avatarUrl || "", 500),
+      profilePhotoUrl: sanitizeString(profilePhotoUrl || "", 500),
+      profilePictureUrl: sanitizeString(profilePictureUrl || "", 500)
     });
 
     const token = signToken(user);

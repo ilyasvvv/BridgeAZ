@@ -6,6 +6,7 @@ const QComment = require("../models/QComment");
 const QBlock = require("../models/QBlock");
 const { authMiddleware, blockBanned } = require("../middleware/auth");
 const { sanitizeString } = require("../middleware/sanitize");
+const realtime = require("../utils/realtime");
 
 const AUTHOR_SELECT =
   "name avatarUrl profilePhotoUrl profilePictureUrl currentRegion accountType qLocation";
@@ -143,6 +144,7 @@ router.post("/", authMiddleware, blockBanned, async (req, res) => {
       .populate("author", AUTHOR_SELECT)
       .lean();
 
+    realtime.publishToUser(req.user._id, "q:post_created", populated);
     res.status(201).json(populated);
   } catch (err) {
     console.error("POST /api/q/posts error:", err);
@@ -252,6 +254,12 @@ router.post("/:id/like", authMiddleware, blockBanned, async (req, res) => {
       await post.save();
     }
 
+    realtime.publishToUser(post.author, "q:post_liked", {
+      postId: post._id,
+      likeCount: post.likeCount,
+      likedByMe: true,
+      actorId: req.user._id
+    });
     res.json({ likeCount: post.likeCount, likedByMe: true });
   } catch (err) {
     console.error("POST /:id/like error:", err);
@@ -390,6 +398,10 @@ router.post("/:id/comments", authMiddleware, blockBanned, async (req, res) => {
       .populate("author", AUTHOR_SELECT)
       .lean();
 
+    realtime.publishToUser(post.author, "q:post_commented", {
+      postId: post._id,
+      comment: populated
+    });
     res.status(201).json(populated);
   } catch (err) {
     console.error("POST /:id/comments error:", err);

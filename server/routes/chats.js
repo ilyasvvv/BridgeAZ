@@ -1,20 +1,28 @@
 const express = require("express");
+const mongoose = require("mongoose");
 const ChatThread = require("../models/ChatThread");
 const ChatMessage = require("../models/ChatMessage");
 const Notification = require("../models/Notification");
+const User = require("../models/User");
 const { authMiddleware, blockBanned } = require("../middleware/auth");
+const { sanitizeString, FIELD_LIMITS } = require("../middleware/sanitize");
+const realtime = require("../utils/realtime");
 
 const router = express.Router();
+const PARTICIPANT_SELECT =
+  "name username accountType avatarUrl profilePhotoUrl profilePictureUrl currentRegion headline";
+
+const sameId = (left, right) => String(left?._id || left) === String(right?._id || right);
 
 const toThreadPayload = (thread, userId) => {
   const otherParticipant = (thread.participants || []).find(
-    (participant) => !participant._id.equals(userId)
+    (participant) => !sameId(participant, userId)
   );
   const myReadState = (thread.readStates || []).find((state) =>
-    state.userId?.equals(userId)
+    sameId(state.userId, userId)
   );
   const otherReadState = (thread.readStates || []).find(
-    (state) => !state.userId?.equals(userId)
+    (state) => !sameId(state.userId, userId)
   );
   return {
     ...thread.toObject(),
@@ -24,10 +32,20 @@ const toThreadPayload = (thread, userId) => {
   };
 };
 
+const populateThread = (thread) =>
+  thread.populate("participants", PARTICIPANT_SELECT);
+
+const publishThread = (thread, event = "chat:thread") => {
+  realtime.publishToUsers(thread.participants || [], event, {
+    threadId: thread._id,
+    thread
+  });
+};
+
 router.get("/threads", authMiddleware, blockBanned, async (req, res) => {
   try {
     const threads = await ChatThread.find({ participants: req.user._id })
-      .populate("participants", "name accountType avatarUrl profilePhotoUrl profilePictureUrl")
+      .populate("participants", PARTICIPANT_SELECT)
       .sort({ lastMessageAt: -1, updatedAt: -1 })
       .limit(100);
     const mapped = threads.map((thread) => toThreadPayload(thread, req.user._id));
@@ -43,8 +61,15 @@ router.post("/threads", authMiddleware, blockBanned, async (req, res) => {
     if (!userId) {
       return res.status(400).json({ message: "userId is required" });
     }
+    if (!mongoose.Types.ObjectId.isValid(userId)) {
+      return res.status(400).json({ message: "Invalid userId" });
+    }
     if (String(userId) === String(req.user._id)) {
       return res.status(400).json({ message: "Cannot message yourself" });
+    }
+    const recipientUser = await User.findById(userId).select("_id banned");
+    if (!recipientUser || recipientUser.banned) {
+      return res.status(404).json({ message: "User not found" });
     }
 
     const existing = await ChatThread.findOne({
@@ -59,19 +84,17 @@ router.post("/threads", authMiddleware, blockBanned, async (req, res) => {
         existing.lastMessageAt = new Date();
         await existing.save();
       } else {
-        return res.json(existing);
+        const populatedExisting = await populateThread(existing);
+        return res.json(toThreadPayload(populatedExisting, req.user._id));
       }
-      const populated = await existing.populate(
-        "participants",
-        "name accountType avatarUrl profilePhotoUrl profilePictureUrl"
-      );
+      const populated = await populateThread(existing);
       const payload = toThreadPayload(populated, req.user._id);
       try {
         const recipient = (populated.participants || []).find(
-          (participant) => !participant._id.equals(req.user._id)
+          (participant) => !sameId(participant, req.user._id)
         );
         if (recipient) {
-          await Notification.findOneAndUpdate(
+          const notification = await Notification.findOneAndUpdate(
             {
               type: "chat_request",
               userId: recipient._id,
@@ -92,12 +115,14 @@ router.post("/threads", authMiddleware, blockBanned, async (req, res) => {
             },
             { upsert: true, new: true }
           );
+          realtime.publishToUser(recipient._id, "notification", notification);
         }
       } catch (notifyError) {
         if (process.env.NODE_ENV !== "production") {
           console.warn("Chat request notification failed:", notifyError.message || notifyError);
         }
       }
+      publishThread(populated);
       return res.json(payload);
     }
 
@@ -107,17 +132,14 @@ router.post("/threads", authMiddleware, blockBanned, async (req, res) => {
       requestedBy: req.user._id,
       lastMessageAt: new Date()
     });
-    const populated = await thread.populate(
-      "participants",
-      "name accountType avatarUrl profilePhotoUrl profilePictureUrl"
-    );
+    const populated = await populateThread(thread);
     const payload = toThreadPayload(populated, req.user._id);
     try {
       const recipient = (populated.participants || []).find(
-        (participant) => !participant._id.equals(req.user._id)
+        (participant) => !sameId(participant, req.user._id)
       );
       if (recipient) {
-        await Notification.findOneAndUpdate(
+        const notification = await Notification.findOneAndUpdate(
           {
             type: "chat_request",
             userId: recipient._id,
@@ -138,12 +160,14 @@ router.post("/threads", authMiddleware, blockBanned, async (req, res) => {
           },
           { upsert: true, new: true }
         );
+        realtime.publishToUser(recipient._id, "notification", notification);
       }
     } catch (notifyError) {
       if (process.env.NODE_ENV !== "production") {
         console.warn("Chat request notification failed:", notifyError.message || notifyError);
       }
     }
+    publishThread(populated);
     res.status(201).json(payload);
   } catch (error) {
     res.status(500).json({ message: "Failed to create thread" });
@@ -161,6 +185,7 @@ router.get("/threads/:id/messages", authMiddleware, blockBanned, async (req, res
     }
 
     const messages = await ChatMessage.find({ threadId: req.params.id })
+      .populate("senderId", PARTICIPANT_SELECT)
       .sort({ createdAt: 1 })
       .limit(200);
     res.json(messages);
@@ -213,10 +238,12 @@ router.post("/threads/:id/messages", authMiddleware, blockBanned, async (req, re
           }
         : undefined;
 
+    const cleanBody = body ? sanitizeString(body, FIELD_LIMITS.message) : "";
+
     if (
       !resolvedAttachmentUrl &&
       normalizedAttachments.length === 0 &&
-      (!body || !body.trim()) &&
+      (!cleanBody || !cleanBody.trim()) &&
       !normalizedShare
     ) {
       return res.status(400).json({ message: "Message body or attachment is required" });
@@ -248,7 +275,7 @@ router.post("/threads/:id/messages", authMiddleware, blockBanned, async (req, re
     const message = await ChatMessage.create({
       threadId: req.params.id,
       senderId: req.user._id,
-      body,
+      body: cleanBody,
       share: normalizedShare,
       replyTo: replyTo
         ? {
@@ -267,16 +294,18 @@ router.post("/threads/:id/messages", authMiddleware, blockBanned, async (req, re
     thread.lastMessageAt = new Date();
     await thread.save();
 
+    const populatedMessage = await message.populate("senderId", PARTICIPANT_SELECT);
+
     try {
       const recipient = (thread.participants || []).find(
-        (participant) => !participant.equals(req.user._id)
+        (participant) => !sameId(participant, req.user._id)
       );
-      if (recipient && !recipient.equals(req.user._id)) {
+      if (recipient && !sameId(recipient, req.user._id)) {
         const notificationBody =
           (message.body || "").trim() ||
           (message.share?.title ? `Shared: ${message.share.title}` : "") ||
           "Sent an attachment";
-        await Notification.findOneAndUpdate(
+        const notification = await Notification.findOneAndUpdate(
           {
             type: "chat_message",
             userId: recipient,
@@ -297,6 +326,7 @@ router.post("/threads/:id/messages", authMiddleware, blockBanned, async (req, re
           },
           { upsert: true, new: true }
         );
+        realtime.publishToUser(recipient, "notification", notification);
       }
     } catch (notifyError) {
       if (process.env.NODE_ENV !== "production") {
@@ -304,7 +334,11 @@ router.post("/threads/:id/messages", authMiddleware, blockBanned, async (req, re
       }
     }
 
-    res.status(201).json(message);
+    realtime.publishToUsers(thread.participants, "chat:message", {
+      threadId: thread._id,
+      message: populatedMessage
+    });
+    res.status(201).json(populatedMessage);
   } catch (error) {
     res.status(500).json({ message: "Failed to send message" });
   }
@@ -331,7 +365,9 @@ router.post("/threads/:id/read", authMiddleware, blockBanned, async (req, res) =
     }
 
     await thread.save();
-    res.json({ ok: true, threadId: thread._id, lastReadAt: now });
+    const payload = { ok: true, threadId: thread._id, userId: req.user._id, lastReadAt: now };
+    realtime.publishToUsers(thread.participants, "chat:read", payload);
+    res.json(payload);
   } catch (error) {
     res.status(500).json({ message: "Failed to mark thread as read" });
   }
@@ -353,7 +389,7 @@ router.post("/messages/:id/react", authMiddleware, blockBanned, async (req, res)
     const thread = await ChatThread.findOne({
       _id: message.threadId,
       participants: req.user._id
-    }).select("_id");
+    }).select("_id participants");
     if (!thread) {
       return res.status(404).json({ message: "Thread not found" });
     }
@@ -374,6 +410,11 @@ router.post("/messages/:id/react", authMiddleware, blockBanned, async (req, res)
     message.markModified("reactions");
     await message.save();
 
+    realtime.publishToUsers(thread.participants, "chat:reaction", {
+      threadId: message.threadId,
+      messageId: message._id,
+      reactions: message.reactions
+    });
     res.json(message);
   } catch (error) {
     res.status(500).json({ message: "Failed to toggle reaction" });
@@ -385,7 +426,7 @@ router.post("/threads/:id/accept", authMiddleware, blockBanned, async (req, res)
     const thread = await ChatThread.findOne({
       _id: req.params.id,
       participants: req.user._id
-    }).populate("participants", "name accountType avatarUrl profilePhotoUrl profilePictureUrl");
+    }).populate("participants", PARTICIPANT_SELECT);
     if (!thread) {
       return res.status(404).json({ message: "Thread not found" });
     }
@@ -401,6 +442,7 @@ router.post("/threads/:id/accept", authMiddleware, blockBanned, async (req, res)
     thread.rejectedAt = null;
     await thread.save();
     const payload = toThreadPayload(thread, req.user._id);
+    publishThread(thread);
     res.json(payload);
   } catch (error) {
     res.status(500).json({ message: "Failed to accept request" });
@@ -412,7 +454,7 @@ router.post("/threads/:id/reject", authMiddleware, blockBanned, async (req, res)
     const thread = await ChatThread.findOne({
       _id: req.params.id,
       participants: req.user._id
-    }).populate("participants", "name accountType avatarUrl profilePhotoUrl profilePictureUrl");
+    }).populate("participants", PARTICIPANT_SELECT);
     if (!thread) {
       return res.status(404).json({ message: "Thread not found" });
     }
@@ -427,6 +469,7 @@ router.post("/threads/:id/reject", authMiddleware, blockBanned, async (req, res)
     thread.rejectedAt = new Date();
     await thread.save();
     const payload = toThreadPayload(thread, req.user._id);
+    publishThread(thread);
     res.json(payload);
   } catch (error) {
     res.status(500).json({ message: "Failed to reject request" });

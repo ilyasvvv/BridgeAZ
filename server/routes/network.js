@@ -1,7 +1,9 @@
 const express = require("express");
 const Connection = require("../models/Connection");
 const Mentorship = require("../models/Mentorship");
+const Notification = require("../models/Notification");
 const { authMiddleware, blockBanned } = require("../middleware/auth");
+const realtime = require("../utils/realtime");
 
 const router = express.Router();
 
@@ -61,6 +63,28 @@ router.post("/connections/request", authMiddleware, blockBanned, async (req, res
     }
 
     const connection = await Connection.create(connectionData);
+    const notification = await Notification.findOneAndUpdate(
+      {
+        type: "bridge_request",
+        userId: recipientId,
+        actorId: req.user._id,
+        "metadata.connectionId": connection._id
+      },
+      {
+        $set: {
+          type: "bridge_request",
+          userId: recipientId,
+          actorId: req.user._id,
+          title: `${req.user.name} sent you a bridge request`,
+          body: connection.message || req.user.headline || "Accept to connect.",
+          link: `/network?connection=${connection._id}`,
+          metadata: { connectionId: connection._id, actorName: req.user.name },
+          read: false
+        }
+      },
+      { upsert: true, new: true }
+    );
+    realtime.publishToUser(recipientId, "notification", notification);
     res.status(201).json(connection);
   } catch (error) {
     if (error && error.code === 11000) {
@@ -83,6 +107,30 @@ router.post("/connections/:id/accept", authMiddleware, blockBanned, async (req, 
     connection.status = "accepted";
     connection.acceptedAt = new Date();
     await connection.save();
+    const requesterId = connection.requesterId;
+    const notification = await Notification.findOneAndUpdate(
+      {
+        type: "bridge_accepted",
+        userId: requesterId,
+        actorId: req.user._id,
+        "metadata.connectionId": connection._id
+      },
+      {
+        $set: {
+          type: "bridge_accepted",
+          userId: requesterId,
+          actorId: req.user._id,
+          title: `${req.user.name} accepted your bridge request`,
+          body: "You are now connected.",
+          link: `/network?connection=${connection._id}`,
+          metadata: { connectionId: connection._id, actorName: req.user.name },
+          read: false
+        }
+      },
+      { upsert: true, new: true }
+    );
+    realtime.publishToUser(requesterId, "notification", notification);
+    realtime.publishToUsers([requesterId, req.user._id], "network:connection_updated", connection);
     res.json(connection);
   } catch (error) {
     res.status(500).json({ message: "Failed to accept bridge request" });

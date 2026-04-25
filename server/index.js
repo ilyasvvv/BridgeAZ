@@ -15,6 +15,8 @@ const opportunityRoutes = require("./routes/opportunities");
 const contactRoutes = require("./routes/contact");
 const notificationRoutes = require("./routes/notifications");
 const chatRoutes = require("./routes/chats");
+const circleRoutes = require("./routes/circles");
+const realtimeRoutes = require("./routes/realtime");
 const networkRoutes = require("./routes/network");
 const followRoutes = require("./routes/follows");
 const searchRoutes = require("./routes/search");
@@ -33,7 +35,14 @@ const allowedOrigins = new Set(
   (
     process.env.SERVER_ALLOWED_ORIGINS ||
     process.env.CLIENT_URL ||
-    "http://localhost:5173,https://bridge-az.vercel.app"
+    [
+      "http://localhost:3000",
+      "http://localhost:5173",
+      "http://127.0.0.1:3000",
+      "http://127.0.0.1:5173",
+      "http://127.0.0.1:57148",
+      "https://bridge-az.vercel.app"
+    ].join(",")
   )
     .split(",")
     .map((origin) => origin.trim())
@@ -79,12 +88,30 @@ app.options("*", cors(corsOptions));
 app.use(express.json({ limit: "2mb" }));
 
 app.get("/api/health", (req, res) => {
-  res.json({ ok: true });
+  res.json({ ok: true, service: "bridgeaz-api" });
+});
+
+app.get("/api", (req, res) => {
+  res.json({
+    ok: true,
+    service: "bridgeaz-api",
+    resources: [
+      "auth",
+      "users",
+      "posts",
+      "circles",
+      "chats",
+      "notifications",
+      "realtime",
+      "search"
+    ]
+  });
 });
 
 app.use("/api/auth", authLimiter, authRoutes);
 app.use("/api/users", generalLimiter, userRoutes);
 app.use("/api/posts", postLimiter, postRoutes);
+app.use("/api/circles", generalLimiter, circleRoutes);
 app.use("/api/verification", generalLimiter, verificationRoutes);
 app.use("/api/admin", generalLimiter, adminRoutes);
 app.use("/api/upload", generalLimiter, uploadRoutes);
@@ -94,6 +121,7 @@ app.use("/api/opportunities", generalLimiter, opportunityRoutes);
 app.use("/api/contact", generalLimiter, contactRoutes);
 app.use("/api/notifications", generalLimiter, notificationRoutes);
 app.use("/api/chats", chatLimiter, chatRoutes);
+app.use("/api/realtime", realtimeRoutes);
 app.use("/api/search", searchLimiter, searchRoutes);
 app.use("/api/users", connectionLimiter, followRoutes);
 app.use("/api", connectionLimiter, networkRoutes);
