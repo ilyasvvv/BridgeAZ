@@ -12,10 +12,10 @@ router.post("/block/:userId", authMiddleware, blockBanned, async (req, res) => {
     const { userId } = req.params;
 
     if (!mongoose.Types.ObjectId.isValid(userId)) {
-      return res.status(400).json({ error: "Invalid user ID" });
+      return res.status(400).json({ message: "Invalid user ID" });
     }
     if (userId === req.user._id.toString()) {
-      return res.status(400).json({ error: "Cannot block yourself" });
+      return res.status(400).json({ message: "Cannot block yourself" });
     }
 
     await QBlock.findOneAndUpdate(
@@ -27,7 +27,7 @@ router.post("/block/:userId", authMiddleware, blockBanned, async (req, res) => {
     res.json({ message: "User blocked" });
   } catch (err) {
     console.error("POST /block/:userId error:", err);
-    res.status(500).json({ error: "Failed to block user" });
+    res.status(500).json({ message: "Failed to block user" });
   }
 });
 
@@ -37,7 +37,7 @@ router.delete("/block/:userId", authMiddleware, blockBanned, async (req, res) =>
     const { userId } = req.params;
 
     if (!mongoose.Types.ObjectId.isValid(userId)) {
-      return res.status(400).json({ error: "Invalid user ID" });
+      return res.status(400).json({ message: "Invalid user ID" });
     }
 
     await QBlock.findOneAndDelete({ blocker: req.user._id, blocked: userId });
@@ -45,7 +45,7 @@ router.delete("/block/:userId", authMiddleware, blockBanned, async (req, res) =>
     res.json({ message: "User unblocked" });
   } catch (err) {
     console.error("DELETE /block/:userId error:", err);
-    res.status(500).json({ error: "Failed to unblock user" });
+    res.status(500).json({ message: "Failed to unblock user" });
   }
 });
 
@@ -55,15 +55,15 @@ router.post("/report", authMiddleware, blockBanned, async (req, res) => {
     const { targetType, targetId, reason, details } = req.body;
 
     if (!targetType || !targetId || !reason) {
-      return res.status(400).json({ error: "targetType, targetId, and reason are required" });
+      return res.status(400).json({ message: "targetType, targetId, and reason are required" });
     }
 
     if (!["post", "comment", "user"].includes(targetType)) {
-      return res.status(400).json({ error: "Invalid targetType" });
+      return res.status(400).json({ message: "Invalid targetType" });
     }
 
     if (!mongoose.Types.ObjectId.isValid(targetId)) {
-      return res.status(400).json({ error: "Invalid targetId" });
+      return res.status(400).json({ message: "Invalid targetId" });
     }
 
     const report = await QReport.create({
@@ -77,7 +77,7 @@ router.post("/report", authMiddleware, blockBanned, async (req, res) => {
     res.status(201).json(report);
   } catch (err) {
     console.error("POST /report error:", err);
-    res.status(500).json({ error: "Failed to create report" });
+    res.status(500).json({ message: "Failed to create report" });
   }
 });
 
@@ -90,7 +90,7 @@ router.get("/blocks", authMiddleware, async (req, res) => {
     res.json(blockedIds);
   } catch (err) {
     console.error("GET /blocks error:", err);
-    res.status(500).json({ error: "Failed to fetch blocks" });
+    res.status(500).json({ message: "Failed to fetch blocks" });
   }
 });
 

@@ -19,13 +19,58 @@ const allowedAttachmentTypes = new Set([
 ]);
 const maxAttachmentBytes = 5 * 1024 * 1024;
 const quickReactions = ["👍", "❤️", "😂", "😮", "👎"];
+const funPrompts = [
+  { label: "Warm intro", text: "Hey! I saw your profile and wanted to say hi." },
+  { label: "Coffee chat", text: "Would you be open to a quick coffee chat sometime this week?" },
+  { label: "Celebrate", text: "This is exciting. Congrats on making it happen!" },
+  { label: "Idea spark", text: "I have a small idea that could make this even stronger:" },
+  { label: "Gentle follow-up", text: "Just checking in here when you have a moment." }
+];
+const chatVibes = [
+  { key: "classic", label: "Classic" },
+  { key: "fresh", label: "Fresh" },
+  { key: "pop", label: "Pop" },
+  { key: "night", label: "Night" }
+];
+const reportReasons = [
+  "Harassment or bullying",
+  "Spam or scam",
+  "Hate or abusive content",
+  "Unsafe personal information request",
+  "Other safety concern"
+];
 const inlineTokenRegex =
   /(\*\*[^*]+\*\*|\*[^*]+\*|`[^`]+`|\[[^\]]+\]\((?:https?:\/\/|www\.)[^\s)]+\)|(?:https?:\/\/|www\.)[^\s<>"']+)/g;
 const markdownLinkRegex = /\[([^\]]+)\]\(((?:https?:\/\/|www\.)[^\s)]+)\)/g;
 const plainUrlRegex = /(?:https?:\/\/|www\.)[^\s<>"']+/g;
+const sensitiveInfoRegex =
+  /(\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b|\b(?:\+?\d[\d\s().-]{7,}\d)\b|\b(?:password|passport|ssn|social security|credit card|bank account)\b)/i;
+const chatSettingsStorageKey = "bizim_chat_settings_v1";
+const chatThreadSettingsStorageKey = "bizim_chat_thread_settings_v1";
+const defaultChatSettings = {
+  enterToSend: true,
+  linkPreviews: true,
+  safetyNudges: true,
+  compactMode: false,
+  playfulTools: true,
+  messageStyle: "fresh"
+};
 
 const getEntityId = (value) => String(value?._id || value?.id || value || "");
 const sameEntity = (left, right) => getEntityId(left) === getEntityId(right);
+const readStoredJson = (key, fallback) => {
+  if (typeof window === "undefined") return fallback;
+  try {
+    const raw = window.localStorage.getItem(key);
+    return raw ? { ...fallback, ...JSON.parse(raw) } : fallback;
+  } catch {
+    return fallback;
+  }
+};
+const writeStoredJson = (key, value) => {
+  if (typeof window === "undefined") return;
+  window.localStorage.setItem(key, JSON.stringify(value));
+};
 
 export default function Chats({ showHeader = true }) {
   const { token, user } = useAuth();
@@ -48,6 +93,20 @@ export default function Chats({ showHeader = true }) {
   const [isCoarsePointer, setIsCoarsePointer] = useState(false);
   const [linkPreviews, setLinkPreviews] = useState({});
   const [sharePostPreviews, setSharePostPreviews] = useState({});
+  const [generalSettingsOpen, setGeneralSettingsOpen] = useState(false);
+  const [chatDetailsOpen, setChatDetailsOpen] = useState(false);
+  const [funToolsOpen, setFunToolsOpen] = useState(false);
+  const [chatSettings, setChatSettings] = useState(() =>
+    readStoredJson(chatSettingsStorageKey, defaultChatSettings)
+  );
+  const [threadSettings, setThreadSettings] = useState(() =>
+    readStoredJson(chatThreadSettingsStorageKey, {})
+  );
+  const [blockedUserIds, setBlockedUserIds] = useState(new Set());
+  const [reportReason, setReportReason] = useState(reportReasons[0]);
+  const [reportDetails, setReportDetails] = useState("");
+  const [safetyStatus, setSafetyStatus] = useState("");
+  const [sensitiveWarningAcknowledged, setSensitiveWarningAcknowledged] = useState(false);
   const [error, setError] = useState("");
   const messagesScrollRef = useRef(null);
   const composerRef = useRef(null);
@@ -507,6 +566,30 @@ export default function Chats({ showHeader = true }) {
   }, [token, requestedThreadId]);
 
   useEffect(() => {
+    writeStoredJson(chatSettingsStorageKey, chatSettings);
+  }, [chatSettings]);
+
+  useEffect(() => {
+    writeStoredJson(chatThreadSettingsStorageKey, threadSettings);
+  }, [threadSettings]);
+
+  useEffect(() => {
+    setSensitiveWarningAcknowledged(false);
+  }, [body, activeThread?._id]);
+
+  useEffect(() => {
+    if (!token) return;
+    apiClient
+      .get("/q/blocks", token)
+      .then((blockedIds) => {
+        setBlockedUserIds(new Set((blockedIds || []).map((id) => String(id))));
+      })
+      .catch(() => {
+        setBlockedUserIds(new Set());
+      });
+  }, [token]);
+
+  useEffect(() => {
     if (token && threads.length) {
       loadThreadPreviews(threads);
     }
@@ -687,6 +770,7 @@ export default function Chats({ showHeader = true }) {
   }, [viewerAttachment]);
 
   useEffect(() => {
+    if (!chatSettings.linkPreviews) return;
     const firstUrls = messages
       .map((message) => extractUrlsFromText(message.body || "")[0])
       .filter(Boolean);
@@ -754,7 +838,7 @@ export default function Chats({ showHeader = true }) {
           clearTimeout(timeoutId);
         });
     });
-  }, [messages, linkPreviews]);
+  }, [messages, linkPreviews, chatSettings.linkPreviews]);
 
   useEffect(() => {
     if (!token) return;
@@ -881,6 +965,20 @@ export default function Chats({ showHeader = true }) {
       return;
     }
     if (normalizeThreadStatus(activeThread) !== "active") return;
+    const otherParticipantId = getEntityId(activeThread.otherParticipant);
+    if (blockedUserIds.has(otherParticipantId)) {
+      setError("You blocked this member. Unblock them in chat details before sending.");
+      return;
+    }
+    if (
+      chatSettings.safetyNudges &&
+      body &&
+      sensitiveInfoRegex.test(body) &&
+      !sensitiveWarningAcknowledged
+    ) {
+      setError("This message may include sensitive personal information. Review it, then choose Send anyway if you still want to send.");
+      return;
+    }
 
     try {
       let uploadedAttachments = [];
@@ -983,6 +1081,94 @@ export default function Chats({ showHeader = true }) {
     });
   };
 
+  const updateChatSetting = (key, value) => {
+    setChatSettings((prev) => ({ ...prev, [key]: value }));
+  };
+
+  const getActiveThreadSetting = (key, fallback) => {
+    if (!activeThread?._id) return fallback;
+    return threadSettings[activeThread._id]?.[key] ?? fallback;
+  };
+
+  const updateActiveThreadSetting = (key, value) => {
+    if (!activeThread?._id) return;
+    setThreadSettings((prev) => ({
+      ...prev,
+      [activeThread._id]: {
+        ...(prev[activeThread._id] || {}),
+        [key]: value
+      }
+    }));
+  };
+
+  const insertFunPrompt = (text) => {
+    setBody((prev) => {
+      const spacer = prev && !prev.endsWith("\n") ? "\n" : "";
+      return `${prev}${spacer}${text}`;
+    });
+    requestAnimationFrame(() => composerRef.current?.focus());
+  };
+
+  const handleComposerKeyDown = (event) => {
+    if (!chatSettings.enterToSend) return;
+    if (event.key === "Enter" && !event.shiftKey) {
+      event.preventDefault();
+      event.currentTarget.form?.requestSubmit();
+    }
+  };
+
+  const handleReportUser = async () => {
+    const targetId = getEntityId(activeThread?.otherParticipant);
+    if (!targetId) return;
+    setSafetyStatus("");
+    try {
+      await apiClient.post(
+        "/q/report",
+        {
+          targetType: "user",
+          targetId,
+          reason: reportReason,
+          details: reportDetails
+        },
+        token
+      );
+      setSafetyStatus("Report sent. The moderation team can review this conversation context.");
+      setReportDetails("");
+    } catch (reportError) {
+      setSafetyStatus(reportError.message || "Failed to send report");
+    }
+  };
+
+  const handleBlockUser = async () => {
+    const targetId = getEntityId(activeThread?.otherParticipant);
+    if (!targetId) return;
+    setSafetyStatus("");
+    try {
+      await apiClient.post(`/q/block/${targetId}`, {}, token);
+      setBlockedUserIds((prev) => new Set([...prev, targetId]));
+      setSafetyStatus("User blocked. They cannot start or continue chats with you.");
+    } catch (blockError) {
+      setSafetyStatus(blockError.message || "Failed to block user");
+    }
+  };
+
+  const handleUnblockUser = async () => {
+    const targetId = getEntityId(activeThread?.otherParticipant);
+    if (!targetId) return;
+    setSafetyStatus("");
+    try {
+      await apiClient.delete(`/q/block/${targetId}`, token);
+      setBlockedUserIds((prev) => {
+        const next = new Set(prev);
+        next.delete(targetId);
+        return next;
+      });
+      setSafetyStatus("User unblocked.");
+    } catch (blockError) {
+      setSafetyStatus(blockError.message || "Failed to unblock user");
+    }
+  };
+
   const handleAccept = async () => {
     if (!activeThread?._id) return;
     try {
@@ -1029,7 +1215,7 @@ export default function Chats({ showHeader = true }) {
   const handleDrop = (event) => {
     event.preventDefault();
     setIsDragOver(false);
-    if (!activeThread || activeStatus !== "active") return;
+    if (composerDisabled) return;
     const files = Array.from(event.dataTransfer?.files || []);
     addAttachments(files);
   };
@@ -1241,6 +1427,36 @@ export default function Chats({ showHeader = true }) {
     );
   };
 
+  const activeOtherId = getEntityId(activeThread?.otherParticipant);
+  const activeThreadLocalSettings = activeThread?._id ? threadSettings[activeThread._id] || {} : {};
+  const activeVibe = activeThreadLocalSettings.vibe || chatSettings.messageStyle || "fresh";
+  const isActiveChatBlocked = !!activeOtherId && blockedUserIds.has(activeOtherId);
+  const composerDisabled = !activeThread || activeStatus !== "active" || isActiveChatBlocked;
+  const sensitiveInfoWarning =
+    chatSettings.safetyNudges && !!body && sensitiveInfoRegex.test(body) && !sensitiveWarningAcknowledged;
+  const selectedVibe = chatVibes.find((item) => item.key === activeVibe) || chatVibes[0];
+  const bubbleSizeClass = chatSettings.compactMode
+    ? "px-3 py-1.5 text-[13px]"
+    : "px-4 py-2.5 text-[14px]";
+  const ownBubbleClass = {
+    classic: "bg-accent/[0.08] text-sand",
+    fresh: "border border-emerald-100 bg-emerald-50 text-sand",
+    pop: "border border-fuchsia-100 bg-fuchsia-50 text-sand",
+    night: "bg-sand text-white"
+  }[activeVibe] || "bg-accent/[0.08] text-sand";
+  const otherBubbleClass = {
+    classic: "bg-white border border-border/50 text-sand shadow-[0_1px_2px_rgba(0,0,0,0.04)]",
+    fresh: "border border-sky-100 bg-sky-50 text-sand shadow-[0_1px_2px_rgba(0,0,0,0.04)]",
+    pop: "border border-amber-100 bg-amber-50 text-sand shadow-[0_1px_2px_rgba(0,0,0,0.04)]",
+    night: "border border-sand/15 bg-white text-sand shadow-[0_1px_2px_rgba(0,0,0,0.04)]"
+  }[activeVibe] || "bg-white border border-border/50 text-sand shadow-[0_1px_2px_rgba(0,0,0,0.04)]";
+  const visibleThreads = [...threads].sort((a, b) => {
+    const aPinned = !!threadSettings[a._id]?.pinned;
+    const bPinned = !!threadSettings[b._id]?.pinned;
+    if (aPinned !== bPinned) return aPinned ? -1 : 1;
+    return new Date(b.lastMessageAt || b.updatedAt || 0) - new Date(a.lastMessageAt || a.updatedAt || 0);
+  });
+
   return (
     <>
       {showHeader && <BizimHeader />}
@@ -1248,10 +1464,19 @@ export default function Chats({ showHeader = true }) {
 
       {/* ── Thread list sidebar ── */}
       <section className="rounded-2xl bg-white/80 backdrop-blur-md border border-white/40 shadow-card p-4 md:flex md:min-h-0 md:flex-col">
-        <h2 className="font-display text-lg tracking-tight text-sand">Threads</h2>
+        <div className="flex items-center justify-between gap-3">
+          <h2 className="font-display text-lg tracking-tight text-sand">Threads</h2>
+          <button
+            type="button"
+            onClick={() => setGeneralSettingsOpen(true)}
+            className="rounded-full border border-border px-3 py-1 text-[10px] font-semibold uppercase tracking-wide text-mist transition-colors hover:border-accent hover:text-sand"
+          >
+            Chat settings
+          </button>
+        </div>
         <div className="mb-3 mt-2 h-px bg-border/60" />
         <div className="space-y-1 md:min-h-0 md:flex-1 md:overflow-y-auto md:pr-1">
-          {threads.length === 0 ? (
+          {visibleThreads.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-12 text-center">
               <svg className="mb-4 h-16 w-16 text-mist/25" viewBox="0 0 64 64" fill="none" stroke="currentColor" strokeWidth="1.5">
                 <rect x="10" y="16" width="44" height="28" rx="6" />
@@ -1262,7 +1487,7 @@ export default function Chats({ showHeader = true }) {
               <p className="mt-1 text-xs text-mist/60">Start a conversation from someone&apos;s profile</p>
             </div>
           ) : (
-            threads.map((thread) => {
+            visibleThreads.map((thread) => {
               const isActive = activeThread?._id === thread._id;
               const threadStatus = normalizeThreadStatus(thread);
               const isUnread = thread.lastMessageAt && (!thread.myLastReadAt || new Date(thread.myLastReadAt) < new Date(thread.lastMessageAt));
@@ -1310,6 +1535,12 @@ export default function Chats({ showHeader = true }) {
                         <span className={`shrink-0 rounded-full border px-2 py-0.5 text-[10px] uppercase tracking-wide ${statusColor}`}>
                           {statusLabel}
                         </span>
+                        {threadSettings[thread._id]?.pinned && (
+                          <span className="shrink-0 text-[10px] font-semibold text-accent" aria-label="Pinned chat">PIN</span>
+                        )}
+                        {threadSettings[thread._id]?.muted && (
+                          <span className="shrink-0 text-[10px] font-semibold text-mist" aria-label="Muted chat">MUTE</span>
+                        )}
                       </div>
                       <p className={`mt-1 truncate text-[13px] leading-snug ${isUnread && !isActive ? "font-medium text-sand/80" : "text-mist/80"}`}>
                         {threadPreviews[thread._id] || "Loading preview..."}
@@ -1351,12 +1582,29 @@ export default function Chats({ showHeader = true }) {
                   nameClassName="font-display text-xl text-sand"
                 />
                 <span className="rounded-full bg-accent/[0.08] px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-accent/60">
-                  {getRelationshipLabel(activeThread)}
+                  {activeThreadLocalSettings.nickname || getRelationshipLabel(activeThread)}
                 </span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="hidden rounded-full border border-border px-3 py-1 text-[10px] uppercase tracking-wide text-mist sm:inline-flex">
+                  {selectedVibe.label} vibe
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setChatDetailsOpen(true)}
+                  className="rounded-full border border-border px-4 py-2 text-xs font-semibold uppercase tracking-wide text-mist transition-colors hover:border-accent hover:text-sand"
+                >
+                  Details
+                </button>
               </div>
             </div>
 
             {error && <p className="mt-2 text-sm text-coral">{error}</p>}
+            {isActiveChatBlocked && (
+              <div className="mt-3 rounded-xl border border-coral/20 bg-coral/5 p-3 text-sm text-coral">
+                You blocked this member. You can review safety controls in Details.
+              </div>
+            )}
 
             {/* Status banner */}
             {activeStatus !== "active" && (
@@ -1420,11 +1668,7 @@ export default function Chats({ showHeader = true }) {
                       className={`group flex ${isOwn ? "justify-end" : "justify-start"} ${isNewMessage ? "chat-msg-in" : ""}`}
                     >
                       <div
-                        className={`relative max-w-[75%] rounded-2xl px-4 py-2.5 text-[14px] leading-relaxed ${
-                          isOwn
-                            ? "bg-accent/[0.08] text-sand"
-                            : "bg-white border border-border/50 text-sand shadow-[0_1px_2px_rgba(0,0,0,0.04)]"
-                        }`}
+                        className={`relative max-w-[75%] rounded-2xl leading-relaxed ${bubbleSizeClass} ${isOwn ? ownBubbleClass : otherBubbleClass}`}
                         data-chat-menu-root="true"
                       >
                         {/* Hover action bar (desktop) */}
@@ -1515,7 +1759,7 @@ export default function Chats({ showHeader = true }) {
                         {renderAttachmentBlock(message)}
 
                         {/* Link preview */}
-                        {previewUrl && (
+                        {chatSettings.linkPreviews && previewUrl && (
                           <a
                             href={toHref(previewUrl)}
                             target="_blank"
@@ -1638,7 +1882,7 @@ export default function Chats({ showHeader = true }) {
             <div
               onDragOver={(e) => {
                 e.preventDefault();
-                if (!activeThread || activeStatus !== "active") return;
+                if (composerDisabled) return;
                 setIsDragOver(true);
               }}
               onDragLeave={() => setIsDragOver(false)}
@@ -1704,6 +1948,71 @@ export default function Chats({ showHeader = true }) {
                 </div>
               )}
 
+              {chatSettings.playfulTools && (
+                <div className="mb-2 rounded-xl border border-border/50 bg-white/70 px-3 py-2">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setFunToolsOpen((prev) => !prev)}
+                      className="rounded-full bg-accent/[0.08] px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-accent transition-colors hover:bg-accent/10"
+                    >
+                      Fun tools
+                    </button>
+                    <select
+                      value={activeVibe}
+                      onChange={(event) => updateActiveThreadSetting("vibe", event.target.value)}
+                      className="rounded-full border border-border bg-white px-3 py-1.5 text-[11px] text-mist outline-none"
+                      disabled={!activeThread}
+                    >
+                      {chatVibes.map((vibe) => (
+                        <option key={vibe.key} value={vibe.key}>
+                          {vibe.label} vibe
+                        </option>
+                      ))}
+                    </select>
+                    <button
+                      type="button"
+                      onClick={() => insertFunPrompt(funPrompts[Math.floor(Math.random() * funPrompts.length)].text)}
+                      className="rounded-full border border-border px-3 py-1.5 text-[11px] text-mist transition-colors hover:border-accent hover:text-sand"
+                      disabled={composerDisabled}
+                    >
+                      Surprise me
+                    </button>
+                  </div>
+                  {funToolsOpen && (
+                    <div className="mt-2 flex gap-2 overflow-x-auto pb-1">
+                      {funPrompts.map((prompt) => (
+                        <button
+                          key={prompt.label}
+                          type="button"
+                          onClick={() => insertFunPrompt(prompt.text)}
+                          disabled={composerDisabled}
+                          className="shrink-0 rounded-full border border-border bg-charcoal/40 px-3 py-1.5 text-[11px] text-mist transition-colors hover:border-accent hover:text-sand disabled:opacity-50"
+                        >
+                          {prompt.label}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {sensitiveInfoWarning && (
+                <div className="mb-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                  This looks like sensitive personal information. Share only if you trust this person.
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSensitiveWarningAcknowledged(true);
+                      setError("");
+                    }}
+                    className="ml-2 font-semibold underline"
+                  >
+                    Send anyway
+                  </button>
+                </div>
+              )}
+
               {/* Unified composer box */}
               <div className="rounded-xl border border-border/60 bg-white transition-all focus-within:border-accent/30 focus-within:shadow-[0_0_0_3px_rgb(var(--accent)/0.05)]">
                 <form onSubmit={handleSend}>
@@ -1711,10 +2020,11 @@ export default function Chats({ showHeader = true }) {
                     ref={composerRef}
                     value={body}
                     onChange={(event) => setBody(event.target.value)}
+                    onKeyDown={handleComposerKeyDown}
                     rows={2}
                     className="w-full resize-none rounded-t-xl border-0 bg-transparent px-4 pt-3 pb-1 text-sm leading-relaxed text-sand placeholder:text-mist/40 focus:outline-none focus:ring-0"
-                    placeholder="Type a message..."
-                    disabled={!activeThread || activeStatus !== "active"}
+                    placeholder={isActiveChatBlocked ? "Unblock this member to message again" : `Type a ${selectedVibe.label.toLowerCase()} message...`}
+                    disabled={composerDisabled}
                   />
                   <div className="flex items-center gap-0.5 border-t border-border/30 px-2 py-1.5">
                     <button type="button" onClick={() => applyFormatting("bold")} className="rounded-md p-1.5 text-mist/50 transition-colors hover:bg-charcoal hover:text-sand" title="Bold">
@@ -1743,7 +2053,7 @@ export default function Chats({ showHeader = true }) {
                           event.target.value = "";
                         }}
                         accept="image/png,image/jpeg,image/webp,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv"
-                        disabled={!activeThread || activeStatus !== "active"}
+                        disabled={composerDisabled}
                       />
                     </label>
 
@@ -1752,7 +2062,7 @@ export default function Chats({ showHeader = true }) {
                     <button
                       type="submit"
                       className="flex h-8 w-8 items-center justify-center rounded-full bg-accent text-white transition-all duration-150 hover:opacity-90 active:scale-95 disabled:bg-mist/20 disabled:text-mist/40"
-                      disabled={!activeThread || activeStatus !== "active"}
+                      disabled={composerDisabled}
                       aria-label="Send message"
                     >
                       <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="12" y1="19" x2="12" y2="5" /><polyline points="5 12 12 5 19 12" /></svg>
@@ -1764,6 +2074,233 @@ export default function Chats({ showHeader = true }) {
           </>
         )}
       </section>
+
+      {generalSettingsOpen && (
+        <div
+          className="fixed inset-0 z-40 flex items-center justify-center bg-sand/40 px-4 backdrop-blur-sm chat-overlay-in"
+          onClick={() => setGeneralSettingsOpen(false)}
+        >
+          <div
+            className="w-full max-w-lg rounded-2xl bg-white p-5 shadow-floating chat-modal-in"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <h3 className="font-display text-xl text-sand">General chat settings</h3>
+                <p className="text-xs text-mist">Controls that apply across all conversations on this device.</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setGeneralSettingsOpen(false)}
+                className="rounded-full border border-border p-2 text-mist hover:bg-charcoal hover:text-sand"
+                aria-label="Close general chat settings"
+              >
+                <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+              </button>
+            </div>
+
+            <div className="mt-5 space-y-4">
+              <label className="block">
+                <span className="text-xs font-semibold uppercase tracking-wide text-mist">Default vibe</span>
+                <select
+                  value={chatSettings.messageStyle}
+                  onChange={(event) => updateChatSetting("messageStyle", event.target.value)}
+                  className="mt-1 w-full rounded-xl border border-border bg-charcoal/30 px-3 py-2 text-sm text-sand outline-none"
+                >
+                  {chatVibes.map((vibe) => (
+                    <option key={vibe.key} value={vibe.key}>
+                      {vibe.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              {[
+                ["enterToSend", "Enter sends messages", "Shift+Enter still adds a new line."],
+                ["linkPreviews", "Show link previews", "External links render a compact preview card."],
+                ["safetyNudges", "Safety nudges", "Warn before sending phone numbers, emails, passwords, or financial details."],
+                ["compactMode", "Compact bubbles", "Tighter message spacing for dense conversations."],
+                ["playfulTools", "Fun tools", "Conversation starters, vibe controls, and quick inserts in the composer."]
+              ].map(([key, title, description]) => (
+                <label key={key} className="flex items-start justify-between gap-4 rounded-xl border border-border/60 bg-charcoal/25 px-3 py-3">
+                  <span>
+                    <span className="block text-sm font-medium text-sand">{title}</span>
+                    <span className="mt-0.5 block text-xs text-mist">{description}</span>
+                  </span>
+                  <input
+                    type="checkbox"
+                    checked={!!chatSettings[key]}
+                    onChange={(event) => updateChatSetting(key, event.target.checked)}
+                    className="mt-1 h-4 w-4 accent-sand"
+                  />
+                </label>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {chatDetailsOpen && activeThread && (
+        <div
+          className="fixed inset-0 z-40 flex items-center justify-center bg-sand/40 px-4 backdrop-blur-sm chat-overlay-in"
+          onClick={() => setChatDetailsOpen(false)}
+        >
+          <div
+            className="max-h-[88vh] w-full max-w-2xl overflow-y-auto rounded-2xl bg-white p-5 shadow-floating chat-modal-in"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex min-w-0 items-center gap-3">
+                <Avatar
+                  url={resolveAvatarUrl(activeThread.otherParticipant)}
+                  alt={`${activeThread.otherParticipant?.name || "Member"} avatar`}
+                  size={48}
+                />
+                <div className="min-w-0">
+                  <h3 className="truncate font-display text-xl text-sand">
+                    {activeThreadLocalSettings.nickname ||
+                      activeThread.otherParticipant?.name ||
+                      activeThread.otherParticipant?.username ||
+                      "Member"}
+                  </h3>
+                  <p className="text-xs text-mist">
+                    {getRelationshipLabel(activeThread)} relationship · {activeStatus}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setChatDetailsOpen(false)}
+                className="rounded-full border border-border p-2 text-mist hover:bg-charcoal hover:text-sand"
+                aria-label="Close chat details"
+              >
+                <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+              </button>
+            </div>
+
+            <div className="mt-5 grid gap-3 sm:grid-cols-3">
+              <div className="rounded-xl border border-border/60 bg-charcoal/25 p-3">
+                <p className="text-[10px] uppercase tracking-wide text-mist">Messages</p>
+                <p className="mt-1 text-lg font-semibold text-sand">{messages.length}</p>
+              </div>
+              <div className="rounded-xl border border-border/60 bg-charcoal/25 p-3">
+                <p className="text-[10px] uppercase tracking-wide text-mist">Attachments</p>
+                <p className="mt-1 text-lg font-semibold text-sand">
+                  {messages.reduce((count, message) => count + normalizeMessageAttachments(message).length, 0)}
+                </p>
+              </div>
+              <div className="rounded-xl border border-border/60 bg-charcoal/25 p-3">
+                <p className="text-[10px] uppercase tracking-wide text-mist">Read state</p>
+                <p className="mt-1 text-sm font-semibold text-sand">
+                  {activeThread.otherLastReadAt ? "Seen recently" : "No read receipt yet"}
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-5 grid gap-4 md:grid-cols-2">
+              <div className="space-y-3">
+                <h4 className="text-sm font-semibold text-sand">Chat setup</h4>
+                <label className="block">
+                  <span className="text-xs text-mist">Nickname for this chat</span>
+                  <input
+                    value={getActiveThreadSetting("nickname", "")}
+                    onChange={(event) => updateActiveThreadSetting("nickname", event.target.value)}
+                    placeholder={activeThread.otherParticipant?.name || "Member"}
+                    className="mt-1 w-full rounded-xl border border-border bg-charcoal/30 px-3 py-2 text-sm text-sand outline-none"
+                  />
+                </label>
+                <label className="block">
+                  <span className="text-xs text-mist">Vibe for this chat</span>
+                  <select
+                    value={activeVibe}
+                    onChange={(event) => updateActiveThreadSetting("vibe", event.target.value)}
+                    className="mt-1 w-full rounded-xl border border-border bg-charcoal/30 px-3 py-2 text-sm text-sand outline-none"
+                  >
+                    {chatVibes.map((vibe) => (
+                      <option key={vibe.key} value={vibe.key}>
+                        {vibe.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="flex items-center justify-between rounded-xl border border-border/60 bg-charcoal/25 px-3 py-3">
+                  <span className="text-sm text-sand">Pin conversation</span>
+                  <input
+                    type="checkbox"
+                    checked={!!getActiveThreadSetting("pinned", false)}
+                    onChange={(event) => updateActiveThreadSetting("pinned", event.target.checked)}
+                    className="h-4 w-4 accent-sand"
+                  />
+                </label>
+                <label className="flex items-center justify-between rounded-xl border border-border/60 bg-charcoal/25 px-3 py-3">
+                  <span className="text-sm text-sand">Mute conversation locally</span>
+                  <input
+                    type="checkbox"
+                    checked={!!getActiveThreadSetting("muted", false)}
+                    onChange={(event) => updateActiveThreadSetting("muted", event.target.checked)}
+                    className="h-4 w-4 accent-sand"
+                  />
+                </label>
+              </div>
+
+              <div className="space-y-3">
+                <h4 className="text-sm font-semibold text-sand">Safety</h4>
+                <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
+                  Keep payments, passwords, documents, and private contact details off chat unless you trust the recipient.
+                </div>
+                <label className="block">
+                  <span className="text-xs text-mist">Report reason</span>
+                  <select
+                    value={reportReason}
+                    onChange={(event) => setReportReason(event.target.value)}
+                    className="mt-1 w-full rounded-xl border border-border bg-charcoal/30 px-3 py-2 text-sm text-sand outline-none"
+                  >
+                    {reportReasons.map((reason) => (
+                      <option key={reason} value={reason}>
+                        {reason}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <textarea
+                  value={reportDetails}
+                  onChange={(event) => setReportDetails(event.target.value)}
+                  rows={3}
+                  placeholder="Add context for moderators"
+                  className="w-full resize-none rounded-xl border border-border bg-charcoal/30 px-3 py-2 text-sm text-sand outline-none"
+                />
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={handleReportUser}
+                    className="rounded-full border border-coral/30 px-4 py-2 text-xs font-semibold uppercase tracking-wide text-coral hover:bg-coral/5"
+                  >
+                    Report user
+                  </button>
+                  {isActiveChatBlocked ? (
+                    <button
+                      type="button"
+                      onClick={handleUnblockUser}
+                      className="rounded-full border border-border px-4 py-2 text-xs font-semibold uppercase tracking-wide text-mist hover:border-accent hover:text-sand"
+                    >
+                      Unblock
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={handleBlockUser}
+                      className="rounded-full bg-coral px-4 py-2 text-xs font-semibold uppercase tracking-wide text-white hover:opacity-90"
+                    >
+                      Block
+                    </button>
+                  )}
+                </div>
+                {safetyStatus && <p className="text-xs text-mist">{safetyStatus}</p>}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── Attachment viewer modal ── */}
       {viewerAttachment && (

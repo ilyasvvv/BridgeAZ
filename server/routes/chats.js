@@ -4,6 +4,7 @@ const ChatThread = require("../models/ChatThread");
 const ChatMessage = require("../models/ChatMessage");
 const Notification = require("../models/Notification");
 const User = require("../models/User");
+const QBlock = require("../models/QBlock");
 const { authMiddleware, blockBanned } = require("../middleware/auth");
 const { sanitizeString, FIELD_LIMITS } = require("../middleware/sanitize");
 const realtime = require("../utils/realtime");
@@ -34,6 +35,14 @@ const toThreadPayload = (thread, userId) => {
 
 const populateThread = (thread) =>
   thread.populate("participants", PARTICIPANT_SELECT);
+
+const hasChatBlock = (leftUserId, rightUserId) =>
+  QBlock.exists({
+    $or: [
+      { blocker: leftUserId, blocked: rightUserId },
+      { blocker: rightUserId, blocked: leftUserId }
+    ]
+  });
 
 const publishThread = (thread, event = "chat:thread") => {
   realtime.publishToUsers(thread.participants || [], event, {
@@ -70,6 +79,10 @@ router.post("/threads", authMiddleware, blockBanned, async (req, res) => {
     const recipientUser = await User.findById(userId).select("_id banned");
     if (!recipientUser || recipientUser.banned) {
       return res.status(404).json({ message: "User not found" });
+    }
+    const blocked = await hasChatBlock(req.user._id, userId);
+    if (blocked) {
+      return res.status(403).json({ message: "This conversation is unavailable" });
     }
 
     const existing = await ChatThread.findOne({
@@ -255,6 +268,12 @@ router.post("/threads/:id/messages", authMiddleware, blockBanned, async (req, re
     });
     if (!thread) {
       return res.status(404).json({ message: "Thread not found" });
+    }
+    const otherParticipantId = (thread.participants || []).find(
+      (participant) => !sameId(participant, req.user._id)
+    );
+    if (otherParticipantId && (await hasChatBlock(req.user._id, otherParticipantId))) {
+      return res.status(403).json({ message: "This conversation is unavailable" });
     }
     const status = thread.status || "active";
     if (status === "pending") {
