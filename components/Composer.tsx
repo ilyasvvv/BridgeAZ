@@ -1,9 +1,15 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import clsx from "clsx";
 import { Icon } from "./Icon";
 import { Avatar } from "./Avatar";
+import { useAuth } from "@/lib/auth";
+import { postsApi } from "@/lib/posts";
+import { uploadFile } from "@/lib/uploads";
+import { apiPostToUiPost } from "@/lib/mappers";
+import { hueFromString } from "@/lib/format";
+import type { Post } from "./PostCard";
 
 type Template =
   | "note"
@@ -18,27 +24,110 @@ const TEMPLATES: {
   label: string;
   icon: keyof typeof Icon;
   hint: string;
+  prefix?: string;
 }[] = [
   { key: "note", label: "Note", icon: "Note", hint: "What's on your mind?" },
-  { key: "announcement", label: "Announcement", icon: "Mic", hint: "Share news with the circle…" },
-  { key: "event", label: "Event", icon: "Calendar", hint: "Host something. Date, venue, RSVP." },
-  { key: "opportunity", label: "Opportunity", icon: "Briefcase", hint: "Jobs, internships, gigs, scholarships." },
-  { key: "searching", label: "Searching for", icon: "Search", hint: "Roommate? Tutor? Ride? Advice?" },
+  { key: "announcement", label: "Announcement", icon: "Mic", hint: "Share news with the circle…", prefix: "Announcement: " },
+  { key: "event", label: "Event", icon: "Calendar", hint: "Host something. Date, venue, RSVP.", prefix: "Event: " },
+  { key: "opportunity", label: "Opportunity", icon: "Briefcase", hint: "Jobs, internships, gigs, scholarships.", prefix: "Hiring: " },
+  { key: "searching", label: "Searching for", icon: "Search", hint: "Roommate? Tutor? Ride? Advice?", prefix: "Looking for: " },
   { key: "poll", label: "Poll", icon: "Poll", hint: "Ask the circle a quick question." },
 ];
 
-export function Composer() {
+export function Composer({ onPosted }: { onPosted?: (post: Post) => void }) {
+  const { user } = useAuth();
   const [tpl, setTpl] = useState<Template>("note");
   const [text, setText] = useState("");
   const [pollOptions, setPollOptions] = useState<string[]>(["", ""]);
   const [pollDuration, setPollDuration] = useState("1 day");
+  const [meta, setMeta] = useState<Record<string, string>>({});
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [pendingFile, setPendingFile] = useState<File | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+
   const active = TEMPLATES.find((t) => t.key === tpl)!;
   const ActiveIcon = Icon[active.icon];
 
   const pollValid =
     tpl !== "poll" ||
     pollOptions.filter((o) => o.trim()).length >= 2;
-  const canPost = !!text && pollValid;
+  const canPost = !!text.trim() && pollValid && !submitting;
+
+  const region = user?.currentRegion || "your region";
+
+  const buildContent = () => {
+    const lines: string[] = [];
+    const prefix = active.prefix || "";
+    lines.push(prefix + text.trim());
+
+    if (tpl === "event") {
+      const bits: string[] = [];
+      if (meta.date) bits.push(`📅 ${meta.date}`);
+      if (meta.venue) bits.push(`📍 ${meta.venue}`);
+      if (meta.capacity) bits.push(`👥 ${meta.capacity}`);
+      if (bits.length) lines.push(bits.join(" · "));
+    }
+    if (tpl === "opportunity") {
+      const bits: string[] = [];
+      if (meta.role) bits.push(`Role: ${meta.role}`);
+      if (meta.location) bits.push(`Location: ${meta.location}`);
+      if (meta.applyLink) bits.push(`Apply: ${meta.applyLink}`);
+      if (bits.length) lines.push(bits.join(" · "));
+    }
+    if (tpl === "searching") {
+      const bits: string[] = [];
+      if (meta.what) bits.push(meta.what);
+      if (meta.where) bits.push(`in ${meta.where}`);
+      if (bits.length) lines.push(bits.join(" "));
+    }
+    if (tpl === "poll") {
+      lines.push(
+        "Poll (" + pollDuration + "):\n" +
+          pollOptions
+            .filter((o) => o.trim())
+            .map((o, i) => `${i + 1}. ${o.trim()}`)
+            .join("\n")
+      );
+    }
+    return lines.join("\n\n");
+  };
+
+  const reset = () => {
+    setText("");
+    setMeta({});
+    setPollOptions(["", ""]);
+    setPendingFile(null);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
+  async function submit() {
+    if (!canPost) return;
+    setSubmitting(true);
+    setError(null);
+    try {
+      let attachmentUrl: string | undefined;
+      let attachmentContentType: string | undefined;
+      if (pendingFile) {
+        const uploaded = await uploadFile(pendingFile, "attachment");
+        attachmentUrl = uploaded.documentUrl;
+        attachmentContentType = uploaded.contentType;
+      }
+      const created = await postsApi.create({
+        content: buildContent(),
+        attachmentUrl,
+        attachmentContentType,
+      });
+      onPosted?.(apiPostToUiPost(created));
+      reset();
+    } catch (err: any) {
+      setError(err?.message || "Failed to post");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  const myHue = hueFromString(user?._id || user?.username || "me");
 
   return (
     <div className="rounded-[22px] bg-paper border border-paper-line p-4 shadow-soft">
@@ -66,7 +155,7 @@ export function Composer() {
       </div>
 
       <div className="mt-4 flex gap-3 items-start">
-        <Avatar size={38} hue={200} />
+        <Avatar size={38} hue={myHue} kind={user?.accountType === "circle" ? "circle" : "personal"} />
         <div className="flex-1">
           <textarea
             value={text}
@@ -79,22 +168,22 @@ export function Composer() {
           {/* Smart template fields */}
           {tpl === "event" && (
             <div className="grid grid-cols-3 gap-2 mt-2">
-              <MiniField icon="Calendar" placeholder="Date" />
-              <MiniField icon="Pin" placeholder="Venue" />
-              <MiniField icon="Note" placeholder="Capacity" />
+              <MiniField icon="Calendar" placeholder="Date" value={meta.date} onChange={(v) => setMeta((m) => ({ ...m, date: v }))} />
+              <MiniField icon="Pin" placeholder="Venue" value={meta.venue} onChange={(v) => setMeta((m) => ({ ...m, venue: v }))} />
+              <MiniField icon="Note" placeholder="Capacity" value={meta.capacity} onChange={(v) => setMeta((m) => ({ ...m, capacity: v }))} />
             </div>
           )}
           {tpl === "opportunity" && (
             <div className="grid grid-cols-3 gap-2 mt-2">
-              <MiniField icon="Briefcase" placeholder="Role / Title" />
-              <MiniField icon="Pin" placeholder="Location" />
-              <MiniField icon="Link" placeholder="Apply link" />
+              <MiniField icon="Briefcase" placeholder="Role / Title" value={meta.role} onChange={(v) => setMeta((m) => ({ ...m, role: v }))} />
+              <MiniField icon="Pin" placeholder="Location" value={meta.location} onChange={(v) => setMeta((m) => ({ ...m, location: v }))} />
+              <MiniField icon="Link" placeholder="Apply link" value={meta.applyLink} onChange={(v) => setMeta((m) => ({ ...m, applyLink: v }))} />
             </div>
           )}
           {tpl === "searching" && (
             <div className="grid grid-cols-2 gap-2 mt-2">
-              <MiniField icon="Search" placeholder="What are you looking for?" />
-              <MiniField icon="Pin" placeholder="Where?" />
+              <MiniField icon="Search" placeholder="What are you looking for?" value={meta.what} onChange={(v) => setMeta((m) => ({ ...m, what: v }))} />
+              <MiniField icon="Pin" placeholder="Where?" value={meta.where} onChange={(v) => setMeta((m) => ({ ...m, where: v }))} />
             </div>
           )}
           {tpl === "poll" && (
@@ -156,23 +245,59 @@ export function Composer() {
             </div>
           )}
 
+          {pendingFile && (
+            <div className="mt-2 flex items-center gap-2 text-[11.5px] text-ink/60 bg-paper-cool rounded-[10px] px-3 py-2">
+              <Icon.Image size={13} />
+              <span className="truncate flex-1">{pendingFile.name}</span>
+              <button
+                onClick={() => {
+                  setPendingFile(null);
+                  if (fileInputRef.current) fileInputRef.current.value = "";
+                }}
+                className="text-ink/50 hover:text-ink"
+              >
+                <Icon.Close size={12} />
+              </button>
+            </div>
+          )}
+
+          {error && (
+            <div className="mt-2 text-[11.5px] text-ink/70 bg-paper-warm border border-paper-line rounded-[10px] px-3 py-2">
+              {error}
+            </div>
+          )}
+
           <div className="flex items-center justify-between mt-3">
             <div className="flex items-center gap-1 text-ink/60">
-              <ToolBtn icon="Image" />
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/png,image/jpeg,image/webp,application/pdf"
+                className="hidden"
+                onChange={(e) => {
+                  const f = e.target.files?.[0];
+                  if (f) setPendingFile(f);
+                }}
+              />
+              <ToolBtn icon="Image" onClick={() => fileInputRef.current?.click()} />
               <ToolBtn icon="Link" />
               <ToolBtn icon="Pin" />
               <ToolBtn icon="Calendar" />
             </div>
             <div className="flex items-center gap-2">
-              <span className="text-[11px] text-ink/45 hidden sm:inline">Posting as <b className="text-ink/70">You</b> to <b className="text-ink/70">Berlin</b></span>
+              <span className="text-[11px] text-ink/45 hidden sm:inline">
+                Posting as <b className="text-ink/70">{user?.name || "You"}</b> to{" "}
+                <b className="text-ink/70">{region}</b>
+              </span>
               <button
+                onClick={submit}
                 disabled={!canPost}
                 className={clsx(
                   "btn-press h-9 px-5 rounded-pill text-[12.5px] font-semibold inline-flex items-center gap-1.5 transition",
                   canPost ? "bg-ink text-paper shadow-soft" : "bg-paper-cool text-ink/40"
                 )}
               >
-                Post
+                {submitting ? "Posting…" : "Post"}
                 <ActiveIcon size={12} />
               </button>
             </div>
@@ -183,21 +308,37 @@ export function Composer() {
   );
 }
 
-function ToolBtn({ icon }: { icon: keyof typeof Icon }) {
+function ToolBtn({ icon, onClick }: { icon: keyof typeof Icon; onClick?: () => void }) {
   const Ico = Icon[icon];
   return (
-    <button className="btn-press w-8 h-8 rounded-full hover:bg-paper-cool flex items-center justify-center">
+    <button
+      onClick={onClick}
+      type="button"
+      className="btn-press w-8 h-8 rounded-full hover:bg-paper-cool flex items-center justify-center"
+    >
       <Ico size={15} />
     </button>
   );
 }
 
-function MiniField({ icon, placeholder }: { icon: keyof typeof Icon; placeholder: string }) {
+function MiniField({
+  icon,
+  placeholder,
+  value,
+  onChange,
+}: {
+  icon: keyof typeof Icon;
+  placeholder: string;
+  value?: string;
+  onChange?: (v: string) => void;
+}) {
   const Ico = Icon[icon];
   return (
     <label className="flex items-center gap-2 h-9 px-3 rounded-pill bg-paper-cool text-[12.5px]">
       <Ico size={13} className="text-ink/50" />
       <input
+        value={value ?? ""}
+        onChange={(e) => onChange?.(e.target.value)}
         placeholder={placeholder}
         className="flex-1 bg-transparent outline-none placeholder:text-ink/40"
       />

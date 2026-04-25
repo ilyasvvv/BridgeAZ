@@ -9,11 +9,12 @@ import { PostCard, type Post } from "@/components/PostCard";
 import { CirclesForYou, PeopleForYou, Filters } from "@/components/SideRail";
 import { TrendingCard } from "@/components/TrendingCard";
 import { MessagesDock } from "@/components/MessagesDock";
-import { CIRCLES, PEOPLE } from "@/data/mock";
 import { useAuth } from "@/lib/auth";
-import { api } from "@/lib/api";
-import { apiPostToUiPost } from "@/lib/mappers";
-import type { ApiPost } from "@/lib/types";
+import { postsApi } from "@/lib/posts";
+import { circlesApi } from "@/lib/circles";
+import { usersApi } from "@/lib/users";
+import { apiPostToUiPost, circleToMiniProfile, userToMiniProfile } from "@/lib/mappers";
+import type { MiniProfile } from "@/components/MiniProfileCard";
 
 export default function HomePage() {
   const router = useRouter();
@@ -23,6 +24,8 @@ export default function HomePage() {
   const [messagesOpen, setMessagesOpen] = useState(false);
 
   const [posts, setPosts] = useState<Post[] | null>(null);
+  const [circles, setCircles] = useState<MiniProfile[]>([]);
+  const [people, setPeople] = useState<MiniProfile[]>([]);
   const [loadError, setLoadError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -36,9 +39,15 @@ export default function HomePage() {
     let cancelled = false;
     const load = async () => {
       try {
-        const raw = await api.get<ApiPost[]>("/posts");
+        const [rawPosts, rawCircles, rawPeople] = await Promise.all([
+          postsApi.list(),
+          circlesApi.list({ limit: 5 }),
+          usersApi.list({ accountType: "personal" }),
+        ]);
         if (cancelled) return;
-        setPosts(raw.map(apiPostToUiPost));
+        setPosts(rawPosts.map(apiPostToUiPost));
+        setCircles(rawCircles.slice(0, 5).map(circleToMiniProfile));
+        setPeople(rawPeople.filter((p) => p._id !== user?._id).slice(0, 5).map(userToMiniProfile));
       } catch (err: any) {
         if (cancelled) return;
         setLoadError(err?.message || "Failed to load feed");
@@ -46,7 +55,7 @@ export default function HomePage() {
     };
     load();
     return () => { cancelled = true; };
-  }, [status]);
+  }, [status, user?._id]);
 
   if (status === "loading" || status === "unauthenticated") {
     return (
@@ -73,21 +82,24 @@ export default function HomePage() {
       <main className="max-w-[1400px] mx-auto px-6 pt-6 pb-20">
         <div className="grid grid-cols-12 gap-6 items-start">
           <aside className="col-span-12 lg:col-span-3 space-y-4 lg:sticky lg:top-[88px]">
-            <CirclesForYou items={CIRCLES} />
-            <PeopleForYou items={PEOPLE} />
+            <CirclesForYou items={circles} />
+            <PeopleForYou items={people} />
             <div className="rounded-[22px] bg-ink text-paper p-5 relative overflow-hidden">
               <div className="absolute -right-10 -bottom-10 w-40 h-40 rounded-full border border-paper/15 animate-spin-slower" />
               <div className="absolute -right-16 -bottom-16 w-60 h-60 rounded-full border border-paper/10" />
               <h4 className="font-display text-[18px] font-medium leading-tight">Start your own circle</h4>
               <p className="text-[12px] text-paper/60 mt-1.5">Football club, language exchange, tea gathering — anything goes.</p>
-              <button className="mt-4 h-8 px-3.5 rounded-pill bg-paper text-ink text-[11.5px] font-semibold btn-press">
+              <button
+                onClick={() => router.push("/circles/new")}
+                className="mt-4 h-8 px-3.5 rounded-pill bg-paper text-ink text-[11.5px] font-semibold btn-press"
+              >
                 Create circle →
               </button>
             </div>
           </aside>
 
           <div className="col-span-12 lg:col-span-6 space-y-4">
-            <Composer />
+            <Composer onPosted={(post) => setPosts((current) => current ? [post, ...current] : [post])} />
             <div className="flex items-center justify-between">
               <Filters active={filter} onChange={setFilter} />
               <span className="text-[11px] text-ink/50">

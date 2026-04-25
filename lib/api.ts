@@ -4,6 +4,7 @@ export const API_BASE =
 export type ApiError = Error & { status?: number; code?: string };
 
 const TOKEN_KEY = "bc_token";
+const DEFAULT_TIMEOUT_MS = 15000;
 
 export const tokenStore = {
   get(): string | null {
@@ -22,9 +23,9 @@ export const tokenStore = {
 
 async function request<T>(
   path: string,
-  init: RequestInit & { auth?: boolean } = {}
+  init: RequestInit & { auth?: boolean; timeoutMs?: number } = {}
 ): Promise<T> {
-  const { auth = true, headers, ...rest } = init;
+  const { auth = true, headers, timeoutMs = DEFAULT_TIMEOUT_MS, signal, ...rest } = init;
   const finalHeaders: Record<string, string> = {
     "Content-Type": "application/json",
     ...(headers as Record<string, string> | undefined),
@@ -35,10 +36,31 @@ async function request<T>(
     if (token) finalHeaders.Authorization = `Bearer ${token}`;
   }
 
-  const res = await fetch(`${API_BASE}${path}`, {
-    ...rest,
-    headers: finalHeaders,
-  });
+  const controller = new AbortController();
+  const abortFromCaller = () => controller.abort(signal?.reason);
+  if (signal?.aborted) abortFromCaller();
+  else signal?.addEventListener("abort", abortFromCaller, { once: true });
+
+  const timer = globalThis.setTimeout(() => controller.abort(), timeoutMs);
+  let res: Response;
+  try {
+    res = await fetch(`${API_BASE}${path}`, {
+      ...rest,
+      headers: finalHeaders,
+      signal: controller.signal,
+    });
+  } catch (error: any) {
+    const err = new Error(
+      error?.name === "AbortError"
+        ? "The server did not respond in time. Please try again."
+        : error?.message || "Network request failed"
+    ) as ApiError;
+    err.code = error?.name === "AbortError" ? "TIMEOUT" : "NETWORK_ERROR";
+    throw err;
+  } finally {
+    globalThis.clearTimeout(timer);
+    signal?.removeEventListener("abort", abortFromCaller);
+  }
 
   if (!res.ok) {
     let payload: any = {};

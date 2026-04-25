@@ -7,6 +7,7 @@ import { TopBar } from "@/components/TopBar";
 import { Avatar } from "@/components/Avatar";
 import { Icon } from "@/components/Icon";
 import { Button } from "@/components/Button";
+import { circlesApi } from "@/lib/circles";
 
 type Visibility = "public" | "request" | "private";
 
@@ -25,6 +26,7 @@ export default function NewCirclePage() {
   const [minAge, setMinAge] = useState(false);
   const [creating, setCreating] = useState(false);
   const [created, setCreated] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const handleAuto = useMemo(
     () =>
@@ -42,13 +44,27 @@ export default function NewCirclePage() {
     step === 2 ||
     step === 3;
 
-  const submit = () => {
+  const submit = async () => {
+    if (creating) return;
     setCreating(true);
-    window.setTimeout(() => {
-      setCreating(false);
+    setError(null);
+    try {
+      const circle = await circlesApi.create({
+        name: name.trim(),
+        handle: effectiveHandle.trim(),
+        bio: bio.trim(),
+        currentRegion: country.trim(),
+        location: { city: city.trim(), country: country.trim() },
+        visibility,
+        minAge,
+      });
       setCreated(true);
-      window.setTimeout(() => router.push(`/circle/${effectiveHandle}`), 900);
-    }, 900);
+      router.push(`/circle/${circle.handle}`);
+    } catch (err: any) {
+      setError(err?.message || "Failed to create circle");
+    } finally {
+      setCreating(false);
+    }
   };
 
   return (
@@ -277,6 +293,11 @@ export default function NewCirclePage() {
           )}
 
           <div className="flex items-center justify-between pt-2">
+            {error && (
+              <div className="mr-4 text-[12px] text-red-700">
+                {error}
+              </div>
+            )}
             <button
               onClick={() => setStep((s) => Math.max(0, s - 1))}
               className={clsx(

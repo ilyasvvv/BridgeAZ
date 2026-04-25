@@ -6,8 +6,21 @@ import Link from "next/link";
 import { Avatar } from "./Avatar";
 import { Icon } from "./Icon";
 import { MiniProfileCard, MiniProfile } from "./MiniProfileCard";
+import { postsApi } from "@/lib/posts";
+import { relativeTime } from "@/lib/format";
+import { useAuth } from "@/lib/auth";
+import { hueFromString } from "@/lib/format";
 
 export type PostCategory = "Note" | "Announcement" | "Event" | "Opportunity" | "Searching for";
+
+export type PostComment = {
+  id: string;
+  authorName: string;
+  authorHandle?: string;
+  body: string;
+  time: string;
+  hue: number;
+};
 
 export type Post = {
   id: string;
@@ -18,8 +31,11 @@ export type Post = {
   body: string;
   tags: string[];
   hasMedia?: boolean;
+  mediaUrl?: string;
   mediaHue?: number;
   stats: { likes: number; comments: number; shares: number };
+  likedByMe?: boolean;
+  comments?: PostComment[];
   eventMeta?: { date: string; venue: string };
   opportunityMeta?: { role: string; type: string };
 };
@@ -33,12 +49,68 @@ const categoryStyles: Record<PostCategory, { bg: string; fg: string; icon: keyof
 };
 
 export function PostCard({ post }: { post: Post }) {
-  const [liked, setLiked] = useState(false);
+  const { user } = useAuth();
+  const [liked, setLiked] = useState(!!post.likedByMe);
+  const [likeCount, setLikeCount] = useState(post.stats.likes);
+  const [busy, setBusy] = useState(false);
+  const [commentsOpen, setCommentsOpen] = useState(false);
+  const [comments, setComments] = useState<PostComment[]>(post.comments ?? []);
+  const [commentCount, setCommentCount] = useState(post.stats.comments);
+  const [draft, setDraft] = useState("");
+  const [posting, setPosting] = useState(false);
+
   const cat = categoryStyles[post.category];
   const CatIcon = Icon[cat.icon];
 
+  async function toggleLike() {
+    if (busy) return;
+    setBusy(true);
+    // optimistic
+    const nextLiked = !liked;
+    setLiked(nextLiked);
+    setLikeCount((c) => Math.max(0, c + (nextLiked ? 1 : -1)));
+    try {
+      const res = await postsApi.toggleLike(post.id);
+      setLiked(res.likedByMe);
+      setLikeCount(res.likesCount);
+    } catch {
+      // revert
+      setLiked(!nextLiked);
+      setLikeCount((c) => Math.max(0, c + (nextLiked ? -1 : 1)));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function submitComment() {
+    const body = draft.trim();
+    if (!body || posting) return;
+    setPosting(true);
+    try {
+      const res = await postsApi.comment(post.id, body);
+      const newComment = res.createdComment;
+      setComments((cs) => [
+        {
+          id: newComment._id,
+          authorName: newComment.author?.name || user?.name || "You",
+          authorHandle: newComment.author?.username,
+          body: newComment.content,
+          time: relativeTime(newComment.createdAt),
+          hue: hueFromString(newComment.author?._id || newComment._id),
+        },
+        ...cs,
+      ]);
+      setCommentCount((n) => n + 1);
+      setDraft("");
+    } catch {
+      // ignore
+    } finally {
+      setPosting(false);
+    }
+  }
+
   return (
-    <article className="rounded-[22px] bg-paper border border-paper-line hover:shadow-soft transition-shadow overflow-hidden">
+    <article id={`post-${post.id}`} className="rounded-[22px] bg-paper border border-paper-line hover:shadow-soft transition-shadow overflow-hidden">
       <div className="p-5">
         <div className="flex items-start gap-3">
           <MiniProfileCard profile={post.author}>
@@ -108,37 +180,50 @@ export function PostCard({ post }: { post: Post }) {
           </div>
         )}
 
-        <p className="mt-4 text-[14px] leading-relaxed text-ink/85">
-          {post.body}{" "}
+        <p className="mt-4 text-[14px] leading-relaxed text-ink/85 whitespace-pre-wrap">
+          {post.body}
           {post.tags.length > 0 && (
-            <span className="text-ink">
-              {post.tags.map((t) => `#${t}`).join(" ")}
-            </span>
+            <>
+              {" "}
+              <span className="text-ink">
+                {post.tags.map((t) => `#${t}`).join(" ")}
+              </span>
+            </>
           )}
         </p>
       </div>
 
       {post.hasMedia && (
-        <div
-          className="aspect-[16/9] mx-5 rounded-[14px] border border-paper-line relative overflow-hidden"
-          style={{
-            background: `conic-gradient(from ${post.mediaHue ?? 220}deg at 30% 30%, #0A0A0A 0deg, #2a2a2a 80deg, #f4f4f2 160deg, #e8e8e6 260deg, #0A0A0A 360deg)`,
-          }}
-          aria-hidden
-        >
-          <div className="absolute inset-0 bg-gradient-to-br from-transparent via-paper/15 to-transparent" />
-        </div>
+        post.mediaUrl ? (
+          <div className="mx-5 rounded-[14px] border border-paper-line overflow-hidden">
+            <img
+              src={post.mediaUrl}
+              alt=""
+              className="block w-full max-h-[480px] object-cover"
+            />
+          </div>
+        ) : (
+          <div
+            className="aspect-[16/9] mx-5 rounded-[14px] border border-paper-line relative overflow-hidden"
+            style={{
+              background: `conic-gradient(from ${post.mediaHue ?? 220}deg at 30% 30%, #0A0A0A 0deg, #2a2a2a 80deg, #f4f4f2 160deg, #e8e8e6 260deg, #0A0A0A 360deg)`,
+            }}
+            aria-hidden
+          >
+            <div className="absolute inset-0 bg-gradient-to-br from-transparent via-paper/15 to-transparent" />
+          </div>
+        )
       )}
 
       <div className="px-5 py-3 flex items-center justify-between border-t border-paper-line mt-4">
         <div className="flex items-center gap-4 text-[12px] text-ink/55">
           <span className="inline-flex items-center gap-1.5">
-            <span className="w-5 h-5 rounded-full bg-ink text-paper inline-flex items-center justify-center">
+            <span className={clsx("w-5 h-5 rounded-full inline-flex items-center justify-center", liked ? "bg-ink text-paper" : "bg-paper-cool text-ink/60")}>
               <Icon.Heart size={11} />
             </span>
-            {post.stats.likes}
+            {likeCount}
           </span>
-          <span>{post.stats.comments} comments</span>
+          <span>{commentCount} comments</span>
           <span>{post.stats.shares} shares</span>
         </div>
       </div>
@@ -148,11 +233,61 @@ export function PostCard({ post }: { post: Post }) {
           icon="Heart"
           label="Like"
           active={liked}
-          onClick={() => setLiked((v) => !v)}
+          onClick={toggleLike}
         />
-        <ActionBtn icon="Chat" label="Comment" />
+        <ActionBtn icon="Chat" label="Comment" onClick={() => setCommentsOpen((v) => !v)} />
         <ActionBtn icon="Share" label="Share" />
       </div>
+
+      {commentsOpen && (
+        <div className="border-t border-paper-line bg-paper-warm/40 p-4 space-y-3">
+          <div className="flex items-start gap-2">
+            <Avatar size={28} hue={hueFromString(user?._id || "me")} />
+            <div className="flex-1">
+              <textarea
+                value={draft}
+                onChange={(e) => setDraft(e.target.value)}
+                placeholder="Write a comment…"
+                rows={2}
+                className="w-full resize-none rounded-[14px] border border-paper-line bg-paper px-3 py-2 text-[13px] outline-none focus:border-ink/30"
+              />
+              <div className="mt-2 flex justify-end">
+                <button
+                  onClick={submitComment}
+                  disabled={!draft.trim() || posting}
+                  className={clsx(
+                    "h-8 px-3.5 rounded-pill text-[11.5px] font-semibold inline-flex items-center gap-1",
+                    draft.trim() && !posting
+                      ? "bg-ink text-paper"
+                      : "bg-paper-cool text-ink/45"
+                  )}
+                >
+                  {posting ? "Posting…" : "Post"}
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {comments.length === 0 ? (
+            <p className="text-[12px] text-ink/45 text-center py-2">No comments yet — be the first.</p>
+          ) : (
+            <ul className="space-y-2">
+              {comments.map((c) => (
+                <li key={c.id} className="flex items-start gap-2">
+                  <Avatar size={28} hue={c.hue} />
+                  <div className="flex-1 rounded-[14px] bg-paper border border-paper-line px-3 py-2">
+                    <div className="flex items-center gap-2 text-[12px]">
+                      <span className="font-semibold">{c.authorName}</span>
+                      <span className="text-ink/40">{c.time}</span>
+                    </div>
+                    <p className="mt-1 text-[13px] text-ink/80 whitespace-pre-wrap">{c.body}</p>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
     </article>
   );
 }

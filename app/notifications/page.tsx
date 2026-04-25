@@ -1,55 +1,88 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import clsx from "clsx";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { TopBar } from "@/components/TopBar";
 import { Avatar } from "@/components/Avatar";
 import { Icon } from "@/components/Icon";
-import Link from "next/link";
+import { useAuth } from "@/lib/auth";
+import { notificationsApi, notificationLink, type ApiNotification } from "@/lib/notifications";
+import { hueFromString, relativeTime } from "@/lib/format";
 
-type Kind = "like" | "comment" | "follow" | "mention" | "circle" | "event" | "message";
-
-type Notification = {
-  id: string;
-  kind: Kind;
-  actor: string;
-  actorHue: number;
-  body: string;
-  meta?: string;
-  time: string;
-  unread?: boolean;
-};
-
-const NOTIFS: Notification[] = [
-  { id: "1", kind: "like", actor: "Leyla Mammadova", actorHue: 210, body: "liked your post", meta: "\"Weekend football pickup at Tempelhofer Feld…\"", time: "2m", unread: true },
-  { id: "2", kind: "follow", actor: "Rashad Aliyev", actorHue: 60, body: "started following you", time: "14m", unread: true },
-  { id: "3", kind: "comment", actor: "Nigar Huseynova", actorHue: 320, body: "commented on your post", meta: "\"Love this — can I share it with my team?\"", time: "1h", unread: true },
-  { id: "4", kind: "circle", actor: "Azerbaijanis in Berlin", actorHue: 180, body: "invited you to join", time: "3h" },
-  { id: "5", kind: "event", actor: "London Diaspora", actorHue: 120, body: "is hosting an event near you", meta: "Culture Night · Sat 7pm · London", time: "5h" },
-  { id: "6", kind: "mention", actor: "Elvin Kazimov", actorHue: 30, body: "mentioned you in a comment", meta: "\"@leyla you should bring your team along\"", time: "1d" },
-  { id: "7", kind: "message", actor: "Aysel Jabbarova", actorHue: 340, body: "sent you a message request", time: "2d" },
-];
-
-const kindIcons: Record<Kind, keyof typeof Icon> = {
-  like: "Heart",
-  comment: "Chat",
+const kindIcons: Record<string, keyof typeof Icon> = {
+  post_like: "Heart",
+  post_comment: "Chat",
   follow: "User",
   mention: "Note",
-  circle: "Globe",
+  circle_invite: "Globe",
+  circle_join: "Globe",
+  circle_join_request: "Globe",
   event: "Calendar",
-  message: "Send",
+  chat_request: "Send",
+  chat_message: "Chat",
 };
 
 export default function NotificationsPage() {
+  const router = useRouter();
+  const { status } = useAuth();
   const [filter, setFilter] = useState<"all" | "unread" | "mentions">("all");
-  const [items, setItems] = useState(NOTIFS);
+  const [items, setItems] = useState<ApiNotification[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (status === "unauthenticated") router.replace("/signin");
+  }, [status, router]);
+
+  useEffect(() => {
+    if (status !== "authenticated") return;
+    let cancelled = false;
+
+    async function load() {
+      setLoading(true);
+      setError(null);
+      try {
+        const next = await notificationsApi.list();
+        if (!cancelled) setItems(next);
+      } catch (err: any) {
+        if (!cancelled) setError(err?.message || "Failed to load notifications.");
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
+
+    load();
+    const timer = window.setInterval(load, 15000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(timer);
+    };
+  }, [status]);
 
   const filtered = items.filter((n) =>
-    filter === "unread" ? n.unread : filter === "mentions" ? n.kind === "mention" : true
+    filter === "unread" ? !n.read : filter === "mentions" ? n.type === "mention" : true
   );
 
-  function markAllRead() {
-    setItems((xs) => xs.map((n) => ({ ...n, unread: false })));
+  async function markAllRead() {
+    const previous = items;
+    setItems((xs) => xs.map((n) => ({ ...n, read: true })));
+    try {
+      await notificationsApi.markAllRead();
+    } catch {
+      setItems(previous);
+    }
+  }
+
+  async function openNotification(n: ApiNotification) {
+    if (!n.read) {
+      setItems((xs) => xs.map((item) => item._id === n._id ? { ...item, read: true } : item));
+      notificationsApi.markRead(n._id).catch(() => {
+        setItems((xs) => xs.map((item) => item._id === n._id ? { ...item, read: false } : item));
+      });
+    }
+    router.push(notificationLink(n));
   }
 
   return (
@@ -84,57 +117,55 @@ export default function NotificationsPage() {
         </div>
 
         <ul className="mt-5 bg-paper rounded-[22px] border border-paper-line overflow-hidden">
-          {filtered.length === 0 && (
+          {loading && (
+            <li className="p-12 text-center text-[13px] text-ink/50">Loading notifications...</li>
+          )}
+          {error && !loading && (
+            <li className="p-12 text-center text-[13px] text-red-700">{error}</li>
+          )}
+          {!loading && !error && filtered.length === 0 && (
             <li className="p-12 text-center text-[13px] text-ink/50">You're all caught up.</li>
           )}
-          {filtered.map((n, i) => {
-            const Ico = Icon[kindIcons[n.kind]];
+          {!loading && !error && filtered.map((n, i) => {
+            const Ico = Icon[kindIcons[n.type] || "Bell"];
             return (
               <li
-                key={n.id}
+                key={n._id}
                 className={clsx(
                   "flex items-start gap-3 p-4 transition",
                   i !== filtered.length - 1 && "border-b border-paper-line",
-                  n.unread ? "bg-paper" : "bg-paper-warm/50 hover:bg-paper"
+                  !n.read ? "bg-paper" : "bg-paper-warm/50 hover:bg-paper"
                 )}
               >
                 <div className="relative">
-                  <Avatar size={44} hue={n.actorHue} />
+                  <Avatar size={44} hue={hueFromString(n.actorId || n._id)} />
                   <span className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-ink text-paper border-2 border-paper flex items-center justify-center">
                     <Ico size={11} />
                   </span>
                 </div>
-                <div className="flex-1 min-w-0">
+                <button
+                  type="button"
+                  onClick={() => openNotification(n)}
+                  className="flex-1 min-w-0 text-left"
+                >
                   <div className="text-[13.5px] leading-snug">
-                    <Link href="#" className="font-semibold hover:underline">{n.actor}</Link>
-                    <span className="text-ink/70"> {n.body}</span>
+                    <span className="font-semibold hover:underline">{n.title}</span>
+                    {n.body && <span className="text-ink/70"> {n.body}</span>}
                   </div>
-                  {n.meta && <div className="text-[12px] text-ink/55 mt-0.5 italic">{n.meta}</div>}
-                  <div className="text-[11px] text-ink/40 mt-1">{n.time}</div>
-                </div>
+                  <div className="text-[11px] text-ink/40 mt-1">{relativeTime(n.createdAt)}</div>
+                </button>
                 <div className="flex items-center gap-2">
-                  {n.kind === "follow" && (
-                    <button className="btn-press h-8 px-3 rounded-pill bg-ink text-paper text-[11.5px] font-semibold">Follow back</button>
+                  {(n.type === "chat_request" || n.type === "chat_message") && (
+                    <Link href={notificationLink(n)} className="btn-press h-8 px-3 rounded-pill border border-paper-line text-[11.5px] font-semibold hover:border-ink/40">
+                      View
+                    </Link>
                   )}
-                  {n.kind === "circle" && (
-                    <button className="btn-press h-8 px-3 rounded-pill bg-ink text-paper text-[11.5px] font-semibold">Join</button>
-                  )}
-                  {n.kind === "event" && (
-                    <button className="btn-press h-8 px-3 rounded-pill border border-paper-line text-[11.5px] font-semibold hover:border-ink/40">RSVP</button>
-                  )}
-                  {n.kind === "message" && (
-                    <button className="btn-press h-8 px-3 rounded-pill border border-paper-line text-[11.5px] font-semibold hover:border-ink/40">View</button>
-                  )}
-                  {n.unread && <span className="w-2 h-2 rounded-full bg-ink" />}
+                  {!n.read && <span className="w-2 h-2 rounded-full bg-ink" />}
                 </div>
               </li>
             );
           })}
         </ul>
-
-        <p className="mt-5 text-center text-[11px] text-ink/45">
-          You control the noise. <Link href="/settings" className="underline hover:text-ink">Tune notifications →</Link>
-        </p>
       </main>
     </div>
   );

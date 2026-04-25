@@ -21,7 +21,19 @@ export type ProfileMeta = {
   isOwner?: boolean;
 };
 
-export function ProfileHeader({ profile }: { profile: ProfileMeta }) {
+export function ProfileHeader({
+  profile,
+  onMessage,
+  onPrimaryAction,
+  primaryActionLabel,
+  primaryActionBusy,
+}: {
+  profile: ProfileMeta;
+  onMessage?: () => void;
+  onPrimaryAction?: () => void;
+  primaryActionLabel?: string;
+  primaryActionBusy?: boolean;
+}) {
   const hue = profile.hue ?? 220;
 
   return (
@@ -88,21 +100,30 @@ export function ProfileHeader({ profile }: { profile: ProfileMeta }) {
               <div className="flex items-center gap-2">
                 {profile.isOwner ? (
                   <>
-                    <button className="btn-press h-9 px-4 rounded-pill bg-ink text-paper text-[12px] font-semibold">
+                    <button type="button" className="btn-press h-9 px-4 rounded-pill bg-ink text-paper text-[12px] font-semibold">
                       Edit profile
                     </button>
-                    <button className="btn-press w-9 h-9 rounded-full border border-paper-line hover:border-ink/30 flex items-center justify-center">
+                    <button type="button" className="btn-press w-9 h-9 rounded-full border border-paper-line hover:border-ink/30 flex items-center justify-center">
                       <Icon.More size={15} />
                     </button>
                   </>
                 ) : (
                   <>
-                    <button className="btn-press h-9 px-4 rounded-pill bg-ink text-paper text-[12px] font-semibold inline-flex items-center gap-1.5">
+                    <button
+                      type="button"
+                      onClick={onMessage}
+                      className="btn-press h-9 px-4 rounded-pill bg-ink text-paper text-[12px] font-semibold inline-flex items-center gap-1.5"
+                    >
                       <Icon.Chat size={13} />
                       Message
                     </button>
-                    <button className="btn-press h-9 px-4 rounded-pill border border-paper-line hover:border-ink/30 text-[12px] font-semibold">
-                      {profile.kind === "circle" ? "Join" : "Follow"}
+                    <button
+                      type="button"
+                      onClick={onPrimaryAction}
+                      disabled={primaryActionBusy}
+                      className="btn-press h-9 px-4 rounded-pill border border-paper-line hover:border-ink/30 text-[12px] font-semibold disabled:opacity-50"
+                    >
+                      {primaryActionLabel || (profile.kind === "circle" ? "Join" : "Follow")}
                     </button>
                   </>
                 )}

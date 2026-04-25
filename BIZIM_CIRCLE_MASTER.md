@@ -9,9 +9,9 @@
 
 ## 2. Purpose
 
-Bizim Circle is a social platform for connecting Azerbaijanis living abroad — anywhere in the world. It replaces the older BridgeAZ concept, which was narrowly focused on students and professionals.
+Bizim Circle is a social platform for connecting Azerbaijanis living abroad — anywhere in the world.
 
-Bizim Circle is for **everyone abroad**:
+It is for **everyone abroad**:
 - Students
 - Professionals
 - Newcomers

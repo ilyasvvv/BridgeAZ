@@ -1,111 +1,126 @@
 "use client";
 
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import clsx from "clsx";
 import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Avatar } from "@/components/Avatar";
 import { Icon } from "@/components/Icon";
 import { PostCard } from "@/components/PostCard";
 import { TopBar } from "@/components/TopBar";
-import { POSTS } from "@/data/mock";
-import { useSmartSearch, type SearchScope } from "@/hooks/useSmartSearch";
+import { useAuth } from "@/lib/auth";
+import { searchApi, type SearchResponse, type SearchTypes } from "@/lib/search";
+import { apiPostToUiPost, circleToMiniProfile, userToMiniProfile } from "@/lib/mappers";
+import { hueFromString } from "@/lib/format";
+import type { ApiUser } from "@/lib/types";
 
-const SCOPES: { key: SearchScope; label: string }[] = [
+type Scope = "all" | "people" | "circles" | "posts" | "opportunities";
+
+const SCOPES: { key: Scope; label: string }[] = [
   { key: "all", label: "All" },
   { key: "people", label: "People" },
   { key: "circles", label: "Circles" },
   { key: "posts", label: "Posts" },
-  { key: "events", label: "Events" },
   { key: "opportunities", label: "Opportunities" },
-  { key: "tags", label: "Tags" },
 ];
 
-const RECENT = ["#Novruz2026", "roommate berlin", "product mentor", "football berlin"];
-
-function parseScope(value: string | null): SearchScope {
-  if (!value) return "all";
-  return SCOPES.some((scope) => scope.key === value) ? (value as SearchScope) : "all";
-}
+const EMPTY: SearchResponse = {
+  users: [],
+  circles: [],
+  opportunities: [],
+  posts: [],
+  counts: { users: 0, circles: 0, opportunities: 0, posts: 0 },
+};
 
 export default function SearchPage() {
-  const [initialized, setInitialized] = useState(false);
-  const {
-    query,
-    setQuery,
-    setQueryImmediate,
-    typeFilter,
-    setTypeFilter,
-    topicFilters,
-    toggleTopic,
-    results,
-    counts,
-    corrections,
-    effectiveQuery,
-    loading,
-    recordClick,
-    resetMemory,
-    saveSearch,
-    removeSavedSearch,
-    savedSearches,
-    topicOptions,
-  } = useSmartSearch();
-
-  const allTags = useMemo(
-    () =>
-      Array.from(new Set(POSTS.flatMap((post) => post.tags))).sort((left, right) =>
-        left.localeCompare(right)
-      ),
-    []
+  return (
+    <Suspense fallback={<SearchShell>Loading search...</SearchShell>}>
+      <SearchClient />
+    </Suspense>
   );
+}
+
+function SearchClient() {
+  const router = useRouter();
+  const params = useSearchParams();
+  const { status } = useAuth();
+  const [query, setQuery] = useState(params.get("q") || "");
+  const [scope, setScope] = useState<Scope>(parseScope(params.get("scope")));
+  const [results, setResults] = useState<SearchResponse>(EMPTY);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    setQueryImmediate(params.get("q") ?? "");
-    setTypeFilter(parseScope(params.get("scope")));
-    setInitialized(true);
-  }, [setQueryImmediate, setTypeFilter]);
+    if (status === "unauthenticated") router.replace("/signin");
+  }, [status, router]);
 
   useEffect(() => {
-    if (!initialized) return;
-
-    const next = new URLSearchParams(window.location.search);
-    const trimmed = query.trim();
-
-    if (trimmed) next.set("q", trimmed);
-    else next.delete("q");
-
-    if (typeFilter !== "all") next.set("scope", typeFilter);
-    else next.delete("scope");
-
+    const next = new URLSearchParams();
+    if (query.trim()) next.set("q", query.trim());
+    if (scope !== "all") next.set("scope", scope);
     const target = next.toString();
-    const current = window.location.search.startsWith("?")
-      ? window.location.search.slice(1)
-      : window.location.search;
+    const current = window.location.search.replace(/^\?/, "");
+    if (target !== current) {
+      window.history.replaceState(window.history.state, "", target ? `/search?${target}` : "/search");
+    }
+  }, [query, scope]);
 
-    if (target === current) return;
+  useEffect(() => {
+    if (status !== "authenticated") return;
+    const trimmed = query.trim();
+    if (trimmed.length < 2 && scope === "all") {
+      setResults(EMPTY);
+      setError(null);
+      return;
+    }
 
-    window.history.replaceState(window.history.state, "", target ? `/search?${target}` : "/search");
-  }, [initialized, query, typeFilter]);
+    let cancelled = false;
+    const timer = window.setTimeout(async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const next = await searchApi.search({
+          q: trimmed,
+          types: scopeTypes(scope),
+          limit: 20,
+        });
+        if (!cancelled) setResults({ ...EMPTY, ...next, counts: { ...EMPTY.counts, ...next.counts } });
+      } catch (err: any) {
+        if (!cancelled) setError(err?.message || "Search failed.");
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }, 250);
 
-  const hasInput = query.trim().length >= 2 || typeFilter !== "all" || topicFilters.size > 0;
-  const generalPosts = results.posts.filter(
-    (post) => post._type === "post" && post.category !== "Event" && post.category !== "Opportunity"
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [query, scope, status]);
+
+  const total = results.counts.users + results.counts.circles + results.counts.posts + results.counts.opportunities;
+  const people = useMemo(
+    () => results.users.map((user) => userToMiniProfile(searchUserToApiUser(user))),
+    [results.users]
+  );
+  const circles = useMemo(
+    () => results.circles.map(circleToMiniProfile),
+    [results.circles]
+  );
+  const posts = useMemo(
+    () => results.posts.map(apiPostToUiPost),
+    [results.posts]
   );
 
   return (
     <div className="min-h-screen bg-paper-warm">
       <TopBar />
 
-      <div
-        aria-hidden
-        className="pointer-events-none absolute -right-[22vw] top-[8vh] h-[60vw] w-[60vw] rounded-full border border-ink/[0.04]"
-      />
-
       <main className="relative mx-auto max-w-[1200px] px-6 pb-16 pt-6">
         <div className="mx-auto max-w-4xl text-center">
-          <p className="text-[11px] font-bold tracking-[0.2em] text-ink/45">SMART SEARCH</p>
+          <p className="text-[11px] font-bold tracking-[0.2em] text-ink/45">SEARCH</p>
           <h1 className="mt-2 font-display text-[44px] font-semibold tracking-[-0.04em] md:text-[72px]">
-            Search with memory
+            Find the circle
           </h1>
         </div>
 
@@ -116,13 +131,13 @@ export default function SearchPage() {
               autoFocus
               value={query}
               onChange={(event) => setQuery(event.target.value)}
-              placeholder="Search people, circles, posts, tags, or places..."
+              placeholder="Search people, circles, posts, opportunities..."
               className="h-12 flex-1 bg-transparent text-[18px] outline-none placeholder:text-ink/35"
               spellCheck={false}
             />
             {query && (
               <button
-                onClick={() => setQueryImmediate("")}
+                onClick={() => setQuery("")}
                 className="flex h-9 w-9 items-center justify-center rounded-full text-ink/60 transition hover:bg-paper-cool"
                 aria-label="Clear search"
               >
@@ -130,44 +145,18 @@ export default function SearchPage() {
               </button>
             )}
             {loading && (
-              <span className="mr-1 h-5 w-5 rounded-full border-2 border-paper-line border-t-ink animate-spin" />
+              <span className="mr-3 h-5 w-5 rounded-full border-2 border-paper-line border-t-ink animate-spin" />
             )}
-            <button
-              onClick={() => saveSearch()}
-              disabled={!query.trim()}
-              className={clsx(
-                "btn-press h-11 rounded-pill px-4 text-[12px] font-semibold transition",
-                query.trim()
-                  ? "bg-ink text-paper shadow-soft"
-                  : "bg-paper-cool text-ink/35"
-              )}
-            >
-              Save search
-            </button>
           </div>
         </div>
 
-        {corrections.length > 0 && (
-          <div className="mt-3 text-center text-[13px] text-ink/55">
-            Showing results for{" "}
-            {corrections.map((correction, index) => (
-              <span key={`${correction.raw}-${correction.to}`}>
-                {index > 0 && ", "}
-                <span className="line-through text-ink/35">{correction.raw}</span>
-                {" -> "}
-                <span className="font-semibold text-ink">{correction.to}</span>
-              </span>
-            ))}
-          </div>
-        )}
-
         <div className="mt-5 flex items-center gap-1 overflow-x-auto scroll-clean pb-1">
-          {SCOPES.map((scope) => {
-            const active = typeFilter === scope.key;
+          {SCOPES.map((item) => {
+            const active = scope === item.key;
             return (
               <button
-                key={scope.key}
-                onClick={() => setTypeFilter(scope.key)}
+                key={item.key}
+                onClick={() => setScope(item.key)}
                 className={clsx(
                   "btn-press h-9 rounded-pill px-4 text-[12.5px] font-semibold whitespace-nowrap transition",
                   active
@@ -175,267 +164,71 @@ export default function SearchPage() {
                     : "border border-paper-line bg-paper text-ink/65 hover:border-ink/30"
                 )}
               >
-                {scope.label}
+                {item.label}
               </button>
             );
           })}
         </div>
 
-        <div className="mt-3 flex flex-wrap gap-2">
-          {topicOptions.map((option) => {
-            const active = topicFilters.has(option.id);
-            return (
-              <button
-                key={option.id}
-                onClick={() => toggleTopic(option.id)}
-                className={clsx(
-                  "btn-press h-8 rounded-pill border px-3.5 text-[11.5px] font-semibold transition",
-                  active
-                    ? "border-ink/30 bg-paper-cool text-ink"
-                    : "border-paper-line bg-paper text-ink/50 hover:border-ink/30 hover:text-ink"
-                )}
-              >
-                {option.label}
-              </button>
-            );
-          })}
-        </div>
-
-        <div className="mt-5 flex flex-wrap items-center gap-3 text-[12px] text-ink/50">
-          <span>
-            {hasInput
-              ? `${counts.total} adaptive result${counts.total === 1 ? "" : "s"}`
-              : "Start typing or pick a scope to search"}
-          </span>
-          <button
-            onClick={resetMemory}
-            className="font-semibold text-ink/45 transition hover:text-ink"
-          >
-            Reset memory
-          </button>
-          {effectiveQuery && (
-            <span className="rounded-full bg-paper px-3 py-1 font-semibold text-ink/60">
-              Interpreted as: {effectiveQuery}
-            </span>
+        <div className="mt-5 text-[12px] text-ink/50">
+          {error ? (
+            <span className="text-red-700">{error}</span>
+          ) : query.trim().length < 2 && scope === "all" ? (
+            "Start typing to search the live database."
+          ) : (
+            `${total} result${total === 1 ? "" : "s"}`
           )}
         </div>
 
-        {!hasInput && (
-          <div className="mt-8 grid grid-cols-12 gap-5">
-            <section className="col-span-12 rounded-[22px] border border-paper-line bg-paper p-5 md:col-span-5">
-              <h3 className="text-[11px] font-bold tracking-[0.18em] text-ink/55">
-                RECENT SEARCHES
-              </h3>
-              <ul className="mt-3 flex flex-wrap gap-1.5">
-                {RECENT.map((value) => (
-                  <li key={value}>
-                    <button
-                      onClick={() => setQueryImmediate(value)}
-                      className="btn-press h-8 rounded-pill bg-paper-cool px-3 text-[12px] font-semibold transition hover:bg-ink hover:text-paper"
-                    >
-                      {value}
-                    </button>
-                  </li>
+        <div className="mt-6 grid grid-cols-12 gap-5">
+          {(scope === "all" || scope === "people") && (
+            <ResultSection title="People" count={results.counts.users}>
+              <div className="grid gap-3 md:grid-cols-2">
+                {people.map((person) => (
+                  <ProfileResult key={person.handle} profile={person} />
                 ))}
-              </ul>
-            </section>
+              </div>
+            </ResultSection>
+          )}
 
-            <section className="relative col-span-12 overflow-hidden rounded-[22px] bg-ink p-5 text-paper md:col-span-7">
-              <div className="absolute -bottom-10 -right-10 h-40 w-40 rounded-full border border-paper/15" />
-              <div className="absolute -bottom-16 -right-16 h-60 w-60 rounded-full border border-paper/10" />
-              <h3 className="text-[11px] font-bold tracking-[0.18em] text-paper/55">
-                SAVED SEARCHES
-              </h3>
-              {savedSearches.length === 0 ? (
-                <p className="mt-3 max-w-md text-[13px] leading-snug text-paper/65">
-                  Save a search and the app keeps it ready. The ranking engine also learns from what you open.
-                </p>
-              ) : (
-                <ul className="mt-3 space-y-1.5">
-                  {savedSearches.map((value) => (
-                    <li
-                      key={value}
-                      className="flex h-9 items-center gap-2 rounded-pill bg-paper/10 px-3"
-                    >
-                      <Icon.Search size={12} className="text-paper/70" />
-                      <button
-                        onClick={() => setQueryImmediate(value)}
-                        className="text-[12.5px] font-semibold"
-                      >
-                        {value}
-                      </button>
-                      <button
-                        onClick={() => removeSavedSearch(value)}
-                        className="ml-auto text-paper/60 transition hover:text-paper"
-                        aria-label={`Remove ${value}`}
-                      >
-                        <Icon.Close size={12} />
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </section>
-
-            <section className="col-span-12 rounded-[22px] border border-paper-line bg-paper p-5">
-              <h3 className="text-[11px] font-bold tracking-[0.18em] text-ink/55">
-                TRENDING TAGS
-              </h3>
-              <ul className="mt-3 flex flex-wrap gap-1.5">
-                {allTags.map((tag) => (
-                  <li key={tag}>
-                    <button
-                      onClick={() => {
-                        setQueryImmediate(`#${tag}`);
-                        setTypeFilter("tags");
-                      }}
-                      className="btn-press h-8 rounded-pill border border-paper-line px-3 text-[12px] font-semibold transition hover:border-ink/40"
-                    >
-                      #{tag}
-                    </button>
-                  </li>
+          {(scope === "all" || scope === "circles") && (
+            <ResultSection title="Circles" count={results.counts.circles}>
+              <div className="grid gap-3 md:grid-cols-2">
+                {circles.map((circle) => (
+                  <ProfileResult key={circle.handle} profile={circle} />
                 ))}
-              </ul>
-            </section>
-          </div>
-        )}
+              </div>
+            </ResultSection>
+          )}
 
-        {hasInput && counts.total === 0 && !loading && (
-          <div className="mt-10 py-16 text-center">
-            <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full border border-ink/15">
-              <Icon.Search size={28} className="text-ink/40" />
-            </div>
-            <h3 className="mt-5 font-display text-[20px] font-semibold">Nothing matches that search.</h3>
-            <p className="mt-1.5 text-[13px] text-ink/55">
-              Try broader wording, drop a topic chip, or reset the learned ranking.
-            </p>
-          </div>
-        )}
-
-        {hasInput && counts.total > 0 && (
-          <div className="mt-6 space-y-5">
-            {results.people.length > 0 && (
-              <ResultSection title={`People (${results.people.length})`}>
-                <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">
-                  {results.people.map((person, index) => (
-                    <Link
-                      key={person._id}
-                      href={`/user/${person.handle}`}
-                      onClick={() => recordClick(person._id)}
-                      className="flex items-start gap-3 rounded-[18px] border border-paper-line bg-paper p-4 transition hover:border-ink/30 hover:shadow-soft"
-                    >
-                      <Avatar size={44} hue={40 + index * 60} />
-                      <div className="min-w-0 flex-1">
-                        <div className="truncate text-[13.5px] font-semibold">{person.name}</div>
-                        <div className="truncate text-[11.5px] text-ink/50">
-                          @{person.handle} · {person.location}
-                        </div>
-                        <p className="mt-1 line-clamp-2 text-[12px] text-ink/65">{person.bio}</p>
-                      </div>
-                    </Link>
-                  ))}
-                </div>
-              </ResultSection>
-            )}
-
-            {results.circles.length > 0 && (
-              <ResultSection title={`Circles (${results.circles.length})`}>
-                <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">
-                  {results.circles.map((circle, index) => (
-                    <Link
-                      key={circle._id}
-                      href={`/circle/${circle.handle}`}
-                      onClick={() => recordClick(circle._id)}
-                      className="flex items-start gap-3 rounded-[18px] border border-paper-line bg-paper p-4 transition hover:border-ink/30 hover:shadow-soft"
-                    >
-                      <Avatar size={44} hue={180 + index * 40} kind="circle" />
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-1.5">
-                          <div className="truncate text-[13.5px] font-semibold">{circle.name}</div>
-                          <span className="shrink-0 rounded-full bg-paper-cool px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-[0.14em] text-ink/55">
-                            Circle
-                          </span>
-                        </div>
-                        <div className="truncate text-[11.5px] text-ink/50">
-                          {circle.location} · {circle.stats[0]?.value} members
-                        </div>
-                        <p className="mt-1 line-clamp-2 text-[12px] text-ink/65">{circle.bio}</p>
-                      </div>
-                    </Link>
-                  ))}
-                </div>
-              </ResultSection>
-            )}
-
-            {results.opportunities.length > 0 && (
-              <ResultSection title={`Opportunities (${results.opportunities.length})`}>
-                <div className="space-y-3">
-                  {results.opportunities.map((post) => (
-                    <div
-                      key={post.id}
-                      id={`result-${post.id}`}
-                      onClickCapture={() => recordClick(`post:${post.id}`)}
-                    >
-                      <PostCard post={post} />
+          {(scope === "all" || scope === "opportunities") && (
+            <ResultSection title="Opportunities" count={results.counts.opportunities}>
+              <div className="grid gap-3">
+                {results.opportunities.map((opp) => (
+                  <div key={opp._id} className="rounded-[18px] border border-paper-line bg-paper p-4">
+                    <div className="text-[14px] font-semibold">{opp.title}</div>
+                    <div className="mt-1 text-[12px] text-ink/55">
+                      {[opp.company || opp.orgName, opp.type, [opp.city, opp.country].filter(Boolean).join(", ")]
+                        .filter(Boolean)
+                        .join(" · ")}
                     </div>
-                  ))}
-                </div>
-              </ResultSection>
-            )}
+                    {opp.description && <p className="mt-2 text-[12.5px] text-ink/65 line-clamp-2">{opp.description}</p>}
+                  </div>
+                ))}
+              </div>
+            </ResultSection>
+          )}
 
-            {results.events.length > 0 && (
-              <ResultSection title={`Events (${results.events.length})`}>
-                <div className="space-y-3">
-                  {results.events.map((post) => (
-                    <div
-                      key={post.id}
-                      id={`result-${post.id}`}
-                      onClickCapture={() => recordClick(`post:${post.id}`)}
-                    >
-                      <PostCard post={post} />
-                    </div>
-                  ))}
-                </div>
-              </ResultSection>
-            )}
-
-            {generalPosts.length > 0 && (
-              <ResultSection title={`Posts (${generalPosts.length})`}>
-                <div className="space-y-3">
-                  {generalPosts.map((post) => (
-                    <div
-                      key={post.id}
-                      id={`result-${post.id}`}
-                      onClickCapture={() => recordClick(`post:${post.id}`)}
-                    >
-                      <PostCard post={post} />
-                    </div>
-                  ))}
-                </div>
-              </ResultSection>
-            )}
-
-            {results.tags.length > 0 && (
-              <ResultSection title={`Tags (${results.tags.length})`}>
-                <div className="flex flex-wrap gap-1.5">
-                  {results.tags.map((tag) => (
-                    <button
-                      key={tag._id}
-                      onClick={() => {
-                        recordClick(tag._id);
-                        setQueryImmediate(`#${tag.label}`);
-                        setTypeFilter("tags");
-                      }}
-                      className="btn-press h-8 rounded-pill border border-paper-line px-3 text-[12px] font-semibold transition hover:border-ink/40"
-                    >
-                      #{tag.label}
-                    </button>
-                  ))}
-                </div>
-              </ResultSection>
-            )}
-          </div>
-        )}
+          {(scope === "all" || scope === "posts") && (
+            <ResultSection title="Posts" count={results.counts.posts}>
+              <div className="space-y-4">
+                {posts.map((post) => (
+                  <PostCard key={post.id} post={post} />
+                ))}
+              </div>
+            </ResultSection>
+          )}
+        </div>
       </main>
     </div>
   );
@@ -443,17 +236,77 @@ export default function SearchPage() {
 
 function ResultSection({
   title,
+  count,
   children,
 }: {
   title: string;
-  children: ReactNode;
+  count: number;
+  children: React.ReactNode;
 }) {
   return (
-    <section>
-      <h3 className="mb-3 text-[11px] font-bold tracking-[0.18em] text-ink/55">
-        {title.toUpperCase()}
-      </h3>
-      {children}
+    <section className="col-span-12 rounded-[24px] border border-paper-line bg-paper/70 p-4">
+      <div className="mb-3 flex items-center justify-between">
+        <h2 className="text-[11px] font-bold tracking-[0.18em] text-ink/55 uppercase">{title}</h2>
+        <span className="text-[11px] text-ink/40">{count}</span>
+      </div>
+      {count === 0 ? <div className="text-[13px] text-ink/45">No results.</div> : children}
     </section>
   );
+}
+
+function ProfileResult({ profile }: { profile: ReturnType<typeof userToMiniProfile> }) {
+  return (
+    <Link
+      href={`/${profile.kind === "circle" ? "circle" : "user"}/${profile.handle}`}
+      className="rounded-[18px] border border-paper-line bg-paper p-4 flex items-center gap-3 hover:border-ink/30 transition"
+    >
+      <Avatar size={44} hue={profile.hue ?? hueFromString(profile.handle)} kind={profile.kind} />
+      <span className="min-w-0">
+        <span className="block text-[14px] font-semibold truncate">{profile.name}</span>
+        <span className="block text-[12px] text-ink/50 truncate">@{profile.handle} · {profile.location}</span>
+        {profile.bio && <span className="block mt-1 text-[12px] text-ink/60 line-clamp-1">{profile.bio}</span>}
+      </span>
+    </Link>
+  );
+}
+
+function SearchShell({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="min-h-screen bg-paper-warm">
+      <TopBar />
+      <main className="max-w-[900px] mx-auto px-6 py-16 text-[14px] text-ink/60">
+        {children}
+      </main>
+    </div>
+  );
+}
+
+function parseScope(value: string | null): Scope {
+  return SCOPES.some((scope) => scope.key === value) ? (value as Scope) : "all";
+}
+
+function scopeTypes(scope: Scope): SearchTypes[] | undefined {
+  if (scope === "all") return undefined;
+  if (scope === "people") return ["users"];
+  return [scope];
+}
+
+function searchUserToApiUser(user: SearchResponse["users"][number]): ApiUser {
+  return {
+    _id: user._id,
+    name: user.name,
+    username: user.username || user._id,
+    email: "",
+    accountType: user.accountType || "personal",
+    userType: "member",
+    roles: ["member"],
+    avatarUrl: user.avatarUrl,
+    profilePhotoUrl: user.profilePhotoUrl,
+    profilePictureUrl: user.profilePictureUrl,
+    headline: user.headline,
+    bio: user.headline,
+    currentRegion: user.currentRegion,
+    locationNow: user.locationNow,
+    isMentor: user.isMentor,
+  };
 }

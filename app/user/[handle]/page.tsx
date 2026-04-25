@@ -1,53 +1,114 @@
 "use client";
 
-import { useState } from "react";
-import { notFound } from "next/navigation";
+import { useEffect, useMemo, useState } from "react";
 import clsx from "clsx";
+import { useRouter } from "next/navigation";
 import { TopBar } from "@/components/TopBar";
 import { ProfileHeader, ProfileTabs } from "@/components/ProfileHeader";
-import { PostCard } from "@/components/PostCard";
-import { Avatar } from "@/components/Avatar";
+import { PostCard, type Post } from "@/components/PostCard";
 import { Icon } from "@/components/Icon";
-import { PEOPLE, CIRCLES, POSTS } from "@/data/mock";
+import { useAuth } from "@/lib/auth";
+import { postsApi } from "@/lib/posts";
+import { resolveHandle } from "@/lib/users";
+import { chatsApi } from "@/lib/chats";
+import { apiPostToUiPost, userToProfileMeta } from "@/lib/mappers";
+import type { ApiUser } from "@/lib/types";
 
 export default function UserProfilePage({
   params,
 }: {
   params: { handle: string };
 }) {
-  const person = PEOPLE.find((p) => p.handle === params.handle);
-  if (!person) return notFound();
-
+  const router = useRouter();
+  const { user, status } = useAuth();
+  const [profileUser, setProfileUser] = useState<ApiUser | null>(null);
+  const [posts, setPosts] = useState<Post[]>([]);
   const [tab, setTab] = useState("posts");
-  const posts = POSTS.filter((p) => p.author.handle === person.handle);
-  const isOwner = person.handle === "leyla";
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [messageBusy, setMessageBusy] = useState(false);
 
-  const profile = {
-    ...person,
-    tagline:
-      person.handle === "leyla"
-        ? "Product designer · Azerbaijani in Berlin"
-        : person.handle === "rashad"
-        ? "CS student @ UCL · volunteer @ London Diaspora"
-        : "Software engineer in NYC",
-    locationOrigin: "Baku",
-    joined: "March 2024",
-    link: person.handle === "leyla" ? "portfolio.leyla.com" : undefined,
-    isOwner,
-  };
+  useEffect(() => {
+    if (status === "unauthenticated") router.replace("/signin");
+  }, [status, router]);
+
+  useEffect(() => {
+    if (status !== "authenticated") return;
+    let cancelled = false;
+
+    async function load() {
+      setLoading(true);
+      setError(null);
+      try {
+        const resolved = await resolveHandle(params.handle);
+        if (!resolved) {
+          setError("Profile not found.");
+          setProfileUser(null);
+          setPosts([]);
+          return;
+        }
+
+        const rawPosts = await postsApi.list({ authorId: resolved._id, limit: 40 });
+        if (cancelled) return;
+        setProfileUser(resolved);
+        setPosts(
+          rawPosts
+            .filter((post) => post.author?._id === resolved._id)
+            .map(apiPostToUiPost)
+        );
+      } catch (err: any) {
+        if (!cancelled) setError(err?.message || "Failed to load profile.");
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
+
+    load();
+    return () => {
+      cancelled = true;
+    };
+  }, [params.handle, status]);
+
+  const isOwner = !!user && !!profileUser && user._id === profileUser._id;
+  const profile = useMemo(
+    () => (profileUser ? userToProfileMeta(profileUser, isOwner) : null),
+    [profileUser, isOwner]
+  );
+
+  async function startMessage() {
+    if (!profileUser || messageBusy) return;
+    setMessageBusy(true);
+    try {
+      const thread = await chatsApi.startThread(profileUser._id);
+      router.push(`/messages?thread=${thread._id}`);
+    } finally {
+      setMessageBusy(false);
+    }
+  }
 
   const tabs = [
     { key: "posts", label: "Posts", count: posts.length },
-    { key: "circles", label: "Circles", count: 12 },
-    { key: "opportunities", label: "Opportunities", count: 4 },
     { key: "about", label: "About" },
   ];
+
+  if (status === "loading" || loading) {
+    return <PageShell>Loading profile...</PageShell>;
+  }
+
+  if (error || !profileUser || !profile) {
+    return <PageShell>{error || "Profile not found."}</PageShell>;
+  }
 
   return (
     <div className="min-h-screen bg-paper-warm">
       <TopBar />
       <main className="max-w-[1100px] mx-auto px-6 py-8 space-y-5">
-        <ProfileHeader profile={profile} />
+        <ProfileHeader
+          profile={profile}
+          onMessage={isOwner ? undefined : startMessage}
+          primaryActionLabel="Follow"
+          primaryActionBusy={messageBusy}
+        />
 
         <div className="rounded-[22px] bg-paper border border-paper-line overflow-hidden">
           <ProfileTabs tabs={tabs} active={tab} onChange={setTab} />
@@ -57,58 +118,26 @@ export default function UserProfilePage({
                 <EmptyFeed isOwner={isOwner} />
               ) : (
                 <div className="space-y-4">
-                  {posts.map((p) => (
-                    <PostCard key={p.id} post={p} />
+                  {posts.map((post) => (
+                    <PostCard key={post.id} post={post} />
                   ))}
                 </div>
               ))}
 
-            {tab === "circles" && (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                {CIRCLES.map((c, i) => (
-                  <div
-                    key={c.handle}
-                    className="p-4 rounded-[18px] border border-paper-line bg-paper-warm flex items-center gap-3"
-                  >
-                    <Avatar size={44} hue={150 + i * 60} kind="circle" />
-                    <div className="flex-1 min-w-0">
-                      <div className="text-[13px] font-semibold truncate">
-                        {c.name}
-                      </div>
-                      <div className="text-[11px] text-ink/50 truncate">
-                        {c.location}
-                      </div>
-                    </div>
-                    <a
-                      href={`/circle/${c.handle}`}
-                      className="h-7 px-3 rounded-pill bg-ink text-paper text-[11px] font-semibold inline-flex items-center"
-                    >
-                      View
-                    </a>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {tab === "opportunities" && (
-              <div className="space-y-3">
-                {POSTS.filter((p) => p.category === "Opportunity").map((p) => (
-                  <PostCard key={p.id} post={p} />
-                ))}
-              </div>
-            )}
-
-            {tab === "about" && (
-              <AboutPanel
-                bio={profile.bio}
-                location={profile.location}
-                origin={profile.locationOrigin}
-                joined={profile.joined}
-                link={profile.link}
-              />
-            )}
+            {tab === "about" && <AboutPanel user={profileUser} />}
           </div>
         </div>
+      </main>
+    </div>
+  );
+}
+
+function PageShell({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="min-h-screen bg-paper-warm">
+      <TopBar />
+      <main className="max-w-[900px] mx-auto px-6 py-16 text-[14px] text-ink/60">
+        {children}
       </main>
     </div>
   );
@@ -130,35 +159,55 @@ function EmptyFeed({ isOwner }: { isOwner: boolean }) {
       </h3>
       <p className="mt-1.5 text-[13px] text-ink/55 max-w-sm mx-auto">
         {isOwner
-          ? "Posts you publish will appear right here — like your own personal feed."
+          ? "Posts you publish will appear right here."
           : "When they post something, you'll see it here."}
       </p>
     </div>
   );
 }
 
-function AboutPanel({
-  bio,
-  location,
-  origin,
-  joined,
-  link,
-}: {
-  bio: string;
-  location: string;
-  origin?: string;
-  joined: string;
-  link?: string;
-}) {
+function AboutPanel({ user }: { user: ApiUser }) {
+  const links = [
+    ...(user.links || []).map((link) => ({ label: link.label || link.type || "Link", url: link.url })),
+    ...Object.entries(user.socialLinks || {})
+      .filter(([, url]) => !!url)
+      .map(([label, url]) => ({ label, url: url as string })),
+  ];
+
   return (
-    <div className="max-w-prose text-[13.5px] text-ink/75 leading-relaxed space-y-4">
-      <p>{bio}</p>
-      <div className="grid grid-cols-2 gap-4 pt-3 border-t border-paper-line">
-        <Fact icon="Pin" label="Location" value={location} />
-        {origin && <Fact icon="Globe" label="From" value={origin} />}
-        <Fact icon="Calendar" label="Joined" value={joined} />
-        {link && <Fact icon="Link" label="Website" value={link} />}
+    <div className="max-w-prose text-[13.5px] text-ink/75 leading-relaxed space-y-5">
+      <p>{user.bio || "No bio yet."}</p>
+      {user.skills?.length ? (
+        <div className="flex flex-wrap gap-2">
+          {user.skills.map((skill) => (
+            <span key={skill} className="rounded-pill bg-paper-cool px-3 py-1 text-[11.5px] font-semibold">
+              {skill}
+            </span>
+          ))}
+        </div>
+      ) : null}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-3 border-t border-paper-line">
+        <Fact icon="Pin" label="Location" value={user.currentRegion || user.locationNow?.country || "Not set"} />
+        <Fact icon="Globe" label="Origin" value={user.originCountry || "Not set"} />
+        <Fact icon="User" label="Account" value={user.isMentor ? "Mentor" : "Member"} />
+        <Fact icon="Calendar" label="Joined" value={formatJoined(user.createdAt)} />
       </div>
+      {links.length ? (
+        <div className="flex flex-wrap gap-2">
+          {links.map((link) => (
+            <a
+              key={`${link.label}-${link.url}`}
+              href={link.url}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center gap-1.5 h-8 rounded-pill border border-paper-line px-3 text-[12px] font-semibold hover:border-ink/30"
+            >
+              <Icon.Link size={12} />
+              {link.label}
+            </a>
+          ))}
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -190,4 +239,11 @@ function Fact({
       </div>
     </div>
   );
+}
+
+function formatJoined(value?: string) {
+  if (!value) return "Recently";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "Recently";
+  return date.toLocaleDateString(undefined, { month: "long", year: "numeric" });
 }

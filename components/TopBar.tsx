@@ -6,6 +6,7 @@ import clsx from "clsx";
 import { usePathname, useRouter } from "next/navigation";
 import { Icon } from "./Icon";
 import { SearchOverlay } from "./SearchOverlay";
+import { useAuth } from "@/lib/auth";
 
 const COUNTRIES = [
   "Global",
@@ -23,6 +24,7 @@ const COUNTRIES = [
 export function TopBar({ country = "Germany" }: { country?: string }) {
   const pathname = usePathname();
   const router = useRouter();
+  const { logout } = useAuth();
   const [open, setOpen] = useState(false);
   const [selected, setSelected] = useState(country);
   const [searchOpen, setSearchOpen] = useState(false);
@@ -157,13 +159,16 @@ export function TopBar({ country = "Germany" }: { country?: string }) {
           >
             <Icon.User size={15} />
           </Link>
-          <Link
-            href="/"
+          <button
+            onClick={() => {
+              logout();
+              router.replace("/");
+            }}
             className="btn-press inline-flex items-center gap-1.5 h-10 px-4 rounded-pill border border-paper-line text-[12px] font-semibold hover:border-ink/40"
           >
             <Icon.SignOut size={14} />
             Sign out
-          </Link>
+          </button>
         </div>
       </div>
       <SearchOverlay
