@@ -10,6 +10,7 @@ import { postsApi } from "@/lib/posts";
 import { relativeTime, profileHref } from "@/lib/format";
 import { useAuth } from "@/lib/auth";
 import { hueFromString } from "@/lib/format";
+import { emitPlayfulBurst } from "@/lib/playful";
 
 export type PostCategory = "Note" | "Announcement" | "Event" | "Opportunity" | "Searching for";
 
@@ -40,12 +41,48 @@ export type Post = {
   opportunityMeta?: { role: string; type: string };
 };
 
-const categoryStyles: Record<PostCategory, { bg: string; fg: string; icon: keyof typeof Icon }> = {
-  Note: { bg: "bg-paper-cool", fg: "text-ink/70", icon: "Note" },
-  Announcement: { bg: "bg-ink", fg: "text-paper", icon: "Mic" },
-  Event: { bg: "bg-ink/5 border border-ink/20", fg: "text-ink", icon: "Calendar" },
-  Opportunity: { bg: "bg-ink/5 border border-ink/20", fg: "text-ink", icon: "Briefcase" },
-  "Searching for": { bg: "bg-ink/5 border border-ink/20", fg: "text-ink", icon: "Search" },
+const categoryStyles: Record<PostCategory, {
+  bg: string;
+  fg: string;
+  icon: keyof typeof Icon;
+  accent: string;
+  action: { icon: keyof typeof Icon; label: string; activeLabel: string };
+}> = {
+  Note: {
+    bg: "bg-paper-cool",
+    fg: "text-ink/70",
+    icon: "Note",
+    accent: "from-paper-cool to-paper",
+    action: { icon: "Check", label: "Save", activeLabel: "Saved" },
+  },
+  Announcement: {
+    bg: "bg-ink",
+    fg: "text-paper",
+    icon: "Mic",
+    accent: "from-ink/10 to-paper",
+    action: { icon: "Bell", label: "Follow", activeLabel: "Following" },
+  },
+  Event: {
+    bg: "bg-[#EAFCC4] border border-[#8FC23A]/35",
+    fg: "text-[#4A7018]",
+    icon: "Calendar",
+    accent: "from-[#EAFCC4] to-paper",
+    action: { icon: "Calendar", label: "Going", activeLabel: "Going" },
+  },
+  Opportunity: {
+    bg: "bg-ink/5 border border-ink/20",
+    fg: "text-ink",
+    icon: "Briefcase",
+    accent: "from-[#F5E58A]/35 to-paper",
+    action: { icon: "Briefcase", label: "Save lead", activeLabel: "Lead saved" },
+  },
+  "Searching for": {
+    bg: "bg-ink/5 border border-ink/20",
+    fg: "text-ink",
+    icon: "Search",
+    accent: "from-[#B8D8E8]/35 to-paper",
+    action: { icon: "Send", label: "I can help", activeLabel: "Offered help" },
+  },
 };
 
 export function PostCard({ post }: { post: Post }) {
@@ -58,6 +95,8 @@ export function PostCard({ post }: { post: Post }) {
   const [commentCount, setCommentCount] = useState(post.stats.comments);
   const [draft, setDraft] = useState("");
   const [posting, setPosting] = useState(false);
+  const [contextActive, setContextActive] = useState(false);
+  const [celebrating, setCelebrating] = useState(false);
 
   const cat = categoryStyles[post.category];
   const CatIcon = Icon[cat.icon];
@@ -68,6 +107,11 @@ export function PostCard({ post }: { post: Post }) {
     // optimistic
     const nextLiked = !liked;
     setLiked(nextLiked);
+    if (nextLiked) {
+      setCelebrating(true);
+      emitPlayfulBurst("liked");
+      window.setTimeout(() => setCelebrating(false), 560);
+    }
     setLikeCount((c) => Math.max(0, c + (nextLiked ? 1 : -1)));
     try {
       const res = await postsApi.toggleLike(post.id);
@@ -110,7 +154,14 @@ export function PostCard({ post }: { post: Post }) {
   }
 
   return (
-    <article id={`post-${post.id}`} className="rounded-[22px] bg-paper border border-paper-line hover:shadow-soft transition-shadow overflow-hidden">
+    <article
+      id={`post-${post.id}`}
+      className={clsx(
+        "rounded-[22px] bg-paper border border-paper-line hover:shadow-soft transition-shadow overflow-hidden",
+        celebrating && "playful-pop"
+      )}
+    >
+      <div className={clsx("h-1 bg-gradient-to-r", cat.accent)} />
       <div className="p-5">
         <div className="flex items-start gap-3">
           <MiniProfileCard profile={post.author}>
@@ -236,6 +287,15 @@ export function PostCard({ post }: { post: Post }) {
           onClick={toggleLike}
         />
         <ActionBtn icon="Chat" label="Comment" onClick={() => setCommentsOpen((v) => !v)} />
+        <ActionBtn
+          icon={cat.action.icon}
+          label={contextActive ? cat.action.activeLabel : cat.action.label}
+          active={contextActive}
+          onClick={() => {
+            setContextActive((v) => !v);
+            if (!contextActive) emitPlayfulBurst(cat.action.activeLabel);
+          }}
+        />
         <ActionBtn icon="Share" label="Share" />
       </div>
 

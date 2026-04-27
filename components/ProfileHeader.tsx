@@ -3,6 +3,7 @@
 import clsx from "clsx";
 import { Avatar } from "./Avatar";
 import { Icon } from "./Icon";
+import { emitPlayfulBurst } from "@/lib/playful";
 
 export type ProfileKind = "personal" | "circle";
 
@@ -24,18 +25,19 @@ export type ProfileMeta = {
 export function ProfileHeader({
   profile,
   onMessage,
+  onEditProfile,
   onPrimaryAction,
   primaryActionLabel,
   primaryActionBusy,
 }: {
   profile: ProfileMeta;
   onMessage?: () => void;
+  onEditProfile?: () => void;
   onPrimaryAction?: () => void;
   primaryActionLabel?: string;
   primaryActionBusy?: boolean;
 }) {
   const hue = profile.hue ?? 220;
-
   return (
     <header className="rounded-[28px] bg-paper border border-paper-line overflow-hidden relative">
       {/* Banner — rectangular for personal, the CONTAINER is circular for circles */}
@@ -100,7 +102,12 @@ export function ProfileHeader({
               <div className="flex items-center gap-2">
                 {profile.isOwner ? (
                   <>
-                    <button type="button" className="btn-press h-9 px-4 rounded-pill bg-ink text-paper text-[12px] font-semibold">
+                    <button
+                      type="button"
+                      onClick={onEditProfile}
+                      aria-label="Edit profile action"
+                      className="btn-press h-9 px-4 rounded-pill bg-ink text-paper text-[12px] font-semibold"
+                    >
                       Edit profile
                     </button>
                     <button type="button" className="btn-press w-9 h-9 rounded-full border border-paper-line hover:border-ink/30 flex items-center justify-center">
@@ -111,7 +118,10 @@ export function ProfileHeader({
                   <>
                     <button
                       type="button"
-                      onClick={onMessage}
+                      onClick={(event) => {
+                        emitPlayfulBurst("message", event.clientX, event.clientY);
+                        onMessage?.();
+                      }}
                       className="btn-press h-9 px-4 rounded-pill bg-ink text-paper text-[12px] font-semibold inline-flex items-center gap-1.5"
                     >
                       <Icon.Chat size={13} />
@@ -119,9 +129,12 @@ export function ProfileHeader({
                     </button>
                     <button
                       type="button"
-                      onClick={onPrimaryAction}
+                      onClick={(event) => {
+                        emitPlayfulBurst(profile.kind === "circle" ? "joined" : "followed", event.clientX, event.clientY);
+                        onPrimaryAction?.();
+                      }}
                       disabled={primaryActionBusy}
-                      className="btn-press h-9 px-4 rounded-pill border border-paper-line hover:border-ink/30 text-[12px] font-semibold disabled:opacity-50"
+                      className="btn-press brand-glow h-9 px-4 rounded-pill border border-[#8FC23A]/35 bg-[#C1FF72] text-ink hover:bg-[#B4F25F] text-[12px] font-semibold disabled:opacity-50"
                     >
                       {primaryActionLabel || (profile.kind === "circle" ? "Join" : "Follow")}
                     </button>
@@ -178,6 +191,7 @@ export function ProfileTabs({
         <button
           key={t.key}
           onClick={() => onChange(t.key)}
+          aria-label={`Profile tab: ${t.label}`}
           className={clsx(
             "relative h-11 px-5 text-[13px] font-semibold transition-colors",
             active === t.key ? "text-ink" : "text-ink/50 hover:text-ink/80"

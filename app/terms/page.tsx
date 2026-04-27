@@ -51,13 +51,6 @@ export default function TermsPage() {
           </Section>
         </div>
 
-        <p className="mt-12 text-[12.5px] text-ink/45">
-          This page is a placeholder while our full terms are finalized. Questions?{" "}
-          <a href="mailto:hello@bizim.circle" className="underline hover:text-ink">
-            hello@bizim.circle
-          </a>
-          .
-        </p>
       </section>
     </main>
   );

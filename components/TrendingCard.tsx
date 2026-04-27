@@ -17,7 +17,7 @@ const spotlight = [
 
 export function TrendingCard() {
   return (
-    <div className="rounded-[22px] bg-paper border border-paper-line overflow-hidden">
+    <div className="rail-card rail-card-right rounded-[22px] bg-paper border border-paper-line overflow-hidden [--rail-compact:210px] [--rail-expanded:520px]">
       <div className="p-4 border-b border-paper-line flex items-center gap-2">
         <span className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-ink text-paper">
           <Icon.Trend size={13} />
@@ -27,7 +27,7 @@ export function TrendingCard() {
 
       <ul className="divide-y divide-paper-line">
         {items.map((t, i) => (
-          <li key={t.tag}>
+          <li key={t.tag} className={i > 1 ? "rail-extra" : undefined}>
             <Link
               href={`/search?q=${encodeURIComponent("#" + t.tag)}`}
               className="flex items-center gap-3 p-3 hover:bg-paper-cool transition"
@@ -43,7 +43,7 @@ export function TrendingCard() {
         ))}
       </ul>
 
-      <div className="p-4 border-t border-paper-line">
+      <div className="rail-extra p-4 border-t border-paper-line">
         <h4 className="text-[10.5px] font-bold tracking-[0.18em] text-ink/50 mb-2">SPOTLIGHT</h4>
         <div className="space-y-2">
           {spotlight.map((s) => (

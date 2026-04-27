@@ -7,12 +7,29 @@ import { TopBar } from "@/components/TopBar";
 import { ProfileHeader, ProfileTabs } from "@/components/ProfileHeader";
 import { PostCard, type Post } from "@/components/PostCard";
 import { Icon } from "@/components/Icon";
+import { AnimatedLogo } from "@/components/AnimatedLogo";
 import { useAuth } from "@/lib/auth";
 import { postsApi } from "@/lib/posts";
-import { resolveHandle } from "@/lib/users";
+import { resolveHandle, usersApi, type UserRelationship } from "@/lib/users";
 import { chatsApi } from "@/lib/chats";
 import { apiPostToUiPost, userToProfileMeta } from "@/lib/mappers";
 import type { ApiUser } from "@/lib/types";
+
+function emptyRelationship(following = false): UserRelationship {
+  return {
+    bridged: false,
+    bridgePending: false,
+    bridgeDirection: null,
+    connectionId: null,
+    isMentor: false,
+    isMentee: false,
+    mentorshipId: null,
+    following,
+    mentorshipRequestPending: false,
+    mentorshipRequestDirection: null,
+    mentorshipRequestId: null,
+  };
+}
 
 export default function UserProfilePage({
   params,
@@ -28,6 +45,8 @@ export default function UserProfilePage({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [messageBusy, setMessageBusy] = useState(false);
+  const [followBusy, setFollowBusy] = useState(false);
+  const [relationship, setRelationship] = useState<UserRelationship | null>(null);
 
   useEffect(() => {
     if (status === "unauthenticated") router.replace("/signin");
@@ -49,9 +68,15 @@ export default function UserProfilePage({
           return;
         }
 
-        const rawPosts = await postsApi.list({ authorId: resolved._id, limit: 40 });
+        const [rawPosts, nextRelationship] = await Promise.all([
+          postsApi.list({ authorId: resolved._id, limit: 40 }),
+          user?._id === resolved._id
+            ? Promise.resolve(null)
+            : usersApi.relationship(resolved._id).catch(() => emptyRelationship()),
+        ]);
         if (cancelled) return;
         setProfileUser(resolved);
+        setRelationship(nextRelationship);
         setPosts(
           rawPosts
             .filter((post) => post.author?._id === resolved._id)
@@ -68,7 +93,7 @@ export default function UserProfilePage({
     return () => {
       cancelled = true;
     };
-  }, [handle, status]);
+  }, [handle, status, user?._id]);
 
   const isOwner = !!user && !!profileUser && user._id === profileUser._id;
   const profile = useMemo(
@@ -84,6 +109,44 @@ export default function UserProfilePage({
       router.push(`/messages?thread=${thread._id}`);
     } finally {
       setMessageBusy(false);
+    }
+  }
+
+  async function toggleFollow() {
+    if (!profileUser || isOwner || followBusy) return;
+    const wasFollowing = !!relationship?.following;
+    setFollowBusy(true);
+    setError(null);
+    setRelationship((current) =>
+      current
+        ? { ...current, following: !wasFollowing }
+        : emptyRelationship(!wasFollowing)
+    );
+
+    try {
+      const result = wasFollowing
+        ? await usersApi.unfollow(profileUser._id)
+        : await usersApi.follow(profileUser._id);
+      setRelationship((current) =>
+        current
+          ? { ...current, following: result.following }
+          : emptyRelationship(result.following)
+      );
+    } catch (err: any) {
+      if (err?.status === 409 && !wasFollowing) {
+        setRelationship((current) =>
+          current ? { ...current, following: true } : emptyRelationship(true)
+        );
+        return;
+      }
+      setRelationship((current) =>
+        current
+          ? { ...current, following: wasFollowing }
+          : emptyRelationship(wasFollowing)
+      );
+      setError(err?.message || "Failed to update follow status.");
+    } finally {
+      setFollowBusy(false);
     }
   }
 
@@ -107,9 +170,17 @@ export default function UserProfilePage({
         <ProfileHeader
           profile={profile}
           onMessage={isOwner ? undefined : startMessage}
-          primaryActionLabel="Follow"
-          primaryActionBusy={messageBusy}
+          onEditProfile={isOwner ? () => router.push("/profile?tab=edit") : undefined}
+          onPrimaryAction={isOwner ? undefined : toggleFollow}
+          primaryActionLabel={relationship?.following ? "Following" : "Follow"}
+          primaryActionBusy={followBusy}
         />
+
+        {error && (
+          <div className="rounded-[18px] border border-paper-line bg-paper p-4 text-[13px] text-red-700">
+            {error}
+          </div>
+        )}
 
         <div className="rounded-[22px] bg-paper border border-paper-line overflow-hidden">
           <ProfileTabs tabs={tabs} active={tab} onChange={setTab} />
@@ -151,18 +222,13 @@ function EmptyFeed({ isOwner }: { isOwner: boolean }) {
         <div className="absolute inset-0 rounded-full border border-ink/10" />
         <div className="absolute inset-4 rounded-full border border-ink/10 animate-spin-slower" />
         <div className="absolute inset-10 rounded-full border border-ink/10" />
-        <div className="w-12 h-12 rounded-full bg-ink text-paper flex items-center justify-center">
-          <Icon.Plus size={20} />
+        <div className="w-16 h-16 rounded-full bg-[#C1FF72] text-ink flex items-center justify-center shadow-soft">
+          <AnimatedLogo size={48} motion={isOwner ? "sprout" : "peek"} />
         </div>
       </div>
       <h3 className="mt-6 font-display text-[22px] font-semibold">
         {isOwner ? "Your feed lives here." : "Nothing here yet."}
       </h3>
-      <p className="mt-1.5 text-[13px] text-ink/55 max-w-sm mx-auto">
-        {isOwner
-          ? "Posts you publish will appear right here."
-          : "When they post something, you'll see it here."}
-      </p>
     </div>
   );
 }

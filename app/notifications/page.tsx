@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, type MouseEvent } from "react";
 import clsx from "clsx";
 import { useRouter } from "next/navigation";
 import { TopBar } from "@/components/TopBar";
@@ -9,6 +9,7 @@ import { Icon } from "@/components/Icon";
 import { useAuth } from "@/lib/auth";
 import { notificationsApi, notificationLink, type ApiNotification } from "@/lib/notifications";
 import { hueFromString, relativeTime } from "@/lib/format";
+import { emitPlayfulBurst } from "@/lib/playful";
 
 const kindIcons: Record<string, keyof typeof Icon> = {
   post_like: "Heart",
@@ -155,9 +156,10 @@ export default function NotificationsPage() {
   const latest = items[0];
   const readPercent = items.length ? Math.round(((items.length - unreadCount) / items.length) * 100) : 100;
 
-  async function markAllRead() {
+  async function markAllRead(event?: MouseEvent<HTMLButtonElement>) {
     const previous = items;
     setItems((xs) => xs.map((n) => ({ ...n, read: true })));
+    emitPlayfulBurst("cleared", event?.clientX, event?.clientY);
     try {
       await notificationsApi.markAllRead();
     } catch {
@@ -168,6 +170,7 @@ export default function NotificationsPage() {
   async function openNotification(n: ApiNotification) {
     if (!n.read) {
       setItems((xs) => xs.map((item) => item._id === n._id ? { ...item, read: true } : item));
+      emitPlayfulBurst("opened");
       notificationsApi.markRead(n._id).catch(() => {
         setItems((xs) => xs.map((item) => item._id === n._id ? { ...item, read: false } : item));
       });
@@ -194,9 +197,6 @@ export default function NotificationsPage() {
                 <h1 className="mt-4 font-display text-[34px] sm:text-[46px] font-semibold tracking-tight leading-[0.98]">
                   Your circle is buzzing.
                 </h1>
-                <p className="mt-3 max-w-xl text-[13.5px] sm:text-sm leading-6 text-ink/62">
-                  Catch replies, invites, mentions, and messages without losing the thread.
-                </p>
               </div>
 
               <div className="grid grid-cols-3 gap-2 sm:gap-3 lg:w-[360px]">
@@ -264,9 +264,6 @@ export default function NotificationsPage() {
                   <Icon.Check size={16} />
                 </div>
                 <h2 className="mt-3 font-display text-[20px] font-semibold tracking-tight">Inbox sprint</h2>
-                <p className="mt-1 text-[12.5px] leading-5 text-paper/62">
-                  One tap clears the visual noise, but keeps every notification here for later.
-                </p>
                 <button
                   onClick={markAllRead}
                   disabled={unreadCount === 0}
@@ -297,13 +294,13 @@ export default function NotificationsPage() {
               <div className="flex flex-col gap-2 border-b border-paper-line px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                   <h2 className="font-display text-[22px] font-semibold tracking-tight">{filterLabels[filter]}</h2>
-                  <p className="text-[12px] text-ink/45">
-                    {loading ? "Refreshing your activity..." : `${filtered.length} notification${filtered.length === 1 ? "" : "s"} showing`}
-                  </p>
+                  <div className="text-[12px] text-ink/45">
+                    {loading ? "Refreshing" : `${filtered.length} notification${filtered.length === 1 ? "" : "s"}`}
+                  </div>
                 </div>
-                <div className="inline-flex items-center gap-1 rounded-pill bg-paper-cool px-2 py-1 text-[11px] font-semibold text-ink/55">
+                <div className="inline-flex items-center gap-1 rounded-pill bg-paper-cool px-2 py-1 text-[11px] font-semibold text-ink/55" title="Live refresh">
                   <span className="h-2 w-2 rounded-full bg-emerald-400" />
-                  Live refresh every 15s
+                  Live
                 </div>
               </div>
 
@@ -332,9 +329,6 @@ export default function NotificationsPage() {
                       <Icon.Check size={24} />
                     </div>
                     <h3 className="mt-4 font-display text-[22px] font-semibold tracking-tight">All caught up</h3>
-                    <p className="mx-auto mt-2 max-w-sm text-[13px] leading-5 text-ink/55">
-                      Nothing is waiting in this lane. Switch filters or go start something fun.
-                    </p>
                   </li>
                 )}
                 {!loading && !error && filtered.map((n) => {

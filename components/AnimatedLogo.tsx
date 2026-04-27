@@ -41,6 +41,12 @@ export type LogoMotion =
   | "drumroll"
   | "stretch"
   | "melt"
+  | "full-hop"
+  | "full-dance"
+  | "full-sway"
+  | "full-float"
+  | "full-party"
+  | "full-orbit"
   | "comet"
   | "bounce"
   | "scatter"
@@ -107,6 +113,12 @@ export function AnimatedLogo({
         motion === "drumroll" && "animated-logo-drumroll",
         motion === "stretch" && "animated-logo-stretch",
         motion === "melt" && "animated-logo-melt",
+        motion === "full-hop" && "animated-logo-full-hop",
+        motion === "full-dance" && "animated-logo-full-dance",
+        motion === "full-sway" && "animated-logo-full-sway",
+        motion === "full-float" && "animated-logo-full-float",
+        motion === "full-party" && "animated-logo-full-party",
+        motion === "full-orbit" && "animated-logo-full-orbit",
         motion === "comet" && "animated-logo-comet",
         motion === "bounce" && "animated-logo-bounce",
         motion === "scatter" && "animated-logo-scatter",

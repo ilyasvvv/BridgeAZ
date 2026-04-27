@@ -7,9 +7,11 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Icon } from "@/components/Icon";
 import { Avatar } from "@/components/Avatar";
+import { AnimatedLogo } from "@/components/AnimatedLogo";
 import { searchApi, type SearchResponse, type SearchTypes } from "@/lib/search";
 import { apiPostToUiPost, circleToMiniProfile } from "@/lib/mappers";
 import { hueFromString, profileHref } from "@/lib/format";
+import { emitPlayfulBurst } from "@/lib/playful";
 
 type Scope = "all" | "people" | "circles" | "posts" | "opportunities";
 
@@ -153,6 +155,7 @@ export function SearchOverlay({
     }));
     return [...people, ...circles, ...posts, ...opportunities].slice(0, 8);
   }, [results]);
+  const surprise = searchSurprise(query);
 
   if (!mounted || !open) return null;
 
@@ -182,9 +185,6 @@ export function SearchOverlay({
                 bizim circle
               </span>
             </div>
-            <p className="mx-auto mt-6 max-w-md text-[14px] leading-relaxed text-ink/55">
-              Search live people, circles, posts, and opportunities from the backend.
-            </p>
           </div>
 
           <div className="relative mx-auto mt-10 max-w-2xl">
@@ -224,6 +224,24 @@ export function SearchOverlay({
             </div>
           </div>
 
+          {surprise && (
+            <button
+              type="button"
+              onClick={(event) => emitPlayfulBurst(surprise.burst, event.clientX, event.clientY)}
+              className="btn-press mx-auto mt-5 flex max-w-2xl items-center gap-3 rounded-[22px] border border-[#8FC23A]/35 bg-[#EAFCC4] p-3 text-left shadow-soft hover:bg-[#DBFB9E]"
+            >
+              <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-paper border border-[#8FC23A]/25">
+                <AnimatedLogo size={38} motion={surprise.motion} />
+              </span>
+              <span className="min-w-0">
+                <span className="block text-[10.5px] font-bold uppercase tracking-[0.16em] text-[#4A7018]">
+                  {surprise.kicker}
+                </span>
+                <span className="block text-[13px] font-semibold text-ink">{surprise.title}</span>
+              </span>
+            </button>
+          )}
+
           <div className="mx-auto mt-8 max-w-3xl">
             <div className="flex flex-wrap justify-center gap-2">
               {TYPE_FILTERS.map((filter) => {
@@ -250,7 +268,7 @@ export function SearchOverlay({
               {visibleResults.length === 0 ? (
                 <div className="px-5 py-10 text-center text-[13px] text-ink/45">
                   {query.trim().length < 2 && typeFilter === "all"
-                    ? "Type at least two characters to search."
+                    ? "Start typing."
                     : "No results found."}
                 </div>
               ) : (
@@ -284,6 +302,36 @@ export function SearchOverlay({
     </div>,
     document.body
   );
+}
+
+function searchSurprise(query: string) {
+  const q = query.trim().toLowerCase();
+  if (!q) return null;
+  if (q.includes("cay") || q.includes("çay") || q.includes("tea")) {
+    return {
+      kicker: "Easter egg",
+      title: "Tea mode unlocked",
+      burst: "tea mode",
+      motion: "wink" as const,
+    };
+  }
+  if (q.includes("salam")) {
+    return {
+      kicker: "Warm start",
+      title: "Salam is a perfect opener",
+      burst: "salam",
+      motion: "high-five" as const,
+    };
+  }
+  if (q.includes("novruz")) {
+    return {
+      kicker: "Seasonal signal",
+      title: "Novruz pulse is live",
+      burst: "novruz",
+      motion: "full-party" as const,
+    };
+  }
+  return null;
 }
 
 function scopeTypes(scope: Scope): SearchTypes[] | undefined {

@@ -152,4 +152,53 @@ export const Icon = {
       <path d="M5 20V10M12 20V4M19 20v-7" />
     </svg>
   ),
+  Sparkle: (p: IconProps) => (
+    <svg {...base(p)}>
+      <path d="M12 3v4M12 17v4M3 12h4M17 12h4" />
+      <path d="m5.6 5.6 2.8 2.8M15.6 15.6l2.8 2.8M5.6 18.4l2.8-2.8M15.6 8.4l2.8-2.8" />
+    </svg>
+  ),
+  Smile: (p: IconProps) => (
+    <svg {...base(p)}>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M8.5 14.5a4.5 4.5 0 0 0 7 0" />
+      <circle cx="9" cy="10" r="0.6" fill="currentColor" />
+      <circle cx="15" cy="10" r="0.6" fill="currentColor" />
+    </svg>
+  ),
+  Slash: (p: IconProps) => (
+    <svg {...base(p)}>
+      <path d="M15.5 4.5 8.5 19.5" />
+      <circle cx="6.5" cy="6.5" r="1" />
+      <circle cx="17.5" cy="17.5" r="1" />
+    </svg>
+  ),
+  Shield: (p: IconProps) => (
+    <svg {...base(p)}>
+      <path d="M12 3 4 6v6c0 4.5 3.5 7.8 8 9 4.5-1.2 8-4.5 8-9V6l-8-3z" />
+      <path d="m9 12 2 2 4-4" />
+    </svg>
+  ),
+  Video: (p: IconProps) => (
+    <svg {...base(p)}>
+      <rect x="3" y="6" width="13" height="12" rx="2" />
+      <path d="m16 10 5-3v10l-5-3z" />
+    </svg>
+  ),
+  ArrowLeft: (p: IconProps) => (
+    <svg {...base(p)}>
+      <path d="M19 12H5m0 0 6-6m-6 6 6 6" />
+    </svg>
+  ),
+  Flag: (p: IconProps) => (
+    <svg {...base(p)}>
+      <path d="M5 21V4" />
+      <path d="M5 4h11l-2 4 2 4H5" />
+    </svg>
+  ),
+  ChevronDown: (p: IconProps) => (
+    <svg {...base(p)}>
+      <path d="m6 9 6 6 6-6" />
+    </svg>
+  ),
 };

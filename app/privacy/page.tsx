@@ -52,14 +52,6 @@ export default function PrivacyPage() {
           </Section>
         </div>
 
-        <p className="mt-12 text-[12.5px] text-ink/45">
-          This page is a placeholder while our full policy is finalized. For specific
-          questions, contact{" "}
-          <a href="mailto:privacy@bizim.circle" className="underline hover:text-ink">
-            privacy@bizim.circle
-          </a>
-          .
-        </p>
       </section>
     </main>
   );

@@ -3,6 +3,7 @@ import { League_Spartan } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/lib/auth";
 import { LiveProvider } from "@/lib/live";
+import { PlayfulProvider } from "@/lib/playful";
 
 const spartan = League_Spartan({
   subsets: ["latin"],
@@ -25,9 +26,11 @@ export default function RootLayout({
   return (
     <html lang="en" className={spartan.variable} data-scroll-behavior="smooth">
       <body className="font-sans bg-paper text-ink antialiased">
-        <AuthProvider>
-          <LiveProvider>{children}</LiveProvider>
-        </AuthProvider>
+        <PlayfulProvider>
+          <AuthProvider>
+            <LiveProvider>{children}</LiveProvider>
+          </AuthProvider>
+        </PlayfulProvider>
       </body>
     </html>
   );

@@ -6,6 +6,7 @@ import { TopBar } from "@/components/TopBar";
 import { ProfileHeader, ProfileTabs } from "@/components/ProfileHeader";
 import { PostCard, type Post } from "@/components/PostCard";
 import { Icon } from "@/components/Icon";
+import { AnimatedLogo } from "@/components/AnimatedLogo";
 import { useAuth } from "@/lib/auth";
 import { postsApi } from "@/lib/posts";
 import { usersApi } from "@/lib/users";
@@ -142,7 +143,7 @@ function ProfilePageContent() {
     <div className="min-h-screen bg-paper-warm">
       <TopBar />
       <main className="max-w-[1100px] mx-auto px-6 py-8 space-y-5">
-        <ProfileHeader profile={profile} />
+        <ProfileHeader profile={profile} onEditProfile={() => setTab("edit")} />
 
         {error && (
           <div className="rounded-[18px] border border-paper-line bg-paper p-4 text-[13px] text-red-700">
@@ -334,14 +335,11 @@ function EmptyState() {
         <div className="absolute inset-0 rounded-full border border-ink/10" />
         <div className="absolute inset-4 rounded-full border border-ink/10 animate-spin-slower" />
         <div className="absolute inset-10 rounded-full border border-ink/10" />
-        <div className="w-12 h-12 rounded-full bg-ink text-paper flex items-center justify-center">
-          <Icon.Plus size={20} />
+        <div className="w-16 h-16 rounded-full bg-[#C1FF72] text-ink flex items-center justify-center shadow-soft">
+          <AnimatedLogo size={48} motion="sprout" />
         </div>
       </div>
       <h3 className="mt-6 font-display text-[22px] font-semibold">Your feed lives here.</h3>
-      <p className="mt-1.5 text-[13px] text-ink/55 max-w-sm mx-auto">
-        Posts you publish will appear right here.
-      </p>
     </div>
   );
 }

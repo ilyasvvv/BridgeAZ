@@ -9,6 +9,7 @@ import { CircleMark } from "@/components/CircleMark";
 import { Button } from "@/components/Button";
 import { useAuth } from "@/lib/auth";
 import { warmApi } from "@/lib/api";
+import { emitPlayfulBurst } from "@/lib/playful";
 
 type Step = 1 | 2 | 3;
 type Role = "personal" | "circle";
@@ -47,8 +48,12 @@ export default function SignupPage({
   async function handleSignup(e: FormEvent) {
     e.preventDefault();
     setError(null);
-    if (!name.trim() || username.trim().length < 3 || !email.trim() || password.length < 8) {
-      setError("Please complete all fields with a valid email and an 8+ character password.");
+    if (!name.trim() || username.trim().length < 3 || !email.trim() || password.length < 10) {
+      setError("Please complete all fields with a valid email and a 10+ character password.");
+      return;
+    }
+    if (!/[A-Za-z]/.test(password) || !/\d/.test(password)) {
+      setError("Password must include at least one letter and one number.");
       return;
     }
     if (!agreed) {
@@ -107,10 +112,6 @@ export default function SignupPage({
             <br />
             abroad.
           </h1>
-          <p className="mt-4 text-[15px] text-ink/60 max-w-md">
-            Fast sign up. Less typing. Better matching.
-          </p>
-
           <div className="mt-16 hidden lg:flex justify-start">
             <CircleMark size={440} />
           </div>
@@ -129,7 +130,12 @@ export default function SignupPage({
               />
               <button
                 type="button"
-                onClick={() => { setTab("login"); setError(null); }}
+                aria-label="Auth tab: Log in"
+                onClick={(event) => {
+                  setTab("login");
+                  setError(null);
+                  emitPlayfulBurst("login", event.clientX, event.clientY);
+                }}
                 className={clsx(
                   "relative h-10 rounded-pill",
                   tab === "login" ? "text-ink" : "text-ink/50"
@@ -139,7 +145,12 @@ export default function SignupPage({
               </button>
               <button
                 type="button"
-                onClick={() => { setTab("signup"); setError(null); }}
+                aria-label="Auth tab: Sign up"
+                onClick={(event) => {
+                  setTab("signup");
+                  setError(null);
+                  emitPlayfulBurst("signup", event.clientX, event.clientY);
+                }}
                 className={clsx(
                   "relative h-10 rounded-pill",
                   tab === "signup" ? "text-ink" : "text-ink/50"
@@ -191,21 +202,18 @@ export default function SignupPage({
                       <h2 className="font-display text-[30px] leading-tight tracking-[-0.02em] font-medium">
                         Pick your lane
                       </h2>
-                      <p className="mt-1 text-[13px] text-ink/55">You can change direction later.</p>
 
                       <div className="mt-5 grid grid-cols-2 gap-3">
                         <RoleCard
                           selected={role === "personal"}
                           onClick={() => setRole("personal")}
                           title="Personal account"
-                          blurb="Meet people, join circles, stay visible."
                           bannerKind="rect"
                         />
                         <RoleCard
                           selected={role === "circle"}
                           onClick={() => setRole("circle")}
                           title="Create a circle"
-                          blurb="A community page with members at the center."
                           bannerKind="round"
                         />
                       </div>
@@ -224,7 +232,6 @@ export default function SignupPage({
                       <h2 className="font-display text-[30px] leading-tight tracking-[-0.02em] font-medium">
                         The basics
                       </h2>
-                      <p className="mt-1 text-[13px] text-ink/55">Tell us who you are.</p>
 
                       <div className="mt-6 grid gap-3">
                         <Field
@@ -238,7 +245,6 @@ export default function SignupPage({
                           placeholder="leyla"
                           value={username}
                           onChange={(v) => setUsername(v.toLowerCase().replace(/[^a-z0-9._]/g, ""))}
-                          hint="3–24 chars. Letters, numbers, . or _"
                         />
                         <Field
                           label="Location"
@@ -276,11 +282,10 @@ export default function SignupPage({
                       <h2 className="font-display text-[30px] leading-tight tracking-[-0.02em] font-medium">
                         Lock it in
                       </h2>
-                      <p className="mt-1 text-[13px] text-ink/55">Email and a password. We'll keep it safe.</p>
 
                       <div className="mt-6 grid gap-3">
                         <Field label="Email" placeholder="you@mail.com" type="email" value={email} onChange={setEmail} required autoComplete="email" />
-                        <Field label="Password" placeholder="At least 8 characters" type="password" value={password} onChange={setPassword} required minLength={8} autoComplete="new-password" />
+                        <Field label="Password" placeholder="At least 10 characters" type="password" value={password} onChange={setPassword} required minLength={10} autoComplete="new-password" />
                         <PasswordStrength value={password} />
                       </div>
 
@@ -322,7 +327,6 @@ export default function SignupPage({
                 <h2 className="font-display text-[30px] leading-tight tracking-[-0.02em] font-medium">
                   Welcome back
                 </h2>
-                <p className="mt-1 text-[13px] text-ink/55">Good to see you again.</p>
 
                 <div className="mt-6 grid gap-3">
                   <Field label="Email or username" placeholder="you@mail.com" type="text" value={loginId} onChange={setLoginId} required autoComplete="username" />
@@ -350,19 +354,20 @@ function RoleCard({
   selected,
   onClick,
   title,
-  blurb,
   bannerKind,
 }: {
   selected: boolean;
   onClick: () => void;
   title: string;
-  blurb: string;
   bannerKind: "rect" | "round";
 }) {
   return (
     <button
       type="button"
-      onClick={onClick}
+      onClick={(event) => {
+        onClick();
+        emitPlayfulBurst(title, event.clientX, event.clientY);
+      }}
       className={clsx(
         "text-left p-5 rounded-[22px] transition-all duration-200 btn-press min-h-[170px] flex flex-col gap-4",
         selected
@@ -377,9 +382,6 @@ function RoleCard({
       )}
       <div>
         <div className="font-display text-[19px] font-semibold tracking-tight">{title}</div>
-        <div className={clsx("mt-1 text-[12.5px] leading-snug", selected ? "text-paper/70" : "text-ink/55")}>
-          {blurb}
-        </div>
       </div>
     </button>
   );
@@ -391,7 +393,6 @@ function Field({
   type = "text",
   value,
   onChange,
-  hint,
   required,
   minLength,
   autoComplete,
@@ -401,7 +402,6 @@ function Field({
   type?: string;
   value: string;
   onChange: (v: string) => void;
-  hint?: string;
   required?: boolean;
   minLength?: number;
   autoComplete?: string;
@@ -419,7 +419,6 @@ function Field({
         autoComplete={autoComplete}
         className="mt-1.5 w-full h-12 rounded-pill border border-paper-line bg-paper px-5 text-[14px] outline-none focus:border-ink/40 focus:ring-4 focus:ring-ink/[0.04] transition"
       />
-      {hint && <span className="block mt-1 text-[11px] text-ink/45">{hint}</span>}
     </label>
   );
 }
@@ -427,12 +426,12 @@ function Field({
 function scorePassword(value: string): { score: 0 | 1 | 2 | 3 | 4; label: string } {
   if (!value) return { score: 0, label: "" };
   let score = 0;
-  if (value.length >= 8) score++;
+  if (value.length >= 10) score++;
   if (value.length >= 12) score++;
   if (/[A-Z]/.test(value) && /[a-z]/.test(value)) score++;
   if (/\d/.test(value) && /[^A-Za-z0-9]/.test(value)) score++;
   const label =
-    value.length < 8 ? "Too short" : ["Weak", "Okay", "Good", "Strong"][Math.max(0, score - 1)] || "Weak";
+    value.length < 10 ? "Too short" : ["Weak", "Okay", "Good", "Strong"][Math.max(0, score - 1)] || "Weak";
   return { score: Math.min(4, score) as 0 | 1 | 2 | 3 | 4, label };
 }
 
@@ -455,7 +454,6 @@ function PasswordStrength({ value }: { value: string }) {
       </div>
       <div className="mt-1.5 flex items-center justify-between text-[11px] text-ink/55">
         <span>{label}</span>
-        <span className="text-ink/40">8+ chars · mix cases, numbers, symbols</span>
       </div>
     </div>
   );

@@ -51,7 +51,7 @@ export default function SpecialDesign() {
             communities, and find mentors who know the path.
           </p>
 
-          <div className="mt-10 flex gap-3">
+          <div className="mt-10 flex gap-3 flex-wrap">
             <span className="px-6 py-4 rounded-full bg-white border border-black/10 shadow-sm font-semibold">
               People
             </span>
@@ -63,7 +63,7 @@ export default function SpecialDesign() {
             </span>
           </div>
 
-          <div className="mt-12 flex gap-4">
+          <div className="mt-12 flex gap-4 flex-wrap">
             <button
               onClick={start}
               className="px-10 py-5 rounded-full bg-lime-300 text-black font-bold text-lg hover:scale-105 transition"

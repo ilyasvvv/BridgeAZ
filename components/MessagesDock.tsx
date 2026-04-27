@@ -117,9 +117,7 @@ export function MessagesDock({
           </span>
           <div className="text-left">
             <div className="text-[13px] font-bold tracking-tight">Messages</div>
-            <div className="text-[11px] text-ink/50">
-              {totalUnread > 0 ? `${totalUnread} unread · click to open` : "click to open"}
-            </div>
+            {totalUnread > 0 && <div className="text-[11px] text-ink/50">{totalUnread} unread</div>}
           </div>
         </div>
         <Icon.Plus size={16} className="text-ink/50 rotate-45 group-hover:text-ink transition" />
@@ -128,8 +126,8 @@ export function MessagesDock({
   }
 
   return (
-    <div className="rounded-[22px] bg-paper border border-paper-line shadow-pop overflow-hidden flex flex-col h-[min(720px,calc(100dvh-8rem))] min-h-[560px]">
-      <div className="flex items-center justify-between p-3 border-b border-paper-line">
+    <div className="w-full rounded-[24px] bg-paper border border-paper-line shadow-pop overflow-hidden flex flex-col h-[min(720px,calc(100dvh-7rem))] min-h-[500px]">
+      <div className="flex items-center justify-between p-4 border-b border-paper-line">
         <div className="flex items-center gap-2">
           <span className="w-7 h-7 rounded-full bg-ink text-paper inline-flex items-center justify-center">
             <Icon.Chat size={13} />
@@ -146,6 +144,7 @@ export function MessagesDock({
           </Link>
           <button
             onClick={onToggle}
+            aria-label="Close messages"
             className="w-7 h-7 rounded-full hover:bg-paper-cool flex items-center justify-center text-ink/60"
           >
             <Icon.Close size={13} />
@@ -154,9 +153,9 @@ export function MessagesDock({
       </div>
 
       <div className="flex flex-1 min-h-0">
-        <div className="w-[42%] border-r border-paper-line flex flex-col min-h-0">
-          <div className="p-2.5 border-b border-paper-line">
-            <div className="flex items-center gap-2 h-9 px-3 rounded-pill bg-paper-cool">
+        <div className="w-[34%] min-w-[210px] border-r border-paper-line flex flex-col min-h-0">
+          <div className="p-3 border-b border-paper-line">
+            <div className="flex items-center gap-2 h-10 px-3 rounded-pill bg-paper-cool">
               <Icon.Search size={13} className="text-ink/50" />
               <input
                 value={query}
@@ -182,14 +181,14 @@ export function MessagesDock({
                   <button
                     onClick={() => setSelectedId(t._id)}
                     className={clsx(
-                      "w-full flex items-center gap-2.5 p-2.5 text-left hover:bg-paper-cool transition",
+                      "w-full flex items-center gap-2.5 p-3 text-left hover:bg-paper-cool transition",
                       active && "bg-paper-cool"
                     )}
                   >
-                    <Avatar size={36} hue={hueFromString(person?._id || t._id)} />
+                    <Avatar size={38} hue={hueFromString(person?._id || t._id)} />
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between gap-2">
-                        <div className="text-[12.5px] font-semibold truncate">{person?.name || "Unknown"}</div>
+                        <div className="text-[13px] font-semibold truncate">{person?.name || "Unknown"}</div>
                         <div className="text-[10px] text-ink/40">{relativeTime(t.lastMessageAt || t.updatedAt || t.createdAt)}</div>
                       </div>
                       <div className="text-[11.5px] text-ink/55 truncate">
@@ -224,10 +223,10 @@ export function MessagesDock({
             </div>
           ) : (
             <>
-              <div className="p-3 border-b border-paper-line bg-paper flex items-center gap-2.5">
-                <Avatar size={32} hue={hueFromString(other?._id || selected._id)} />
+              <div className="p-4 border-b border-paper-line bg-paper flex items-center gap-3">
+                <Avatar size={38} hue={hueFromString(other?._id || selected._id)} />
                 <div className="flex-1 min-w-0">
-                  <div className="text-[12.5px] font-semibold leading-tight truncate">{other?.name || "Unknown"}</div>
+                  <div className="text-[14px] font-semibold leading-tight truncate">{other?.name || "Unknown"}</div>
                   <div className="text-[10.5px] text-ink/50">
                     {selected.status === "pending" ? "Pending request" : "Active chat"}
                   </div>
@@ -241,7 +240,7 @@ export function MessagesDock({
                 </Link>
               </div>
 
-              <div className="flex-1 overflow-auto scroll-clean p-3 space-y-2">
+              <div className="flex-1 overflow-auto scroll-clean p-4 space-y-2.5">
                 {messagesPoll.loading && messages.length === 0 && (
                   <div className="text-center text-[12px] text-ink/45">Loading…</div>
                 )}
@@ -254,7 +253,7 @@ export function MessagesDock({
                     <div
                       key={m._id}
                       className={clsx(
-                        "max-w-[80%] px-3 py-2 rounded-[14px] text-[13px] leading-snug whitespace-pre-wrap",
+                        "max-w-[82%] px-4 py-2.5 rounded-[16px] text-[13.5px] leading-snug whitespace-pre-wrap",
                         mine
                           ? "ml-auto bg-ink text-paper rounded-br-[4px]"
                           : "bg-paper border border-paper-line rounded-bl-[4px]"
@@ -266,8 +265,8 @@ export function MessagesDock({
                 })}
               </div>
 
-              <div className="p-2.5 bg-paper border-t border-paper-line">
-                <div className="flex items-center gap-2 h-11 px-2 rounded-pill bg-paper-cool">
+              <div className="p-3 bg-paper border-t border-paper-line">
+                <div className="flex items-center gap-2 h-12 px-2 rounded-pill bg-paper-cool">
                   <input
                     value={draft}
                     onChange={(e) => setDraft(e.target.value)}

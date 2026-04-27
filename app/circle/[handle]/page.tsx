@@ -6,6 +6,7 @@ import { TopBar } from "@/components/TopBar";
 import { ProfileHeader, ProfileTabs } from "@/components/ProfileHeader";
 import { PostCard, type Post } from "@/components/PostCard";
 import { Icon } from "@/components/Icon";
+import { AnimatedLogo } from "@/components/AnimatedLogo";
 import { useAuth } from "@/lib/auth";
 import { circlesApi } from "@/lib/circles";
 import { apiPostToUiPost, circleToProfileMeta } from "@/lib/mappers";
@@ -151,12 +152,12 @@ function EmptyWall() {
         <div className="absolute inset-0 rounded-full border border-ink/10" />
         <div className="absolute inset-4 rounded-full border border-ink/10 animate-spin-slower" />
         <div className="absolute inset-10 rounded-full border border-ink/10" />
-        <div className="w-12 h-12 rounded-full bg-ink text-paper flex items-center justify-center">
-          <Icon.Plus size={20} />
+        <div className="w-16 h-16 rounded-full bg-[#C1FF72] text-ink flex items-center justify-center shadow-soft">
+          <AnimatedLogo size={48} motion="full-dance" />
         </div>
       </div>
       <h3 className="mt-6 font-display text-[22px] font-semibold">
-        The circle's wall is quiet.
+        No posts here yet.
       </h3>
       <p className="mt-1.5 text-[13px] text-ink/55 max-w-sm mx-auto">
         When members share, everything lands in this space.

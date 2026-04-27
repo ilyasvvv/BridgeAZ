@@ -55,6 +55,11 @@ export function MiniProfileCard({
       ? "w-full h-14 rounded-[14px] bg-gradient-to-br from-ink to-ink/70"
       : "";
   const canFollow = profile.kind === "personal" && !!profile.id && profile.id !== user?._id;
+  const sharedSignal = profile.kind === "circle"
+    ? "Circle clubhouse"
+    : profile.location && user?.currentRegion && profile.location.includes(user.currentRegion)
+    ? "Same region"
+    : "Warm intro";
 
   async function toggleFollow() {
     if (!canFollow || !profile.id || followBusy) return;
@@ -97,11 +102,12 @@ export function MiniProfileCard({
           placement === "top" && "bottom-full left-0 mb-2",
           placement === "right" && "left-full top-0 ml-2",
           open
-            ? "opacity-100 translate-y-0 pointer-events-auto"
-            : "opacity-0 translate-y-1"
+            ? "visible opacity-100 translate-y-0 pointer-events-auto"
+            : "invisible opacity-0 translate-y-1"
         )}
+        aria-hidden={!open}
       >
-        <span className="block rounded-[22px] bg-paper shadow-pop border border-paper-line p-4">
+          <span className="block rounded-[22px] bg-paper shadow-pop border border-paper-line p-4 circle-ripple">
           {/* Banner — rectangular for personal, circular for circle */}
           {profile.kind === "personal" ? (
             <span className={clsx("block", bannerRect)} aria-hidden />
@@ -146,6 +152,11 @@ export function MiniProfileCard({
           </span>
 
           <span className="block mt-3 text-[12.5px] leading-relaxed text-ink/70">{profile.bio}</span>
+
+          <span className="mt-3 inline-flex items-center gap-1.5 rounded-pill bg-[#EAFCC4] px-2.5 py-1 text-[10.5px] font-bold uppercase tracking-[0.12em] text-[#4A7018]">
+            <span className="h-1.5 w-1.5 rounded-full bg-[#8FC23A]" />
+            {sharedSignal}
+          </span>
 
           <span className="flex items-center gap-2 mt-3 text-[11.5px] text-ink/50">
             <span className="inline-block w-1 h-1 rounded-full bg-ink/40" />

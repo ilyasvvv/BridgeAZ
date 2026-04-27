@@ -6,13 +6,16 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { TopBar } from "@/components/TopBar";
 import { Icon } from "@/components/Icon";
+import { AnimatedLogo } from "@/components/AnimatedLogo";
 import { useAuth } from "@/lib/auth";
+import { emitPlayfulBurst, isPlayfulEnabled, setPlayfulEnabled } from "@/lib/playful";
 
 type Section =
   | "account"
   | "privacy"
   | "notifications"
   | "safety"
+  | "experience"
   | "language"
   | "sessions";
 
@@ -21,6 +24,7 @@ const SECTIONS: { key: Section; label: string; icon: keyof typeof Icon }[] = [
   { key: "privacy", label: "Privacy", icon: "Globe" },
   { key: "notifications", label: "Notifications", icon: "Bell" },
   { key: "safety", label: "Safety & panic", icon: "Filter" },
+  { key: "experience", label: "Experience", icon: "Sparkle" },
   { key: "language", label: "Language", icon: "Chat" },
   { key: "sessions", label: "Sessions & 2FA", icon: "SignOut" },
 ];
@@ -42,9 +46,6 @@ export default function SettingsPage() {
         <h1 className="font-display text-[30px] font-semibold tracking-[-0.02em]">
           Settings
         </h1>
-        <p className="text-[12.5px] text-ink/55 mt-0.5">
-          Control how loud this place is for you.
-        </p>
 
         <div className="mt-6 grid grid-cols-12 gap-5">
           <aside className="col-span-12 md:col-span-4 lg:col-span-3">
@@ -80,7 +81,7 @@ export default function SettingsPage() {
 
           <section className="col-span-12 md:col-span-8 lg:col-span-9 rounded-[22px] bg-paper border border-paper-line p-6 md:p-8">
             {active === "account" && (
-              <Panel title="Account" blurb="Basics about you. Edit details on your profile.">
+              <Panel title="Account">
                 <Field label="Display name" value={user?.name || "—"} editHref="/profile?tab=edit" />
                 <Field label="Handle" value={user?.username ? `@${user.username}` : "—"} editHref="/profile?tab=edit" />
                 <Field label="Email" value={user?.email || "—"} />
@@ -91,7 +92,6 @@ export default function SettingsPage() {
                   </span>
                   <div className="flex-1">
                     <div className="text-[13.5px] font-semibold">Sign out</div>
-                    <div className="text-[12px] text-ink/55">End this browser session.</div>
                   </div>
                   <button
                     onClick={() => {
@@ -111,14 +111,13 @@ export default function SettingsPage() {
             )}
 
             {active === "privacy" && (
-              <Panel title="Privacy" blurb="Who can see and reach you.">
+              <Panel title="Privacy">
                 <Toggle
                   label="Show my profile to search engines"
                   defaultOn={false}
                 />
                 <Toggle
                   label="Let people outside my circles DM me"
-                  sub="They'll still land in Requests."
                   defaultOn={true}
                 />
                 <Toggle
@@ -131,14 +130,13 @@ export default function SettingsPage() {
                 />
                 <Toggle
                   label="Read receipts on by default"
-                  sub="You can always turn them off per-conversation."
                   defaultOn={false}
                 />
               </Panel>
             )}
 
             {active === "notifications" && (
-              <Panel title="Notifications" blurb="You decide the noise level.">
+              <Panel title="Notifications">
                 <Toggle label="New followers" defaultOn={true} />
                 <Toggle label="Likes on my posts" defaultOn={false} />
                 <Toggle label="Comments and mentions" defaultOn={true} />
@@ -149,7 +147,7 @@ export default function SettingsPage() {
 
                 <div className="mt-4 rounded-[18px] bg-paper-warm border border-paper-line p-4">
                   <div className="text-[12px] font-bold tracking-[0.14em] text-ink/55 uppercase">
-                    Quiet hours
+                    Focus hours
                   </div>
                   <div className="mt-2 text-[13px] text-ink/70">
                     10:00 pm → 8:00 am (no pushes, digest only)
@@ -159,10 +157,7 @@ export default function SettingsPage() {
             )}
 
             {active === "safety" && (
-              <Panel
-                title="Safety & panic"
-                blurb="Silence is always an option."
-              >
+              <Panel title="Safety & panic">
                 <div
                   className={clsx(
                     "rounded-[22px] p-5 border transition",
@@ -195,16 +190,6 @@ export default function SettingsPage() {
                       <div className="font-display text-[18px] font-semibold tracking-tight">
                         Panic mode
                       </div>
-                      <p
-                        className={clsx(
-                          "mt-1 text-[12.5px] leading-snug",
-                          panic ? "text-paper/75" : "text-ink/60"
-                        )}
-                      >
-                        Hide your profile, pause DMs from strangers, and mute
-                        notifications for 24 hours. You can turn it off any
-                        time.
-                      </p>
                       <button
                         onClick={() => setPanic((v) => !v)}
                         className={clsx(
@@ -222,12 +207,10 @@ export default function SettingsPage() {
 
                 <Toggle
                   label="Filter messages containing harmful language"
-                  sub="We auto-hide slurs and known scam patterns before you see them."
                   defaultOn={true}
                 />
                 <Toggle
                   label="Require verification to DM me"
-                  sub="Only verified accounts (or accounts in my circles) can message me."
                   defaultOn={false}
                 />
 
@@ -243,18 +226,16 @@ export default function SettingsPage() {
             )}
 
             {active === "language" && (
-              <Panel title="Language" blurb="Read and post in your tongue.">
+              <Panel title="Language">
                 <Radio
                   name="lang"
                   label="English"
-                  sub="Default UI language"
                   value="en"
                   defaultChecked
                 />
                 <Radio
                   name="lang"
                   label="Azərbaycanca"
-                  sub="Azerbaijani (Latin)"
                   value="az"
                 />
                 <Toggle
@@ -264,8 +245,27 @@ export default function SettingsPage() {
               </Panel>
             )}
 
+            {active === "experience" && (
+              <Panel title="Experience">
+                <PlayfulModeCard />
+                <Toggle
+                  label="Lime accent on primary social actions"
+                  defaultOn={true}
+                />
+                <Toggle
+                  label="Animated empty states"
+                  defaultOn={true}
+                />
+                <div className="rounded-[18px] border border-paper-line bg-paper-warm p-4">
+                  <div className="text-[12px] font-bold uppercase tracking-[0.14em] text-ink/55">
+                    Easter eggs
+                  </div>
+                </div>
+              </Panel>
+            )}
+
             {active === "sessions" && (
-              <Panel title="Sessions & 2FA" blurb="Every device signed in.">
+              <Panel title="Sessions & 2FA">
                 <div className="rounded-[18px] bg-paper-warm border border-paper-line divide-y divide-paper-line">
                   {[
                     { d: "MacBook Pro · Berlin · this device", t: "active now" },
@@ -300,9 +300,6 @@ export default function SettingsPage() {
                     <div className="text-[13px] font-semibold">
                       Two-factor authentication
                     </div>
-                    <div className="text-[12px] text-ink/55">
-                      Use an authenticator app for sign-ins.
-                    </div>
                   </div>
                   <button className="btn-press h-9 px-4 rounded-pill bg-ink text-paper text-[12px] font-semibold">
                     Set up
@@ -317,13 +314,54 @@ export default function SettingsPage() {
   );
 }
 
+function PlayfulModeCard() {
+  const [on, setOn] = useState(true);
+
+  useEffect(() => {
+    setOn(isPlayfulEnabled());
+  }, []);
+
+  return (
+    <div
+      className={clsx(
+        "rounded-[22px] border p-5 transition",
+        on ? "border-[#8FC23A]/35 bg-[#EAFCC4]" : "border-paper-line bg-paper-warm"
+      )}
+    >
+      <div className="flex items-start gap-4">
+        <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full border border-ink/10 bg-paper">
+          <AnimatedLogo size={44} motion={on ? "full-dance" : "shy"} />
+        </span>
+        <div className="flex-1">
+          <div className="font-display text-[18px] font-semibold tracking-tight">
+            Playful mode
+          </div>
+          <button
+            type="button"
+            onClick={(event) => {
+              const next = !on;
+              setOn(next);
+              setPlayfulEnabled(next);
+              if (next) emitPlayfulBurst("playful on", event.clientX, event.clientY);
+            }}
+            className={clsx(
+              "btn-press mt-3 h-9 rounded-pill px-4 text-[12px] font-semibold",
+              on ? "bg-ink text-paper" : "bg-paper border border-paper-line text-ink"
+            )}
+          >
+            {on ? "Playful mode on" : "Turn playful mode on"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function Panel({
   title,
-  blurb,
   children,
 }: {
   title: string;
-  blurb: string;
   children: React.ReactNode;
 }) {
   return (
@@ -331,7 +369,6 @@ function Panel({
       <h2 className="font-display text-[22px] font-semibold tracking-[-0.015em]">
         {title}
       </h2>
-      <p className="text-[12.5px] text-ink/55 mt-0.5">{blurb}</p>
       <div className="mt-5 space-y-3">{children}</div>
     </div>
   );
@@ -339,11 +376,9 @@ function Panel({
 
 function Toggle({
   label,
-  sub,
   defaultOn,
 }: {
   label: string;
-  sub?: string;
   defaultOn?: boolean;
 }) {
   const [on, setOn] = useState(!!defaultOn);
@@ -367,11 +402,6 @@ function Toggle({
       </button>
       <div className="flex-1">
         <div className="text-[13.5px] font-semibold">{label}</div>
-        {sub && (
-          <div className="text-[11.5px] text-ink/50 mt-0.5 leading-snug">
-            {sub}
-          </div>
-        )}
       </div>
     </label>
   );
@@ -403,13 +433,11 @@ function Field({ label, value, editHref }: { label: string; value: string; editH
 function Radio({
   name,
   label,
-  sub,
   value,
   defaultChecked,
 }: {
   name: string;
   label: string;
-  sub?: string;
   value: string;
   defaultChecked?: boolean;
 }) {
@@ -424,15 +452,12 @@ function Radio({
       />
       <div>
         <div className="text-[13.5px] font-semibold">{label}</div>
-        {sub && (
-          <div className="text-[11.5px] text-ink/50 mt-0.5">{sub}</div>
-        )}
       </div>
     </label>
   );
 }
 
-function Danger({ title, body }: { title: string; body: string }) {
+function Danger({ title }: { title: string; body: string }) {
   return (
     <div className="mt-6 rounded-[18px] border border-ink/20 p-4 flex items-start gap-3 bg-paper">
       <span className="w-9 h-9 rounded-full bg-ink text-paper flex items-center justify-center shrink-0">
@@ -440,7 +465,6 @@ function Danger({ title, body }: { title: string; body: string }) {
       </span>
       <div className="flex-1">
         <div className="text-[13.5px] font-semibold">{title}</div>
-        <div className="text-[12px] text-ink/55 mt-0.5">{body}</div>
       </div>
       <button className="btn-press h-9 px-4 rounded-pill border border-ink/30 text-[12px] font-semibold hover:bg-ink hover:text-paper">
         Delete

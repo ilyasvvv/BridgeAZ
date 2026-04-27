@@ -9,7 +9,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { api, tokenStore } from "./api";
+import { AUTH_TIMEOUT_MS, api, tokenStore } from "./api";
 import type { ApiUser, AuthResponse } from "./types";
 
 type AuthStatus = "loading" | "authenticated" | "unauthenticated";
@@ -65,7 +65,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const res = await api.post<AuthResponse>(
       "/auth/login",
       { email, password },
-      { auth: false }
+      { auth: false, timeoutMs: AUTH_TIMEOUT_MS }
     );
     tokenStore.set(res.token);
     setUser(res.user);
@@ -85,7 +85,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         userType: input.accountType === "circle" ? "circle" : "member",
         currentRegion: input.currentRegion || "",
       },
-      { auth: false }
+      { auth: false, timeoutMs: AUTH_TIMEOUT_MS }
     );
     tokenStore.set(res.token);
     setUser(res.user);

@@ -10,520 +10,192 @@ type Accent = {
   text: string;
   hover: string;
   ring: string;
+  // Optional deeper shade used wherever bg-as-text would be unreadable
+  // (chip label, italic emphasis). Defaults to bg when omitted.
+  darkText?: string;
 };
 
 const accents: Accent[] = [
+  // ── Lime spectrum (lightest → deepest) ──
   {
-    name: "Ink (current)",
-    note: "Pure black — today's baseline",
-    bg: "#0A0A0A",
-    text: "#FFFFFF",
-    hover: "#1A1A1A",
-    ring: "rgba(10,10,10,0.12)",
+    name: "Lime · Mist",
+    note: "Lightest — pale wash of chartreuse",
+    bg: "#EAFCC4",
+    text: "#0A0A0A",
+    hover: "#DEF7AE",
+    ring: "rgba(190,225,140,0.6)",
+    darkText: "#5C7A24",
   },
   {
-    name: "Graphite",
-    note: "Charcoal gray — softer than pure black",
-    bg: "#3A3A3A",
-    text: "#FFFFFF",
-    hover: "#4A4A4A",
-    ring: "rgba(58,58,58,0.18)",
+    name: "Lime · Soft",
+    note: "Lighter — soft pastel chartreuse",
+    bg: "#DBFB9E",
+    text: "#0A0A0A",
+    hover: "#CDF488",
+    ring: "rgba(180,220,120,0.6)",
+    darkText: "#557220",
   },
   {
-    name: "Azure",
-    note: "Muted navy — nods to the Azerbaijani flag blue",
-    bg: "#1F3A5F",
-    text: "#FFFFFF",
-    hover: "#2B4E7A",
-    ring: "rgba(31,58,95,0.18)",
+    name: "Lime",
+    note: "Base — your original chartreuse",
+    bg: "#C1FF72",
+    text: "#0A0A0A",
+    hover: "#B4F25F",
+    ring: "rgba(193,255,114,0.55)",
+    darkText: "#4A7018",
   },
   {
-    name: "Denim",
-    note: "Faded workwear blue — approachable, honest",
-    bg: "#3E5C76",
-    text: "#FFFFFF",
-    hover: "#527192",
-    ring: "rgba(62,92,118,0.18)",
+    name: "Lime · Bright",
+    note: "Darker — saturated, springier",
+    bg: "#B0E558",
+    text: "#0A0A0A",
+    hover: "#9FD746",
+    ring: "rgba(155,200,75,0.55)",
+    darkText: "#3F5C18",
   },
   {
-    name: "Slate",
-    note: "Cool blue-gray — quiet and professional",
-    bg: "#4A5568",
-    text: "#FFFFFF",
-    hover: "#5C6879",
-    ring: "rgba(74,85,104,0.18)",
+    name: "Lime · Deep",
+    note: "Deepest — close to white-text territory",
+    bg: "#8FC23A",
+    text: "#0A0A0A",
+    hover: "#80B12C",
+    ring: "rgba(130,180,55,0.5)",
+    darkText: "#2F4810",
   },
   {
-    name: "Teal",
-    note: "Muted blue-green — fresh without being loud",
-    bg: "#2F5D5F",
-    text: "#FFFFFF",
-    hover: "#3F7274",
-    ring: "rgba(47,93,95,0.18)",
+    name: "Mint",
+    note: "Pale green — soft, calming",
+    bg: "#B8E8C9",
+    text: "#0A0A0A",
+    hover: "#A4DCB7",
+    ring: "rgba(184,232,201,0.4)",
+    darkText: "#2D6A45",
   },
   {
-    name: "Indigo",
-    note: "Deep twilight blue — serious, editorial",
-    bg: "#312E5C",
-    text: "#FFFFFF",
-    hover: "#413E72",
-    ring: "rgba(49,46,92,0.18)",
+    name: "Pistachio",
+    note: "Light yellow-green — nutty, soft",
+    bg: "#C8DBA0",
+    text: "#0A0A0A",
+    hover: "#B7CC8C",
+    ring: "rgba(200,219,160,0.4)",
+    darkText: "#4E6A2A",
   },
   {
-    name: "Cobalt",
-    note: "Rich mid blue — confident without being corporate",
-    bg: "#2C4E8A",
-    text: "#FFFFFF",
-    hover: "#3B60A1",
-    ring: "rgba(44,78,138,0.18)",
+    name: "Sky",
+    note: "Pale blue — open, airy",
+    bg: "#B8D8E8",
+    text: "#0A0A0A",
+    hover: "#A4CADD",
+    ring: "rgba(184,216,232,0.4)",
+    darkText: "#2A5A78",
   },
   {
-    name: "Plum",
-    note: "Muted mauve — quiet, editorial",
-    bg: "#5D4157",
-    text: "#FFFFFF",
-    hover: "#6E506A",
-    ring: "rgba(93,65,87,0.18)",
+    name: "Powder",
+    note: "Pale blue-gray — soft, neutral",
+    bg: "#C8D8E5",
+    text: "#0A0A0A",
+    hover: "#B5C9D9",
+    ring: "rgba(200,216,229,0.4)",
+    darkText: "#3A5878",
   },
   {
-    name: "Aubergine",
-    note: "Deep purple — rich, grown-up",
-    bg: "#3E2A3E",
-    text: "#FFFFFF",
-    hover: "#533A54",
-    ring: "rgba(62,42,62,0.18)",
+    name: "Ice",
+    note: "Pale icy blue — clean, crisp",
+    bg: "#DCEAF0",
+    text: "#0A0A0A",
+    hover: "#C9DBE3",
+    ring: "rgba(220,234,240,0.4)",
+    darkText: "#2F5570",
   },
   {
-    name: "Burgundy",
-    note: "Deep wine red — heritage, warmth",
-    bg: "#6B2737",
-    text: "#FFFFFF",
-    hover: "#81354A",
-    ring: "rgba(107,39,55,0.18)",
+    name: "Lavender",
+    note: "Pale purple — gentle",
+    bg: "#D5C8E8",
+    text: "#0A0A0A",
+    hover: "#C4B5DC",
+    ring: "rgba(213,200,232,0.4)",
+    darkText: "#4A3A78",
   },
   {
-    name: "Ember",
-    note: "Subdued brick red — warm, grounded, diasporic",
-    bg: "#9E3B2F",
-    text: "#FFFFFF",
-    hover: "#B3463A",
-    ring: "rgba(158,59,47,0.18)",
+    name: "Blush",
+    note: "Pale pink — warm, romantic",
+    bg: "#F0C8C8",
+    text: "#0A0A0A",
+    hover: "#E5B5B5",
+    ring: "rgba(240,200,200,0.4)",
+    darkText: "#8C3A3A",
   },
   {
-    name: "Coral",
-    note: "Dusty coral — warmer, lighter than ember",
-    bg: "#C45D4A",
-    text: "#FFFFFF",
-    hover: "#D1705D",
-    ring: "rgba(196,93,74,0.18)",
+    name: "Peach",
+    note: "Pale orange — sun-warmed",
+    bg: "#F5C9A8",
+    text: "#0A0A0A",
+    hover: "#EBB892",
+    ring: "rgba(245,201,168,0.4)",
+    darkText: "#8C5128",
   },
   {
-    name: "Clay",
-    note: "Warm terracotta — softer than ember, earthier",
-    bg: "#B36A4A",
-    text: "#FFFFFF",
-    hover: "#C27A5A",
-    ring: "rgba(179,106,74,0.18)",
+    name: "Apricot",
+    note: "Soft warm orange — slightly richer than peach",
+    bg: "#F0B888",
+    text: "#0A0A0A",
+    hover: "#E5A672",
+    ring: "rgba(240,184,136,0.4)",
+    darkText: "#8C4F1E",
   },
   {
-    name: "Rust",
-    note: "Weathered iron — rougher, more masculine",
-    bg: "#8B4A2B",
-    text: "#FFFFFF",
-    hover: "#A15A38",
-    ring: "rgba(139,74,43,0.18)",
+    name: "Lemon",
+    note: "Pale yellow — light, sunny",
+    bg: "#F5E58A",
+    text: "#0A0A0A",
+    hover: "#EDD971",
+    ring: "rgba(245,229,138,0.4)",
+    darkText: "#6E5C1A",
   },
   {
-    name: "Mocha",
-    note: "Warm coffee brown — grounded, neutral-adjacent",
-    bg: "#5C4033",
-    text: "#FFFFFF",
-    hover: "#725043",
-    ring: "rgba(92,64,51,0.18)",
+    name: "Buttercream",
+    note: "Soft cream-yellow — vanilla, paper",
+    bg: "#F4E8B5",
+    text: "#0A0A0A",
+    hover: "#E9DC9F",
+    ring: "rgba(244,232,181,0.4)",
+    darkText: "#7A6A28",
   },
   {
-    name: "Ochre",
-    note: "Muted mustard — unexpected, editorial",
-    bg: "#A67C3A",
-    text: "#FFFFFF",
-    hover: "#B88E4B",
-    ring: "rgba(166,124,58,0.18)",
+    name: "Cream",
+    note: "Pale beige — unbleached, archival",
+    bg: "#F0E8D0",
+    text: "#0A0A0A",
+    hover: "#E5DCBF",
+    ring: "rgba(240,232,208,0.4)",
+    darkText: "#6A5A28",
   },
   {
-    name: "Olive",
-    note: "Dry yellow-green — vintage, earthy",
-    bg: "#707A3A",
-    text: "#FFFFFF",
-    hover: "#828D48",
-    ring: "rgba(112,122,58,0.18)",
+    name: "Sand-Light",
+    note: "Pale tan — desert at noon",
+    bg: "#E8D7B5",
+    text: "#0A0A0A",
+    hover: "#DCC9A2",
+    ring: "rgba(232,215,181,0.4)",
+    darkText: "#7A5C2E",
   },
   {
-    name: "Sage",
-    note: "Dusty olive — calm, matches warm paper tones",
-    bg: "#5E7C5F",
-    text: "#FFFFFF",
-    hover: "#6F8F71",
-    ring: "rgba(94,124,95,0.18)",
+    name: "Rose-Light",
+    note: "Dusty pink — softer, more grown-up than blush",
+    bg: "#E8B8C0",
+    text: "#0A0A0A",
+    hover: "#DDA5AE",
+    ring: "rgba(232,184,192,0.4)",
+    darkText: "#8E3A4F",
   },
   {
-    name: "Forest",
-    note: "Deep evergreen — grounded, serious",
-    bg: "#2E4A34",
-    text: "#FFFFFF",
-    hover: "#3E5F46",
-    ring: "rgba(46,74,52,0.18)",
-  },
-  {
-    name: "Midnight",
-    note: "Near-black blue — almost ink, with a cool undertone",
-    bg: "#14213D",
-    text: "#FFFFFF",
-    hover: "#1F2F52",
-    ring: "rgba(20,33,61,0.18)",
-  },
-  {
-    name: "Steel",
-    note: "Cool blue-gray — architectural, neutral-leaning",
-    bg: "#55677D",
-    text: "#FFFFFF",
-    hover: "#677A92",
-    ring: "rgba(85,103,125,0.18)",
-  },
-  {
-    name: "Petrol",
-    note: "Dark teal — moody, maritime",
-    bg: "#1F4E5F",
-    text: "#FFFFFF",
-    hover: "#2F6478",
-    ring: "rgba(31,78,95,0.18)",
-  },
-  {
-    name: "Ocean",
-    note: "Mid teal-blue — calm, a touch playful",
-    bg: "#2E6F8E",
-    text: "#FFFFFF",
-    hover: "#3E82A2",
-    ring: "rgba(46,111,142,0.18)",
-  },
-  {
-    name: "Pine",
-    note: "Dark muted green — quiet forest",
-    bg: "#2D4A3E",
-    text: "#FFFFFF",
-    hover: "#3C6051",
-    ring: "rgba(45,74,62,0.18)",
-  },
-  {
-    name: "Fern",
-    note: "Medium muted green — alive but restrained",
-    bg: "#3E6648",
-    text: "#FFFFFF",
-    hover: "#517C5C",
-    ring: "rgba(62,102,72,0.18)",
-  },
-  {
-    name: "Moss",
-    note: "Yellow-green — damp, organic",
-    bg: "#4A5D23",
-    text: "#FFFFFF",
-    hover: "#5C7230",
-    ring: "rgba(74,93,35,0.18)",
-  },
-  {
-    name: "Seaweed",
-    note: "Dark blue-green — dense, oceanic",
-    bg: "#234E46",
-    text: "#FFFFFF",
-    hover: "#34655C",
-    ring: "rgba(35,78,70,0.18)",
-  },
-  {
-    name: "Mulberry",
-    note: "Dark pink-red — heritage fruit, unexpected",
-    bg: "#7A2E4F",
-    text: "#FFFFFF",
-    hover: "#8F3D61",
-    ring: "rgba(122,46,79,0.18)",
-  },
-  {
-    name: "Rose",
-    note: "Dusty pink — romantic but grown-up",
-    bg: "#9E5468",
-    text: "#FFFFFF",
-    hover: "#B16679",
-    ring: "rgba(158,84,104,0.18)",
-  },
-  {
-    name: "Mauve",
-    note: "Lighter plum — soft, dusk-lit",
-    bg: "#886278",
-    text: "#FFFFFF",
-    hover: "#9A738A",
-    ring: "rgba(136,98,120,0.18)",
-  },
-  {
-    name: "Wine",
-    note: "Very deep red — bottle-dark, elegant",
-    bg: "#4E1E2E",
-    text: "#FFFFFF",
-    hover: "#652B3F",
-    ring: "rgba(78,30,46,0.18)",
-  },
-  {
-    name: "Espresso",
-    note: "Dark roast brown — near-black, warm",
-    bg: "#3B2A1F",
-    text: "#FFFFFF",
-    hover: "#503A2C",
-    ring: "rgba(59,42,31,0.18)",
-  },
-  {
-    name: "Walnut",
-    note: "Mid-tone wood brown — furniture warmth",
-    bg: "#6E4A2E",
-    text: "#FFFFFF",
-    hover: "#845B3C",
-    ring: "rgba(110,74,46,0.18)",
-  },
-  {
-    name: "Sand",
-    note: "Muted tan — desert, linen",
-    bg: "#A88B6C",
-    text: "#FFFFFF",
-    hover: "#B89B7C",
-    ring: "rgba(168,139,108,0.18)",
-  },
-  {
-    name: "Honey",
-    note: "Muted gold — warm amber light",
-    bg: "#B88A3A",
-    text: "#FFFFFF",
-    hover: "#C99B4B",
-    ring: "rgba(184,138,58,0.18)",
-  },
-  {
-    name: "Paprika",
-    note: "Warm orange-red — spice-rack red",
-    bg: "#B8452C",
-    text: "#FFFFFF",
-    hover: "#CA563C",
-    ring: "rgba(184,69,44,0.18)",
-  },
-  {
-    name: "Charcoal",
-    note: "Warm dark gray — softer than ink, still confident",
-    bg: "#2B2B2B",
-    text: "#FFFFFF",
-    hover: "#3C3C3C",
-    ring: "rgba(43,43,43,0.18)",
-  },
-  {
-    name: "Stone",
-    note: "Warm neutral gray — weathered, architectural",
-    bg: "#6E6A64",
-    text: "#FFFFFF",
-    hover: "#807B74",
-    ring: "rgba(110,106,100,0.18)",
-  },
-  {
-    name: "Taupe",
-    note: "Warm gray-brown — linen, unbleached",
-    bg: "#7D6E5E",
-    text: "#FFFFFF",
-    hover: "#8F806F",
-    ring: "rgba(125,110,94,0.18)",
-  },
-  {
-    name: "Smoke",
-    note: "Cool gray with a blue cast — haze over water",
-    bg: "#4B5358",
-    text: "#FFFFFF",
-    hover: "#5E676C",
-    ring: "rgba(75,83,88,0.18)",
-  },
-  {
-    name: "Truffle",
-    note: "Deep gray-brown — rich, low-key",
-    bg: "#3E342E",
-    text: "#FFFFFF",
-    hover: "#524540",
-    ring: "rgba(62,52,46,0.18)",
-  },
-  {
-    name: "Chocolate",
-    note: "Rich mid brown — dessert warmth",
-    bg: "#3D2817",
-    text: "#FFFFFF",
-    hover: "#533827",
-    ring: "rgba(61,40,23,0.18)",
-  },
-  {
-    name: "Bronze",
-    note: "Metallic warm brown — patina, plaque",
-    bg: "#7A5F3A",
-    text: "#FFFFFF",
-    hover: "#8F7248",
-    ring: "rgba(122,95,58,0.18)",
-  },
-  {
-    name: "Copper",
-    note: "Reddish metal — aged pipe, roof tiles",
-    bg: "#A3623E",
-    text: "#FFFFFF",
-    hover: "#B6744E",
-    ring: "rgba(163,98,62,0.18)",
-  },
-  {
-    name: "Amber",
-    note: "Deep honeyed orange — fossil, resin",
-    bg: "#9E6B2E",
-    text: "#FFFFFF",
-    hover: "#B17D3E",
-    ring: "rgba(158,107,46,0.18)",
-  },
-  {
-    name: "Mustard",
-    note: "Dull gold-yellow — old-world tile",
-    bg: "#8E7A2B",
-    text: "#FFFFFF",
-    hover: "#A18D3B",
-    ring: "rgba(142,122,43,0.18)",
-  },
-  {
-    name: "Turmeric",
-    note: "Warm spice gold — vivid but still earthy",
-    bg: "#C08A2A",
-    text: "#FFFFFF",
-    hover: "#D19C3E",
-    ring: "rgba(192,138,42,0.18)",
-  },
-  {
-    name: "Cinnamon",
-    note: "Warm red-brown — baked, dusted",
-    bg: "#8C4228",
-    text: "#FFFFFF",
-    hover: "#A15338",
-    ring: "rgba(140,66,40,0.18)",
-  },
-  {
-    name: "Sienna",
-    note: "Earthy red-brown — Renaissance palette",
-    bg: "#6A331E",
-    text: "#FFFFFF",
-    hover: "#80432C",
-    ring: "rgba(106,51,30,0.18)",
-  },
-  {
-    name: "Cranberry",
-    note: "Tart red-pink — bright without shouting",
-    bg: "#7F2844",
-    text: "#FFFFFF",
-    hover: "#963756",
-    ring: "rgba(127,40,68,0.18)",
-  },
-  {
-    name: "Cherry",
-    note: "Deep ripe red — classic, confident",
-    bg: "#8E1F2F",
-    text: "#FFFFFF",
-    hover: "#A52E3F",
-    ring: "rgba(142,31,47,0.18)",
-  },
-  {
-    name: "Raisin",
-    note: "Dark purple-red — dried fruit, shadow",
-    bg: "#3C1E2E",
-    text: "#FFFFFF",
-    hover: "#522B3F",
-    ring: "rgba(60,30,46,0.18)",
-  },
-  {
-    name: "Iris",
-    note: "Deep blue-purple — evening, floral",
-    bg: "#433769",
-    text: "#FFFFFF",
-    hover: "#55477F",
-    ring: "rgba(67,55,105,0.18)",
-  },
-  {
-    name: "Amethyst",
-    note: "Muted purple — stone, not neon",
-    bg: "#5A3A7E",
-    text: "#FFFFFF",
-    hover: "#6D4A92",
-    ring: "rgba(90,58,126,0.18)",
-  },
-  {
-    name: "Violet",
-    note: "Mid purple-blue — cooler than amethyst",
-    bg: "#4C3D8E",
-    text: "#FFFFFF",
-    hover: "#5E4FA2",
-    ring: "rgba(76,61,142,0.18)",
-  },
-  {
-    name: "Navy",
-    note: "Deep classic navy — uniform, timeless",
-    bg: "#0E2655",
-    text: "#FFFFFF",
-    hover: "#1B356C",
-    ring: "rgba(14,38,85,0.18)",
-  },
-  {
-    name: "Sapphire",
-    note: "Rich jewel blue — polished, formal",
-    bg: "#1B3A7E",
-    text: "#FFFFFF",
-    hover: "#2A4D94",
-    ring: "rgba(27,58,126,0.18)",
-  },
-  {
-    name: "Lagoon",
-    note: "Tropical teal — fresher than petrol",
-    bg: "#2A697A",
-    text: "#FFFFFF",
-    hover: "#3B7E90",
-    ring: "rgba(42,105,122,0.18)",
-  },
-  {
-    name: "Jade",
-    note: "Soft blue-green — carved stone",
-    bg: "#2D6A5A",
-    text: "#FFFFFF",
-    hover: "#3D8070",
-    ring: "rgba(45,106,90,0.18)",
-  },
-  {
-    name: "Cypress",
-    note: "Very dark green — graveyard, garden at dusk",
-    bg: "#1F3A2A",
-    text: "#FFFFFF",
-    hover: "#2E4E3A",
-    ring: "rgba(31,58,42,0.18)",
-  },
-  {
-    name: "Juniper",
-    note: "Muted blue-green — gin bottle, dried herb",
-    bg: "#385049",
-    text: "#FFFFFF",
-    hover: "#4A655D",
-    ring: "rgba(56,80,73,0.18)",
-  },
-  {
-    name: "Khaki",
-    note: "Dry green-brown — canvas, uniform",
-    bg: "#6E6A3A",
-    text: "#FFFFFF",
-    hover: "#807D4A",
-    ring: "rgba(110,106,58,0.18)",
-  },
-  {
-    name: "Matcha",
-    note: "Green-yellow — tea, powder, softer olive",
-    bg: "#5F7A3A",
-    text: "#FFFFFF",
-    hover: "#738E4C",
-    ring: "rgba(95,122,58,0.18)",
+    name: "Sage-Light",
+    note: "Pale dusty olive — herb garden",
+    bg: "#CCD8B8",
+    text: "#0A0A0A",
+    hover: "#BCC9A4",
+    ring: "rgba(204,216,184,0.4)",
+    darkText: "#4E6A35",
   },
 ];
 
@@ -542,6 +214,9 @@ function Arrow() {
 }
 
 function AccentCard({ accent }: { accent: Accent }) {
+  // For light backgrounds, accent.bg itself is too pale to read as text.
+  // darkText falls back to bg for traditional dark accents.
+  const inkColor = accent.darkText ?? accent.bg;
   return (
     <div className="rounded-card border border-paper-line bg-paper shadow-soft p-6 flex flex-col gap-5">
       <div className="flex items-start justify-between gap-4">
@@ -574,6 +249,7 @@ function AccentCard({ accent }: { accent: Accent }) {
               background: accent.bg,
               color: accent.text,
               "--accent-hover": accent.hover,
+              "--accent-ring": accent.ring,
             } as React.CSSProperties
           }
         >
@@ -587,6 +263,7 @@ function AccentCard({ accent }: { accent: Accent }) {
               background: accent.bg,
               color: accent.text,
               "--accent-hover": accent.hover,
+              "--accent-ring": accent.ring,
             } as React.CSSProperties
           }
         >
@@ -597,10 +274,11 @@ function AccentCard({ accent }: { accent: Accent }) {
           className="accent-btn-outline relative inline-flex items-center justify-center rounded-pill font-semibold select-none h-10 px-5 text-[13px] tracking-[0.02em] bg-transparent"
           style={
             {
-              color: accent.bg,
-              borderColor: `${accent.bg}33`,
+              color: inkColor,
+              borderColor: `${inkColor}33`,
               "--accent-hover-bg": accent.bg,
               "--accent-hover-text": accent.text,
+              "--accent-ring": accent.ring,
             } as React.CSSProperties
           }
         >
@@ -610,8 +288,8 @@ function AccentCard({ accent }: { accent: Accent }) {
         <span
           className="inline-flex items-center px-4 h-10 rounded-pill text-[12px] font-semibold tracking-[0.02em]"
           style={{
-            background: `${accent.bg}14`,
-            color: accent.bg,
+            background: `${accent.bg}24`,
+            color: inkColor,
           }}
         >
           Active chip
@@ -624,15 +302,15 @@ function AccentCard({ accent }: { accent: Accent }) {
           <div
             className="inline-flex items-center px-2.5 py-1 rounded-pill text-[9.5px] font-semibold tracking-[0.22em]"
             style={{
-              background: `${accent.bg}12`,
-              color: accent.bg,
+              background: `${accent.bg}24`,
+              color: inkColor,
             }}
           >
             BIZIMCIRCLE
           </div>
           <div className="mt-3 font-display text-[22px] leading-[0.95] tracking-[-0.03em]">
             Find your{" "}
-            <span className="italic font-light" style={{ color: accent.bg }}>
+            <span className="italic font-light" style={{ color: inkColor }}>
               circle
             </span>{" "}
             abroad.
@@ -648,6 +326,7 @@ function AccentCard({ accent }: { accent: Accent }) {
               background: accent.bg,
               color: accent.text,
               "--accent-hover": accent.hover,
+              "--accent-ring": accent.ring,
             } as React.CSSProperties
           }
         >
@@ -664,12 +343,16 @@ export default function AccentsPreview() {
     <main className="min-h-screen bg-paper-warm text-ink">
       <style jsx global>{`
         .accent-btn {
-          transition: background-color 220ms ease, transform 180ms
-              cubic-bezier(0.2, 0.8, 0.2, 1),
-            box-shadow 220ms ease;
+          /* Thick halo ring on hover, pill-shaped because it follows
+             the button's own border-radius via box-shadow. */
+          box-shadow: 0 0 0 0 var(--accent-ring, rgba(0, 0, 0, 0.12));
+          transition: background-color 220ms ease,
+            transform 180ms cubic-bezier(0.2, 0.8, 0.2, 1),
+            box-shadow 240ms cubic-bezier(0.2, 0.8, 0.2, 1);
         }
         .accent-btn:hover {
           background: var(--accent-hover) !important;
+          box-shadow: 0 0 0 6px var(--accent-ring, rgba(0, 0, 0, 0.12));
         }
         .accent-btn:active {
           transform: scale(0.97);
@@ -677,13 +360,17 @@ export default function AccentsPreview() {
         .accent-btn-outline {
           border-width: 1px;
           border-style: solid;
+          box-shadow: 0 0 0 0 var(--accent-ring, rgba(0, 0, 0, 0.12));
           transition: background-color 220ms ease, color 220ms ease,
-            border-color 220ms ease, transform 180ms cubic-bezier(0.2, 0.8, 0.2, 1);
+            border-color 220ms ease,
+            box-shadow 240ms cubic-bezier(0.2, 0.8, 0.2, 1),
+            transform 180ms cubic-bezier(0.2, 0.8, 0.2, 1);
         }
         .accent-btn-outline:hover {
           background: var(--accent-hover-bg);
           color: var(--accent-hover-text);
           border-color: var(--accent-hover-bg);
+          box-shadow: 0 0 0 6px var(--accent-ring, rgba(0, 0, 0, 0.12));
         }
         .accent-btn-outline:active {
           transform: scale(0.97);
