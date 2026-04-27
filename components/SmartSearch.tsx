@@ -1,6 +1,7 @@
 "use client";
 
-import { Suspense, useEffect, useMemo, useState, type MouseEvent } from "react";
+import { Suspense, useEffect, useMemo, useRef, useState, type MouseEvent } from "react";
+import { createPortal } from "react-dom";
 import clsx from "clsx";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -13,6 +14,7 @@ import { emitPlayfulBurst } from "@/lib/playful";
 
 type Scope = "all" | "people" | "circles" | "posts" | "opportunities";
 type View = "stack" | "constellation" | "atlas";
+type SearchMode = "page" | "overlay";
 
 type UnifiedItem = {
   _id: string;
@@ -160,12 +162,104 @@ export default function SearchPage() {
   );
 }
 
-function SearchClient() {
+export function SmartSearchOverlay({
+  initialQuery,
+  open,
+  onClose,
+}: {
+  initialQuery: string;
+  open: boolean;
+  onClose: (value?: string) => void;
+}) {
+  const [mounted, setMounted] = useState(false);
+  const latestQueryRef = useRef(initialQuery);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (open) latestQueryRef.current = initialQuery;
+  }, [initialQuery, open]);
+
+  useEffect(() => {
+    if (!mounted || !open) return;
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") onClose(latestQueryRef.current);
+    };
+
+    window.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", onKeyDown);
+    };
+  }, [mounted, onClose, open]);
+
+  if (!mounted || !open) return null;
+
+  const closeWithLatestQuery = () => onClose(latestQueryRef.current);
+
+  return createPortal(
+    <div
+      className="fixed inset-0 z-[9999]"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Smart search"
+    >
+      <div
+        aria-hidden
+        className="absolute inset-0 bg-paper/80 backdrop-blur-xl"
+        onClick={closeWithLatestQuery}
+      />
+
+      <div className="relative z-10 h-full overflow-y-auto scroll-clean">
+        <button
+          type="button"
+          onClick={closeWithLatestQuery}
+          aria-label="Close search"
+          className="fixed right-4 top-4 z-20 inline-flex h-11 w-11 items-center justify-center rounded-full border border-paper-line bg-paper text-ink/70 shadow-soft transition hover:border-ink/30 hover:text-ink md:right-8 md:top-8"
+        >
+          <Icon.Close size={16} />
+        </button>
+
+        <Suspense fallback={<SearchShell>Loading search...</SearchShell>}>
+          <SearchClient
+            mode="overlay"
+            initialQuery={initialQuery}
+            onClose={onClose}
+            onQueryChange={(value) => {
+              latestQueryRef.current = value;
+            }}
+          />
+        </Suspense>
+      </div>
+    </div>,
+    document.body
+  );
+}
+
+function SearchClient({
+  mode = "page",
+  initialQuery,
+  initialScope,
+  onClose,
+  onQueryChange,
+}: {
+  mode?: SearchMode;
+  initialQuery?: string;
+  initialScope?: Scope;
+  onClose?: (value?: string) => void;
+  onQueryChange?: (value: string) => void;
+} = {}) {
   const router = useRouter();
   const params = useSearchParams();
   const { status } = useAuth();
-  const [query, setQuery] = useState(params.get("q") || "");
-  const [scope, setScope] = useState<Scope>(parseScope(params.get("scope")));
+  const [query, setQuery] = useState(initialQuery ?? params.get("q") ?? "");
+  const [scope, setScope] = useState<Scope>(initialScope ?? parseScope(params.get("scope")));
   const [topics, setTopics] = useState<Set<string>>(new Set());
   const [view, setView] = useState<View>("stack");
   const [results, setResults] = useState<SearchResponse>(EMPTY);
@@ -174,10 +268,24 @@ function SearchClient() {
   const [savedSearches, setSavedSearches] = useState<string[]>([]);
 
   useEffect(() => {
-    if (status === "unauthenticated") router.replace("/signin");
-  }, [status, router]);
+    if (mode === "page" && status === "unauthenticated") router.replace("/signin");
+  }, [mode, status, router]);
 
   useEffect(() => {
+    if (mode !== "overlay") return;
+    setQuery(initialQuery ?? "");
+    setScope(initialScope ?? "all");
+    setTopics(new Set());
+    setView("stack");
+    setError(null);
+  }, [initialQuery, initialScope, mode]);
+
+  useEffect(() => {
+    onQueryChange?.(query);
+  }, [onQueryChange, query]);
+
+  useEffect(() => {
+    if (mode !== "page") return;
     const next = new URLSearchParams();
     if (query.trim()) next.set("q", query.trim());
     if (scope !== "all") next.set("scope", scope);
@@ -186,7 +294,7 @@ function SearchClient() {
     if (target !== current) {
       window.history.replaceState(window.history.state, "", target ? `/search?${target}` : "/search");
     }
-  }, [query, scope]);
+  }, [mode, query, scope]);
 
   const hasInput = query.trim().length >= 1 || scope !== "all" || topics.size > 0;
 
@@ -254,8 +362,18 @@ function SearchClient() {
     emitPlayfulBurst("saved", event?.clientX, event?.clientY);
   };
 
+  const closeWithQuery = () => onClose?.(query);
+
+  const submitSearch = () => {
+    const next = new URLSearchParams();
+    if (query.trim()) next.set("q", query.trim());
+    if (scope !== "all") next.set("scope", scope);
+    closeWithQuery();
+    router.push(next.toString() ? `/search?${next.toString()}` : "/search");
+  };
+
   return (
-    <div className="min-h-screen bg-paper-warm relative overflow-x-hidden">
+    <div className={clsx("bg-paper-warm relative overflow-x-hidden", mode === "overlay" ? "min-h-full" : "min-h-screen")}>
       <div
         aria-hidden
         className="pointer-events-none absolute -top-[20vw] -left-[18vw] w-[60vw] h-[60vw] rounded-full border"
@@ -281,6 +399,7 @@ function SearchClient() {
           view={view}
           setView={setView}
           loading={loading}
+          onSubmit={mode === "overlay" ? submitSearch : undefined}
         />
 
         {error && (
@@ -296,11 +415,11 @@ function SearchClient() {
             onQuery={setQuery}
           />
         ) : view === "constellation" ? (
-          <ConstellationView results={filtered} />
+          <ConstellationView results={filtered} onNavigate={mode === "overlay" ? closeWithQuery : undefined} />
         ) : view === "atlas" ? (
-          <AtlasView results={filtered} />
+          <AtlasView results={filtered} onNavigate={mode === "overlay" ? closeWithQuery : undefined} />
         ) : (
-          <StackView results={filtered} />
+          <StackView results={filtered} onNavigate={mode === "overlay" ? closeWithQuery : undefined} />
         )}
       </main>
     </div>
@@ -320,6 +439,7 @@ function SearchHero({
   view,
   setView,
   loading,
+  onSubmit,
 }: {
   query: string;
   setQuery: (v: string) => void;
@@ -333,6 +453,7 @@ function SearchHero({
   view: View;
   setView: (v: View) => void;
   loading: boolean;
+  onSubmit?: () => void;
 }) {
   return (
     <div className="relative">
@@ -387,6 +508,12 @@ function SearchHero({
               autoFocus
               value={query}
               onChange={(e) => setQuery(e.target.value)}
+              onKeyDown={(event) => {
+                if (event.key !== "Enter") return;
+                if (!onSubmit) return;
+                event.preventDefault();
+                onSubmit();
+              }}
               placeholder="People, circles, posts, places"
               className="h-9 flex-1 bg-transparent text-[17px] outline-none placeholder:text-ink/35"
               spellCheck={false}
@@ -583,14 +710,16 @@ function ItemLink({
   item,
   className,
   children,
+  onNavigate,
 }: {
   item: UnifiedItem;
   className?: string;
   children: React.ReactNode;
+  onNavigate?: () => void;
 }) {
   if (item.href) {
     return (
-      <Link href={item.href} className={className}>
+      <Link href={item.href} className={className} onClick={onNavigate}>
         {children}
       </Link>
     );
@@ -607,7 +736,7 @@ function ArrowGlyph({ size = 12 }: { size?: number }) {
   );
 }
 
-function StackView({ results }: { results: UnifiedItem[] }) {
+function StackView({ results, onNavigate }: { results: UnifiedItem[]; onNavigate?: () => void }) {
   if (results.length === 0) return <EmptyMatch />;
   return (
     <div className="max-w-5xl mx-auto mt-6 space-y-3">
@@ -615,6 +744,7 @@ function StackView({ results }: { results: UnifiedItem[] }) {
         <ItemLink
           key={`${r._t}-${r._id}`}
           item={r}
+          onNavigate={onNavigate}
           className="group block w-full text-left rounded-[22px] border border-paper-line bg-paper p-4 transition hover:border-ink/30 hover:shadow-soft relative overflow-hidden"
         >
           <span
@@ -701,7 +831,7 @@ function StackView({ results }: { results: UnifiedItem[] }) {
   );
 }
 
-function ConstellationView({ results }: { results: UnifiedItem[] }) {
+function ConstellationView({ results, onNavigate }: { results: UnifiedItem[]; onNavigate?: () => void }) {
   if (results.length === 0) return <EmptyMatch />;
   const top = results.slice(0, 14);
   const maxScore = Math.max(...top.map((r) => r._score || 1), 1);
@@ -742,6 +872,7 @@ function ConstellationView({ results }: { results: UnifiedItem[] }) {
             <ItemLink
               key={`${p._t}-${p._id}`}
               item={p}
+              onNavigate={onNavigate}
               className="absolute group"
             >
               <span style={{ position: "absolute", left: p.x, top: p.y, transform: "translate(-50%, -50%)" }} className="flex flex-col items-center gap-1.5">
@@ -774,7 +905,7 @@ function ConstellationView({ results }: { results: UnifiedItem[] }) {
   );
 }
 
-function AtlasView({ results }: { results: UnifiedItem[] }) {
+function AtlasView({ results, onNavigate }: { results: UnifiedItem[]; onNavigate?: () => void }) {
   if (results.length === 0) return <EmptyMatch />;
   const groups = useMemo(() => {
     const map = new Map<string, UnifiedItem[]>();
@@ -812,6 +943,7 @@ function AtlasView({ results }: { results: UnifiedItem[] }) {
               <ItemLink
                 key={`${r._t}-${r._id}`}
                 item={r}
+                onNavigate={onNavigate}
                 className="w-full text-left flex items-center gap-2.5 p-2 -mx-2 rounded-[14px] hover:bg-paper-cool transition"
               >
                 <ResultMark item={r} size={32} />

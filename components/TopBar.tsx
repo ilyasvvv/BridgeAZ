@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { Icon } from "./Icon";
 import { Avatar } from "./Avatar";
-import { SearchOverlay } from "./SearchOverlay";
+import { SmartSearchOverlay } from "./SmartSearch";
 import { BizimLogoLockup } from "./AnimatedLogo";
 import { useAuth } from "@/lib/auth";
 import { useLive } from "@/lib/live";
@@ -229,7 +229,7 @@ export function TopBar({
           </div>
         </div>
       </div>
-      <SearchOverlay
+      <SmartSearchOverlay
         open={searchOpen}
         initialQuery={searchDraft}
         onClose={(value) => {
