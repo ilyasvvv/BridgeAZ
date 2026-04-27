@@ -1,15 +1,15 @@
 "use client";
 
-import { Suspense, useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState, type MouseEvent } from "react";
 import clsx from "clsx";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Avatar } from "@/components/Avatar";
 import { Icon } from "@/components/Icon";
-import { TopBar } from "@/components/TopBar";
 import { useAuth } from "@/lib/auth";
 import { searchApi, type SearchResponse, type SearchTypes } from "@/lib/search";
 import { hueFromString, profileHref, relativeTime } from "@/lib/format";
+import { emitPlayfulBurst } from "@/lib/playful";
 
 type Scope = "all" | "people" | "circles" | "posts" | "opportunities";
 type View = "stack" | "constellation" | "atlas";
@@ -241,13 +241,17 @@ function SearchClient() {
     setTopics((prev) => {
       const n = new Set(prev);
       if (n.has(t)) n.delete(t);
-      else n.add(t);
+      else {
+        n.add(t);
+        emitPlayfulBurst(t);
+      }
       return n;
     });
 
-  const onSave = () => {
+  const onSave = (event?: MouseEvent<HTMLButtonElement>) => {
     if (!query.trim()) return;
     setSavedSearches((s) => (s.includes(query.trim()) ? s : [query.trim(), ...s]));
+    emitPlayfulBurst("saved", event?.clientX, event?.clientY);
   };
 
   return (
@@ -262,8 +266,6 @@ function SearchClient() {
         className="pointer-events-none absolute top-[40vh] left-1/3 w-[40vw] h-[40vw] rounded-full border"
         style={{ borderColor: "rgba(10,10,10,0.04)" }}
       />
-
-      <TopBar />
 
       <main className="relative max-w-[1400px] mx-auto px-6 pt-6 pb-24">
         <SearchHero
@@ -346,13 +348,10 @@ function SearchHero({
       />
 
       <div className={clsx("max-w-4xl mx-auto text-center transition-all", hasInput ? "pt-6" : "pt-12")}>
-        <p className="text-[10.5px] font-bold tracking-[0.22em] text-ink/45">
-          SMART SEARCH · SEARCH WITH MEMORY
-        </p>
         <h1
           className={clsx(
-            "mt-3 font-display font-medium tracking-[-0.04em] leading-[0.95] transition-all",
-            hasInput ? "text-[44px]" : "text-[64px] md:text-[80px]"
+            "font-display font-medium tracking-tight leading-[0.95] transition-all",
+            hasInput ? "text-[38px]" : "text-[56px] md:text-[72px]"
           )}
         >
           {hasInput ? (
@@ -388,7 +387,7 @@ function SearchHero({
               autoFocus
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="People, circles, posts, places — try 'roommate berlin' or 'novruz'"
+              placeholder="People, circles, posts, places"
               className="h-9 flex-1 bg-transparent text-[17px] outline-none placeholder:text-ink/35"
               spellCheck={false}
             />
@@ -424,7 +423,10 @@ function SearchHero({
           return (
             <button
               key={s.key}
-              onClick={() => setScope(s.key)}
+              onClick={(event) => {
+                setScope(s.key);
+                if (s.key !== scope) emitPlayfulBurst(s.label, event.clientX, event.clientY);
+              }}
               className={clsx(
                 "btn-press h-9 rounded-full px-4 text-[12.5px] font-semibold whitespace-nowrap transition",
                 active
@@ -460,13 +462,8 @@ function SearchHero({
 
       {hasInput && (
         <div className="mt-7 max-w-5xl mx-auto flex items-center justify-between gap-4 px-1 flex-wrap">
-          <div className="flex flex-col">
-            <span className="text-[10.5px] font-bold tracking-[0.18em] text-ink/45 whitespace-nowrap">
-              ADAPTIVE RANKING
-            </span>
-            <span className="font-display text-[22px] font-semibold tracking-[-0.02em] whitespace-nowrap">
-              {count} result{count === 1 ? "" : "s"}
-            </span>
+          <div className="font-display text-[22px] font-semibold tracking-tight whitespace-nowrap">
+            {count} result{count === 1 ? "" : "s"}
           </div>
           <ViewSwitcher view={view} setView={setView} />
         </div>
@@ -488,7 +485,10 @@ function ViewSwitcher({ view, setView }: { view: View; setView: (v: View) => voi
         return (
           <button
             key={v.key}
-            onClick={() => setView(v.key)}
+            onClick={(event) => {
+              setView(v.key);
+              emitPlayfulBurst(v.label, event.clientX, event.clientY);
+            }}
             className={clsx(
               "btn-press inline-flex items-center gap-1.5 h-8 px-3 rounded-full text-[11.5px] font-semibold transition",
               active ? "bg-ink text-paper" : "text-ink/65 hover:text-ink"
@@ -846,7 +846,6 @@ function EmptyMatch() {
       <h3 className="mt-6 font-display text-[22px] font-semibold tracking-[-0.02em]">
         Nothing matches that search.
       </h3>
-      <p className="mt-1.5 text-[13px] text-ink/55">Try broader wording, or drop a topic chip.</p>
     </div>
   );
 }
@@ -926,12 +925,6 @@ function DiscoveryPanel({
             </li>
           ))}
         </ul>
-        <p
-          className="mt-4 text-[12px] leading-relaxed max-w-md"
-          style={{ color: "rgba(255,255,255,0.55)" }}
-        >
-          Save a search and we keep watch. New matches surface here. Adaptive ranking learns from what you open.
-        </p>
       </section>
     </div>
   );
@@ -940,7 +933,6 @@ function DiscoveryPanel({
 function SearchShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen bg-paper-warm">
-      <TopBar />
       <main className="max-w-[900px] mx-auto px-6 py-16 text-[14px] text-ink/60">{children}</main>
     </div>
   );
