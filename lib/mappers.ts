@@ -16,10 +16,11 @@ export function authorToMiniProfile(
   const kind = a.accountType === "circle" ? "circle" : "personal";
   const handle = a.username || (a.name || "user").toLowerCase().replace(/\s+/g, "");
   return {
+    id: a._id,
     name: a.name || "Unknown",
     handle,
     kind,
-    location: a.currentRegion || "",
+    location: authorLocation(a),
     bio: "",
     hue: hueFromString(a._id || a.name || handle),
     stats: [
@@ -39,6 +40,7 @@ export function userToMiniProfile(u: ApiUser): MiniProfile {
     photoUrl: u.photoUrl,
     profilePictureUrl: u.profilePictureUrl,
     currentRegion: u.currentRegion,
+    locationNow: u.locationNow,
     accountType: u.accountType,
     isMentor: u.isMentor,
   });
@@ -116,7 +118,11 @@ function inferCategory(content: string): PostCategory {
   return "Note";
 }
 
-export function apiPostToUiPost(p: ApiPost): Post {
+export function apiPostToUiPost(
+  p: ApiPost,
+  optionsOrIndex: { originLocation?: string } | number = {}
+): Post {
+  const options = typeof optionsOrIndex === "object" ? optionsOrIndex : {};
   const tags = extractHashtags(p.content || "");
   const contentWithoutTags = (p.content || "").replace(/\s*#[a-zA-Z0-9_]{2,30}/g, "").trim();
   const commentsCount = typeof p.commentCount === "number"
@@ -131,7 +137,12 @@ export function apiPostToUiPost(p: ApiPost): Post {
     author,
     category: inferCategory(p.content || ""),
     time: relativeTime(p.createdAt),
-    location: author.location || p.author?.currentRegion || p.visibilityRegion || "—",
+    location:
+      options.originLocation ||
+      author.location ||
+      authorLocation(p.author) ||
+      p.visibilityRegion ||
+      "—",
     body: contentWithoutTags || p.content || "",
     tags,
     hasMedia: !!p.attachmentUrl && p.attachmentKind === "image",
@@ -152,6 +163,13 @@ export function apiPostToUiPost(p: ApiPost): Post {
       shares: 0,
     },
   };
+}
+
+function authorLocation(a: ApiAuthor): string {
+  const city = a.locationNow?.city;
+  const country = a.locationNow?.country;
+  if (city && country) return `${city}, ${country}`;
+  return city || a.currentRegion || country || "";
 }
 
 function userLocation(u: ApiUser): string {

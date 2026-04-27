@@ -50,6 +50,7 @@ export interface ApiAuthor {
   profilePhotoUrl?: string;
   profilePictureUrl?: string;
   currentRegion?: string;
+  locationNow?: { country?: string; city?: string };
   accountType?: AccountType;
   isMentor?: boolean;
 }

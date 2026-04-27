@@ -9,7 +9,9 @@ import { postsApi } from "@/lib/posts";
 import { uploadFile } from "@/lib/uploads";
 import { apiPostToUiPost } from "@/lib/mappers";
 import { hueFromString } from "@/lib/format";
+import { emitPlayfulBurst } from "@/lib/playful";
 import type { Post } from "./PostCard";
+import type { ApiUser } from "@/lib/types";
 
 type Template =
   | "note"
@@ -24,17 +26,62 @@ const TEMPLATES: {
   label: string;
   icon: keyof typeof Icon;
   hint: string;
+  cta: string;
   prefix?: string;
 }[] = [
-  { key: "note", label: "Note", icon: "Note", hint: "What's on your mind?" },
-  { key: "announcement", label: "Announcement", icon: "Mic", hint: "Share news with the circle…", prefix: "Announcement: " },
-  { key: "event", label: "Event", icon: "Calendar", hint: "Host something. Date, venue, RSVP.", prefix: "Event: " },
-  { key: "opportunity", label: "Opportunity", icon: "Briefcase", hint: "Jobs, internships, gigs, scholarships.", prefix: "Hiring: " },
-  { key: "searching", label: "Searching for", icon: "Search", hint: "Roommate? Tutor? Ride? Advice?", prefix: "Looking for: " },
-  { key: "poll", label: "Poll", icon: "Poll", hint: "Ask the circle a quick question." },
+  {
+    key: "note",
+    label: "Note",
+    icon: "Note",
+    hint: "What's on your mind?",
+    cta: "Share note",
+  },
+  {
+    key: "announcement",
+    label: "Announcement",
+    icon: "Mic",
+    hint: "Share news with the circle…",
+    cta: "Broadcast",
+    prefix: "Announcement: ",
+  },
+  {
+    key: "event",
+    label: "Event",
+    icon: "Calendar",
+    hint: "Host something. Date, venue, RSVP.",
+    cta: "Launch event",
+    prefix: "Event: ",
+  },
+  {
+    key: "opportunity",
+    label: "Opportunity",
+    icon: "Briefcase",
+    hint: "Jobs, internships, gigs, scholarships.",
+    cta: "Post opportunity",
+    prefix: "Hiring: ",
+  },
+  {
+    key: "searching",
+    label: "Searching for",
+    icon: "Search",
+    hint: "Roommate? Tutor? Ride? Advice?",
+    cta: "Ask the circle",
+    prefix: "Looking for: ",
+  },
+  {
+    key: "poll",
+    label: "Poll",
+    icon: "Poll",
+    hint: "Ask the circle a quick question.",
+    cta: "Start poll",
+  },
 ];
 
-export function Composer({ onPosted }: { onPosted?: (post: Post) => void }) {
+export function Composer({
+  onPosted,
+}: {
+  onPosted?: (post: Post) => void;
+}) {
   const { user } = useAuth();
   const [tpl, setTpl] = useState<Template>("note");
   const [text, setText] = useState("");
@@ -53,8 +100,6 @@ export function Composer({ onPosted }: { onPosted?: (post: Post) => void }) {
     tpl !== "poll" ||
     pollOptions.filter((o) => o.trim()).length >= 2;
   const canPost = !!text.trim() && pollValid && !submitting;
-
-  const region = user?.currentRegion || "your region";
 
   const buildContent = () => {
     const lines: string[] = [];
@@ -118,7 +163,12 @@ export function Composer({ onPosted }: { onPosted?: (post: Post) => void }) {
         attachmentUrl,
         attachmentContentType,
       });
-      onPosted?.(apiPostToUiPost(created));
+      onPosted?.(
+        apiPostToUiPost(created, {
+          originLocation: userOriginLocation(user),
+        })
+      );
+      emitPlayfulBurst(active.key === "event" ? "event launched" : "posted");
       reset();
     } catch (err: any) {
       setError(err?.message || "Failed to post");
@@ -130,8 +180,7 @@ export function Composer({ onPosted }: { onPosted?: (post: Post) => void }) {
   const myHue = hueFromString(user?._id || user?.username || "me");
 
   return (
-    <div className="rounded-[22px] bg-paper border border-paper-line p-4 shadow-soft">
-      {/* Template pills */}
+    <div className="rounded-[22px] bg-paper border border-paper-line p-4 shadow-soft circle-ripple">
       <div className="flex items-center gap-1.5 flex-wrap">
         {TEMPLATES.map((t) => {
           const Ico = Icon[t.icon];
@@ -140,6 +189,7 @@ export function Composer({ onPosted }: { onPosted?: (post: Post) => void }) {
             <button
               key={t.key}
               onClick={() => setTpl(t.key)}
+              aria-label={`Post type: ${t.label}`}
               className={clsx(
                 "btn-press inline-flex items-center gap-1.5 h-8 px-3 rounded-pill text-[12px] font-semibold tracking-tight transition-all",
                 isActive
@@ -286,18 +336,19 @@ export function Composer({ onPosted }: { onPosted?: (post: Post) => void }) {
             </div>
             <div className="flex items-center gap-2">
               <span className="text-[11px] text-ink/45 hidden sm:inline">
-                Posting as <b className="text-ink/70">{user?.name || "You"}</b> to{" "}
-                <b className="text-ink/70">{region}</b>
+                Posting as <b className="text-ink/70">{user?.name || "You"}</b>
               </span>
               <button
                 onClick={submit}
                 disabled={!canPost}
                 className={clsx(
                   "btn-press h-9 px-5 rounded-pill text-[12.5px] font-semibold inline-flex items-center gap-1.5 transition",
-                  canPost ? "bg-ink text-paper shadow-soft" : "bg-paper-cool text-ink/40"
+                  canPost
+                    ? "brand-glow bg-[#C1FF72] text-ink shadow-soft hover:bg-[#B4F25F]"
+                    : "bg-paper-cool text-ink/40"
                 )}
               >
-                {submitting ? "Posting…" : "Post"}
+                {submitting ? "Posting…" : active.cta}
                 <ActiveIcon size={12} />
               </button>
             </div>
@@ -319,6 +370,13 @@ function ToolBtn({ icon, onClick }: { icon: keyof typeof Icon; onClick?: () => v
       <Ico size={15} />
     </button>
   );
+}
+
+function userOriginLocation(user: ApiUser | null): string | undefined {
+  const city = user?.locationNow?.city?.trim();
+  const country = user?.locationNow?.country?.trim();
+  if (city && country) return `${city}, ${country}`;
+  return city || user?.currentRegion || country || undefined;
 }
 
 function MiniField({
