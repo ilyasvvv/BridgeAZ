@@ -1,7 +1,7 @@
 "use client";
 
 import clsx from "clsx";
-import { CSSProperties, useState } from "react";
+import { type CSSProperties, type ReactNode, useState } from "react";
 
 type Props = {
   size?: number;
@@ -10,6 +10,8 @@ type Props = {
   centerLabel?: { top: string; bottom?: string };
   className?: string;
   animate?: boolean;
+  onOrbitClick?: (label: string) => void;
+  centerContent?: ReactNode;
 };
 
 /**
@@ -24,6 +26,8 @@ export function CircleMark({
   centerLabel = { top: "bizim", bottom: "circle" },
   className,
   animate = true,
+  onOrbitClick,
+  centerContent,
 }: Props) {
   const [activeIndex, setActiveIndex] = useState(0);
   const radii = Array.from({ length: rings }, (_, i) => (size / 2) * (0.42 + i * 0.18));
@@ -77,16 +81,18 @@ export function CircleMark({
         className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full bg-white shadow-pop flex items-center justify-center"
         style={{ width: size * 0.34, height: size * 0.34 }}
       >
-        <div className="flex flex-col items-center gap-1">
-          <span className="block w-1.5 h-1.5 bg-ink rounded-[2px]" />
-          <div className="flex items-center gap-2 text-[13px] font-semibold tracking-tight">
-            <span>{centerLabel.top}</span>
-            {centerLabel.bottom && <span className="text-ink/50 font-light">{centerLabel.bottom}</span>}
+        {centerContent || (
+          <div className="flex flex-col items-center gap-1">
+            <span className="block w-1.5 h-1.5 bg-ink rounded-[2px]" />
+            <div className="flex items-center gap-2 text-[13px] font-semibold tracking-tight">
+              <span>{centerLabel.top}</span>
+              {centerLabel.bottom && <span className="text-ink/50 font-light">{centerLabel.bottom}</span>}
+            </div>
+            <span className="mt-1 text-[9px] font-semibold tracking-[0.24em] text-ink/36">
+              {activeOrbit}
+            </span>
           </div>
-          <span className="mt-1 text-[9px] font-semibold tracking-[0.24em] text-ink/36">
-            {activeOrbit}
-          </span>
-        </div>
+        )}
       </div>
 
       {/* Orbiting pill labels — placed on the orbital field and remain clickable */}
@@ -125,7 +131,10 @@ export function CircleMark({
                   )}
                   onMouseEnter={() => setActiveIndex(i)}
                   onFocus={() => setActiveIndex(i)}
-                  onClick={() => setActiveIndex(i)}
+                  onClick={() => {
+                    setActiveIndex(i);
+                    onOrbitClick?.(label);
+                  }}
                 >
                   {label}
                 </button>
