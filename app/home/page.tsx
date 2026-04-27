@@ -8,13 +8,14 @@ import { Composer } from "@/components/Composer";
 import { PostCard, type Post, type PostCategory } from "@/components/PostCard";
 import { CirclesForYou, PeopleForYou, TodayNearYou } from "@/components/SideRail";
 import { TrendingCard } from "@/components/TrendingCard";
-import { MessagesDock } from "@/components/MessagesDock";
+import { FloatingMessagesDock } from "@/components/MessagesDock";
 import { Icon } from "@/components/Icon";
 import { useAuth } from "@/lib/auth";
 import { postsApi } from "@/lib/posts";
 import { circlesApi } from "@/lib/circles";
 import { usersApi } from "@/lib/users";
 import { apiPostToUiPost, circleToMiniProfile, userToMiniProfile } from "@/lib/mappers";
+import { CITY_OPTIONS, cityLabel, sortUsersByNearestCity, userCityLabel } from "@/lib/cities";
 import type { MiniProfile } from "@/components/MiniProfileCard";
 import type { ApiCircle, ApiPost, ApiUser } from "@/lib/types";
 
@@ -31,7 +32,7 @@ export default function HomePage() {
   const [circles, setCircles] = useState<MiniProfile[]>([]);
   const [people, setPeople] = useState<MiniProfile[]>([]);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const regionLabel = user?.currentRegion || "your region";
+  const regionLabel = userCityLabel(user) || "your city";
   const tagOptions = useMemo(() => buildTagOptions(posts), [posts]);
   const locationOptions = useMemo(
     () => buildLocationOptions(posts, regionLabel),
@@ -77,7 +78,14 @@ export default function HomePage() {
           )
         );
         setCircles(rawCircles.slice(0, 5).map(circleToMiniProfile));
-        setPeople(rawPeople.filter((p) => p._id !== user?._id).slice(0, 5).map(userToMiniProfile));
+        setPeople(
+          sortUsersByNearestCity(
+            rawPeople.filter((p) => p._id !== user?._id),
+            user
+          )
+            .slice(0, 5)
+            .map(userToMiniProfile)
+        );
       } catch (err: any) {
         if (cancelled) return;
         setLoadError(err?.message || "Failed to load feed");
@@ -119,6 +127,7 @@ export default function HomePage() {
           </aside>
 
           <div className="home-feed order-1 col-span-12 lg:order-2 lg:col-span-6 space-y-4">
+            <Composer onPosted={(post) => setPosts((current) => current ? [post, ...current] : [post])} />
             <SmartFilterBar
               tagOptions={tagOptions}
               locationOptions={locationOptions}
@@ -135,20 +144,12 @@ export default function HomePage() {
               onLocationToggle={(location) =>
                 setSelectedLocations((current) => toggleValue(current, location))
               }
-              onLocationAdd={(location) =>
-                setSelectedLocations((current) =>
-                  current.some((item) => sameLabel(item, location))
-                    ? current
-                    : [...current, location]
-                )
-              }
               onClear={() => {
                 setSelectedCategories([]);
                 setSelectedTags([]);
                 setSelectedLocations([]);
               }}
             />
-            <Composer onPosted={(post) => setPosts((current) => current ? [post, ...current] : [post])} />
             <div className="space-y-4">
               {loadError && (
                 <div className="rounded-[18px] border border-paper-line bg-paper p-5 text-[13px] text-ink/70">
@@ -172,33 +173,16 @@ export default function HomePage() {
           </div>
 
           <aside className="home-rail home-rail-right order-3 col-span-12 lg:col-span-3 lg:sticky lg:top-[88px] space-y-3 relative">
-            <div
-              className={clsx(
-                "transition-all duration-500 ease-[cubic-bezier(0.6,0.05,0.3,1)]",
-                messagesOpen
-                  ? "-translate-y-[120%] opacity-0 pointer-events-none max-h-0 overflow-hidden"
-                  : "translate-y-0 opacity-100 max-h-[2000px]"
-              )}
-            >
-              <TrendingCard />
-            </div>
-
-            <div
-              className={clsx(
-                "transition-all duration-500 ease-[cubic-bezier(0.6,0.05,0.3,1)]",
-                messagesOpen
-                  ? "fixed left-4 right-4 top-[78px] z-30 md:left-auto md:right-6 md:top-[88px] md:w-[min(680px,calc(100vw-3rem))]"
-                  : "lg:-mt-2"
-              )}
-            >
-              <MessagesDock
-                open={messagesOpen}
-                onToggle={() => setMessagesOpen((v) => !v)}
-              />
-            </div>
+            <TrendingCard />
           </aside>
         </div>
       </main>
+
+      <FloatingMessagesDock
+        open={messagesOpen}
+        onToggle={() => setMessagesOpen((v) => !v)}
+        onClose={() => setMessagesOpen(false)}
+      />
     </div>
   );
 }
@@ -215,13 +199,7 @@ const CATEGORY_OPTIONS: {
   { key: "Note", label: "Notes", icon: "Note" },
 ];
 
-const LOCATION_PRESETS = [
-  "Fairfax, VA",
-  "Washington, DC",
-  "California",
-  "Azerbaijan",
-  "Germany",
-];
+const LOCATION_PRESETS = CITY_OPTIONS.map(cityLabel);
 
 function SmartFilterBar({
   tagOptions,
@@ -233,7 +211,6 @@ function SmartFilterBar({
   onCategoryToggle,
   onTagToggle,
   onLocationToggle,
-  onLocationAdd,
   onClear,
 }: {
   tagOptions: string[];
@@ -245,7 +222,6 @@ function SmartFilterBar({
   onCategoryToggle: (value: PostCategory) => void;
   onTagToggle: (value: string) => void;
   onLocationToggle: (value: string) => void;
-  onLocationAdd: (value: string) => void;
   onClear: () => void;
 }) {
   const [locationsOpen, setLocationsOpen] = useState(false);
@@ -254,11 +230,6 @@ function SmartFilterBar({
   const visibleLocations = allLocationChoices.filter((location) =>
     normalizeLabel(location).includes(normalizeLabel(locationQuery))
   );
-  const canAddLocation =
-    locationQuery.trim().length > 1 &&
-    !locationOptions.some((item) => sameLabel(item, locationQuery)) &&
-    !selectedLocations.some((item) => sameLabel(item, locationQuery));
-
   return (
     <div className="rounded-[18px] border border-paper-line bg-paper px-2.5 py-2 shadow-soft">
       <div className="flex items-center gap-2">
@@ -367,7 +338,7 @@ function SmartFilterBar({
                   <input
                     value={locationQuery}
                     onChange={(event) => setLocationQuery(event.target.value)}
-                    placeholder="City, region, or country"
+                    placeholder="Select a city"
                     className="min-w-0 flex-1 bg-transparent outline-none placeholder:text-ink/38"
                   />
                 </label>
@@ -387,19 +358,10 @@ function SmartFilterBar({
                     </FilterChip>
                   ))}
 
-                  {canAddLocation && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const next = locationQuery.trim();
-                        onLocationAdd(next);
-                        setLocationQuery("");
-                      }}
-                      className="btn-press inline-flex h-8 items-center gap-1.5 rounded-pill border border-dashed border-ink/24 px-3 text-[12px] font-semibold text-ink/70 hover:border-ink hover:text-ink"
-                    >
-                      <Icon.Plus size={12} />
-                      {locationQuery.trim()}
-                    </button>
+                  {visibleLocations.length === 0 && (
+                    <div className="w-full rounded-[14px] bg-paper-cool px-3 py-2 text-[12px] text-ink/48">
+                      No listed cities match.
+                    </div>
                   )}
                 </div>
 
@@ -474,7 +436,18 @@ function buildLocationOptions(posts: Post[] | null, regionLabel: string): string
     ...LOCATION_PRESETS,
     ...(posts?.map((post) => post.location) ?? []),
     regionLabel,
-  ]).filter((location) => location && location !== "—" && location !== "your region");
+  ]).filter(
+    (location) =>
+      location &&
+      location !== "—" &&
+      location !== "your city" &&
+      isSpecificCityLocation(location)
+  );
+}
+
+function isSpecificCityLocation(location: string): boolean {
+  if (CITY_OPTIONS.some((city) => sameLabel(cityLabel(city), location))) return true;
+  return location.split(",").map((part) => part.trim()).filter(Boolean).length >= 2;
 }
 
 function postOriginLocation(
@@ -491,8 +464,9 @@ function postOriginLocation(
 
 function userOriginLocation(user: ApiUser): string {
   const city = user.locationNow?.city?.trim();
+  const region = user.locationNow?.region?.trim();
   const country = user.locationNow?.country?.trim();
-  if (city && country) return `${city}, ${country}`;
+  if (city && country) return [city, region, country].filter(Boolean).join(", ");
   return city || user.currentRegion || country || "";
 }
 

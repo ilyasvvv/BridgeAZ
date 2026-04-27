@@ -6,12 +6,14 @@ import { TopBar } from "@/components/TopBar";
 import { ProfileHeader, ProfileTabs } from "@/components/ProfileHeader";
 import { ProfileAbout } from "@/components/ProfileAbout";
 import { PostCard, type Post } from "@/components/PostCard";
+import { CityCombobox } from "@/components/CityCombobox";
 import { Icon } from "@/components/Icon";
 import { AnimatedLogo } from "@/components/AnimatedLogo";
 import { useAuth } from "@/lib/auth";
 import { postsApi } from "@/lib/posts";
 import { usersApi } from "@/lib/users";
 import { apiPostToUiPost, userToProfileMeta } from "@/lib/mappers";
+import { cityLabel, type CityOption } from "@/lib/cities";
 import type { ApiUser } from "@/lib/types";
 
 export default function ProfilePage() {
@@ -44,7 +46,10 @@ function ProfilePageContent() {
     bio: "",
     currentRegion: "",
     city: "",
+    region: "",
     country: "",
+    lat: "",
+    lon: "",
     skills: "",
     canHelpWith: "",
     needHelpWith: "",
@@ -85,7 +90,10 @@ function ProfilePageContent() {
           bio: me.bio || "",
           currentRegion: me.currentRegion || "",
           city: me.locationNow?.city || "",
+          region: me.locationNow?.region || "",
           country: me.locationNow?.country || "",
+          lat: me.locationNow?.lat != null ? String(me.locationNow.lat) : "",
+          lon: (me.locationNow?.lon ?? me.locationNow?.lng) != null ? String(me.locationNow?.lon ?? me.locationNow?.lng) : "",
           skills: (me.skills || []).join(", "),
           canHelpWith: (me.canHelpWith || []).join(", "),
           needHelpWith: (me.needHelpWith || me.needsHelpWith || []).join(", "),
@@ -132,10 +140,13 @@ function ProfilePageContent() {
         username: form.username.trim(),
         headline: form.headline.trim(),
         bio: form.bio.trim(),
-        currentRegion: form.currentRegion.trim(),
+        currentRegion: form.city && form.country ? cityLabel(profileCityFromForm(form)) : form.currentRegion.trim(),
         locationNow: {
           city: form.city.trim(),
           country: form.country.trim(),
+          region: form.region.trim() || undefined,
+          lat: parseCoordinate(form.lat),
+          lon: parseCoordinate(form.lon),
         },
         skills: form.skills
           .split(",")
@@ -210,6 +221,18 @@ function ProfilePageContent() {
             setSaved(false);
             setForm((current) => ({ ...current, [key]: value }));
           }}
+          onCityChange={(city) => {
+            setSaved(false);
+            setForm((current) => ({
+              ...current,
+              currentRegion: city ? cityLabel(city) : "",
+              city: city?.city || "",
+              region: city?.region || "",
+              country: city?.country || "",
+              lat: city ? String(city.lat) : "",
+              lon: city ? String(city.lon) : "",
+            }));
+          }}
           onClose={() => setEditOpen(false)}
           onSave={saveProfile}
           saving={saving}
@@ -234,6 +257,7 @@ function ProfileLoading() {
 function ProfileEditorDialog({
   form,
   onChange,
+  onCityChange,
   onClose,
   onSave,
   saving,
@@ -241,6 +265,7 @@ function ProfileEditorDialog({
 }: {
   form: Record<string, string>;
   onChange: (key: string, value: string) => void;
+  onCityChange: (city: CityOption | null) => void;
   onClose: () => void;
   onSave: () => Promise<boolean>;
   saving: boolean;
@@ -287,10 +312,11 @@ function ProfileEditorDialog({
           </section>
 
           <section className="grid gap-4 border-t border-paper-line pt-5">
-            <div className="grid gap-4 md:grid-cols-3">
-              <Field label="Region" value={form.currentRegion} onChange={(value) => onChange("currentRegion", value)} />
-              <Field label="City" value={form.city} onChange={(value) => onChange("city", value)} />
-              <Field label="Country" value={form.country} onChange={(value) => onChange("country", value)} />
+            <div>
+              <CityCombobox
+                selected={form.city && form.country ? profileCityFromForm(form) : null}
+                onSelect={onCityChange}
+              />
             </div>
           </section>
 
@@ -409,4 +435,20 @@ function parseList(value: string) {
     .split(/,|\n/)
     .map((item) => item.trim())
     .filter(Boolean);
+}
+
+function profileCityFromForm(form: Record<string, string>): CityOption {
+  return {
+    value: `profile-${form.city}-${form.region}-${form.country}`.toLowerCase(),
+    city: form.city,
+    region: form.region || undefined,
+    country: form.country,
+    lat: parseCoordinate(form.lat) || 0,
+    lon: parseCoordinate(form.lon) || 0,
+  };
+}
+
+function parseCoordinate(value: string): number | undefined {
+  const coordinate = Number(value);
+  return Number.isFinite(coordinate) ? coordinate : undefined;
 }

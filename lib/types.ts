@@ -18,7 +18,7 @@ export interface ApiUser {
   userType: string;
   currentRegion?: string;
   headline?: string;
-  locationNow?: { country?: string; city?: string };
+  locationNow?: { country?: string; city?: string; region?: string; lat?: number; lon?: number; lng?: number };
   originCountry?: string;
   profileVisibility?: "public" | "private";
   isPrivate?: boolean;
@@ -62,7 +62,7 @@ export interface ApiAuthor {
   profilePhotoUrl?: string;
   profilePictureUrl?: string;
   currentRegion?: string;
-  locationNow?: { country?: string; city?: string };
+  locationNow?: { country?: string; city?: string; region?: string; lat?: number; lon?: number; lng?: number };
   accountType?: AccountType;
   isMentor?: boolean;
 }

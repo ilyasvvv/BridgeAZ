@@ -2,17 +2,38 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent, type ReactNode } from "react";
 import clsx from "clsx";
+import { AnimatedLogo, type LogoMotion } from "@/components/AnimatedLogo";
 import { Logo } from "@/components/Logo";
-import { CircleMark } from "@/components/CircleMark";
 import { Button } from "@/components/Button";
+import { CityCombobox } from "@/components/CityCombobox";
 import { useAuth } from "@/lib/auth";
 import { warmApi } from "@/lib/api";
 import { emitPlayfulBurst } from "@/lib/playful";
+import { cityLabel, type CityOption } from "@/lib/cities";
 
 type Step = 1 | 2 | 3;
-type Role = "personal" | "circle";
+
+const INTENT_OPTIONS = [
+  "Meet nearby Azerbaijanis",
+  "Find events",
+  "Career help",
+  "Student life",
+  "Housing",
+  "Family community",
+];
+
+const HELP_OPTIONS = [
+  "Local tips",
+  "Career referrals",
+  "University advice",
+  "Translation",
+  "Events",
+  "Housing leads",
+];
+
+const LANGUAGE_OPTIONS = ["Azerbaijani", "English", "Turkish", "Russian", "French", "German"];
 
 export default function SignupPage({
   initialTab = "signup",
@@ -24,17 +45,18 @@ export default function SignupPage({
 
   const [tab, setTab] = useState<"login" | "signup">(initialTab);
   const [step, setStep] = useState<Step>(1);
-  const [role, setRole] = useState<Role>("personal");
 
-  // Signup form state
   const [name, setName] = useState("");
   const [username, setUsername] = useState("");
-  const [currentRegion, setCurrentRegion] = useState("");
+  const [selectedCity, setSelectedCity] = useState<CityOption | null>(null);
+  const [lookingFor, setLookingFor] = useState<string[]>([]);
+  const [canHelpWith, setCanHelpWith] = useState<string[]>([]);
+  const [languages, setLanguages] = useState<string[]>([]);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [agreed, setAgreed] = useState(false);
+  const [mascotMotion, setMascotMotion] = useState<LogoMotion>("full-sway");
 
-  // Login form state
   const [loginId, setLoginId] = useState("");
   const [loginPassword, setLoginPassword] = useState("");
 
@@ -45,9 +67,19 @@ export default function SignupPage({
     void warmApi();
   }, []);
 
+  function exciteMascot() {
+    setMascotMotion("full-party");
+    window.setTimeout(() => setMascotMotion("full-sway"), 1400);
+  }
+
   async function handleSignup(e: FormEvent) {
     e.preventDefault();
     setError(null);
+    if (!selectedCity) {
+      setError("Choose a city from the list.");
+      setStep(1);
+      return;
+    }
     if (!name.trim() || username.trim().length < 3 || !email.trim() || password.length < 10) {
       setError("Please complete all fields with a valid email and a 10+ character password.");
       return;
@@ -67,8 +99,17 @@ export default function SignupPage({
         username: username.trim(),
         email: email.trim(),
         password,
-        accountType: role,
-        currentRegion: currentRegion.trim(),
+        currentRegion: cityLabel(selectedCity),
+        locationNow: {
+          city: selectedCity.city,
+          country: selectedCity.country,
+          region: selectedCity.region,
+          lat: selectedCity.lat,
+          lon: selectedCity.lon,
+        },
+        lookingFor,
+        canHelpWith,
+        languages,
       });
       router.push("/home");
     } catch (err: any) {
@@ -101,7 +142,7 @@ export default function SignupPage({
       <div className="absolute -top-40 -left-40 w-[720px] h-[720px] rounded-full border border-ink/[0.06]" />
       <div className="absolute -bottom-60 -right-40 w-[820px] h-[820px] rounded-full border border-ink/[0.06]" />
 
-      <div className="relative max-w-[1400px] mx-auto px-6 lg:px-10 py-10 grid lg:grid-cols-[1.1fr,1fr] gap-10 items-center min-h-screen">
+      <div className="relative max-w-[1400px] mx-auto px-6 lg:px-10 py-10 grid lg:grid-cols-[1.05fr,1fr] gap-10 items-center min-h-screen">
         <div>
           <Link href="/"><Logo /></Link>
           <span className="mt-10 inline-flex items-center px-3 py-1 rounded-pill bg-white border border-paper-line shadow-soft text-[10.5px] font-semibold tracking-[0.18em]">
@@ -110,10 +151,29 @@ export default function SignupPage({
           <h1 className="mt-5 font-display text-[clamp(44px,6.2vw,88px)] leading-[0.92] tracking-[-0.035em] font-medium">
             Find your <span className="italic font-light">circle</span>
             <br />
-            abroad.
+            by city.
           </h1>
-          <div className="mt-16 hidden lg:flex justify-start">
-            <CircleMark size={440} />
+          <div className="mt-12 hidden lg:flex items-center gap-7">
+            <div className="relative flex h-[300px] w-[300px] items-center justify-center">
+              <div className="absolute inset-0 rounded-full border border-ink/10" />
+              <div className="absolute inset-8 rounded-full border border-ink/10 animate-spin-slower" />
+              <AnimatedLogo size={210} motion={mascotMotion} title="bizim circle mascot" />
+            </div>
+            <button
+              type="button"
+              onClick={(event) => {
+                exciteMascot();
+                emitPlayfulBurst("xoş gəldin", event.clientX, event.clientY);
+              }}
+              className="btn-press max-w-[260px] rounded-[22px] border border-paper-line bg-paper p-5 text-left shadow-soft transition hover:-translate-y-0.5 hover:border-ink/20"
+              aria-label="Greet the bizim circle mascot"
+            >
+              <div className="text-[11px] font-bold tracking-[0.16em] text-ink/45">XOŞ GƏLMİSƏN</div>
+              <div className="mt-3 text-[22px] font-semibold leading-tight tracking-tight">
+                Salam, xoş gəldin.
+              </div>
+              <p className="mt-3 text-[13px] leading-5 text-ink/55">Buyur, öz evindir.</p>
+            </button>
           </div>
         </div>
 
@@ -136,10 +196,7 @@ export default function SignupPage({
                   setError(null);
                   emitPlayfulBurst("login", event.clientX, event.clientY);
                 }}
-                className={clsx(
-                  "relative h-10 rounded-pill",
-                  tab === "login" ? "text-ink" : "text-ink/50"
-                )}
+                className={clsx("relative h-10 rounded-pill", tab === "login" ? "text-ink" : "text-ink/50")}
               >
                 Log in
               </button>
@@ -151,10 +208,7 @@ export default function SignupPage({
                   setError(null);
                   emitPlayfulBurst("signup", event.clientX, event.clientY);
                 }}
-                className={clsx(
-                  "relative h-10 rounded-pill",
-                  tab === "signup" ? "text-ink" : "text-ink/50"
-                )}
+                className={clsx("relative h-10 rounded-pill", tab === "signup" ? "text-ink" : "text-ink/50")}
               >
                 Sign up
               </button>
@@ -164,8 +218,8 @@ export default function SignupPage({
               <>
                 <div className="mt-6 flex items-center gap-2">
                   {[
-                    { n: 1, label: "ROLE" },
-                    { n: 2, label: "DETAILS" },
+                    { n: 1, label: "CITY" },
+                    { n: 2, label: "BASICS" },
                     { n: 3, label: "SECURITY" },
                   ].map((s) => {
                     const active = step === (s.n as Step);
@@ -200,26 +254,28 @@ export default function SignupPage({
                   {step === 1 && (
                     <div className="mt-8">
                       <h2 className="font-display text-[30px] leading-tight tracking-[-0.02em] font-medium">
-                        Pick your lane
+                        Choose your city
                       </h2>
 
-                      <div className="mt-5 grid grid-cols-2 gap-3">
-                        <RoleCard
-                          selected={role === "personal"}
-                          onClick={() => setRole("personal")}
-                          title="Personal account"
-                          bannerKind="rect"
-                        />
-                        <RoleCard
-                          selected={role === "circle"}
-                          onClick={() => setRole("circle")}
-                          title="Create a circle"
-                          bannerKind="round"
-                        />
+                      <div className="mt-6 grid gap-3">
+                        <CityCombobox selected={selectedCity} onSelect={setSelectedCity} />
                       </div>
 
+                      {error && <div className="mt-4"><ErrorText>{error}</ErrorText></div>}
+
                       <div className="mt-6">
-                        <Button type="button" size="lg" onClick={() => setStep(2)}>
+                        <Button
+                          type="button"
+                          size="lg"
+                          onClick={() => {
+                            if (!selectedCity) {
+                              setError("Choose a city from the list.");
+                              return;
+                            }
+                            setError(null);
+                            setStep(2);
+                          }}
+                        >
                           Continue
                           <Arrow />
                         </Button>
@@ -230,29 +286,24 @@ export default function SignupPage({
                   {step === 2 && (
                     <div className="mt-8">
                       <h2 className="font-display text-[30px] leading-tight tracking-[-0.02em] font-medium">
-                        The basics
+                        Your profile
                       </h2>
 
                       <div className="mt-6 grid gap-3">
-                        <Field
-                          label={role === "personal" ? "Your name" : "Circle name"}
-                          placeholder={role === "personal" ? "Leyla Mammadova" : "Azerbaijanis in Berlin"}
-                          value={name}
-                          onChange={setName}
-                        />
+                        <Field label="Your name" placeholder="Leyla Mammadova" value={name} onChange={setName} />
                         <Field
                           label="Username"
                           placeholder="leyla"
                           value={username}
                           onChange={(v) => setUsername(v.toLowerCase().replace(/[^a-z0-9._]/g, ""))}
                         />
-                        <Field
-                          label="Location"
-                          placeholder="Berlin, Germany"
-                          value={currentRegion}
-                          onChange={setCurrentRegion}
-                        />
                       </div>
+
+                      <ChipGroup title="Looking for (optional)" values={lookingFor} options={INTENT_OPTIONS} onChange={setLookingFor} />
+                      <ChipGroup title="Can help with (optional)" values={canHelpWith} options={HELP_OPTIONS} onChange={setCanHelpWith} />
+                      <ChipGroup title="Languages (optional)" values={languages} options={LANGUAGE_OPTIONS} onChange={setLanguages} />
+
+                      {error && <div className="mt-4"><ErrorText>{error}</ErrorText></div>}
 
                       <div className="mt-6 flex items-center gap-2">
                         <Button type="button" variant="ghost" size="lg" onClick={() => setStep(1)}>
@@ -297,26 +348,22 @@ export default function SignupPage({
                           onChange={(e) => setAgreed(e.target.checked)}
                         />
                         <span>
-                          I agree to the terms and confirm I'm using this platform to meet real people — not to spam.
+                          I agree to the terms and confirm I'm using this platform to meet real people, not to spam.
                         </span>
                       </label>
 
-                      {error && <ErrorText>{error}</ErrorText>}
+                      {error && <div className="mt-4"><ErrorText>{error}</ErrorText></div>}
 
                       <div className="mt-6 flex items-center gap-2">
                         <Button type="button" variant="ghost" size="lg" onClick={() => setStep(2)}>
                           Back
                         </Button>
                         <Button type="submit" size="lg" disabled={submitting}>
-                          {submitting ? "Creating…" : "Create account"}
+                          {submitting ? "Creating..." : "Create account"}
                           {!submitting && <Arrow />}
                         </Button>
                       </div>
                     </div>
-                  )}
-
-                  {step !== 3 && error && (
-                    <div className="mt-4"><ErrorText>{error}</ErrorText></div>
                   )}
                 </form>
               </>
@@ -330,14 +377,14 @@ export default function SignupPage({
 
                 <div className="mt-6 grid gap-3">
                   <Field label="Email or username" placeholder="you@mail.com" type="text" value={loginId} onChange={setLoginId} required autoComplete="username" />
-                  <Field label="Password" placeholder="••••••••" type="password" value={loginPassword} onChange={setLoginPassword} required autoComplete="current-password" />
+                  <Field label="Password" placeholder="Password" type="password" value={loginPassword} onChange={setLoginPassword} required autoComplete="current-password" />
                 </div>
 
                 {error && <div className="mt-4"><ErrorText>{error}</ErrorText></div>}
 
                 <div className="mt-6">
                   <Button type="submit" size="lg" disabled={submitting}>
-                    {submitting ? "Logging in…" : "Log in"}
+                    {submitting ? "Logging in..." : "Log in"}
                     {!submitting && <Arrow />}
                   </Button>
                 </div>
@@ -350,40 +397,42 @@ export default function SignupPage({
   );
 }
 
-function RoleCard({
-  selected,
-  onClick,
+function ChipGroup({
   title,
-  bannerKind,
+  values,
+  options,
+  onChange,
 }: {
-  selected: boolean;
-  onClick: () => void;
   title: string;
-  bannerKind: "rect" | "round";
+  values: string[];
+  options: string[];
+  onChange: (values: string[]) => void;
 }) {
   return (
-    <button
-      type="button"
-      onClick={(event) => {
-        onClick();
-        emitPlayfulBurst(title, event.clientX, event.clientY);
-      }}
-      className={clsx(
-        "text-left p-5 rounded-[22px] transition-all duration-200 btn-press min-h-[170px] flex flex-col gap-4",
-        selected
-          ? "bg-ink text-paper shadow-pop"
-          : "bg-paper border border-paper-line text-ink hover:border-ink/30"
-      )}
-    >
-      {bannerKind === "rect" ? (
-        <span className={clsx("w-10 h-10 rounded-[10px]", selected ? "bg-paper/15" : "bg-ink/90")} aria-hidden />
-      ) : (
-        <span className={clsx("w-10 h-10 rounded-full", selected ? "bg-paper/15 border border-paper/30" : "border border-ink/20")} aria-hidden />
-      )}
-      <div>
-        <div className="font-display text-[19px] font-semibold tracking-tight">{title}</div>
+    <section className="mt-5">
+      <div className="text-[11px] font-semibold tracking-[0.14em] text-ink/50 uppercase">{title}</div>
+      <div className="mt-2 flex flex-wrap gap-2">
+        {options.map((option) => {
+          const active = values.includes(option);
+          return (
+            <button
+              key={option}
+              type="button"
+              aria-pressed={active}
+              onClick={() => onChange(toggleOption(values, option))}
+              className={clsx(
+                "btn-press h-8 rounded-pill px-3 text-[12px] font-semibold transition",
+                active
+                  ? "bg-ink text-paper shadow-soft"
+                  : "bg-paper-cool text-ink/65 hover:text-ink"
+              )}
+            >
+              {option}
+            </button>
+          );
+        })}
       </div>
-    </button>
+    </section>
   );
 }
 
@@ -445,10 +494,7 @@ function PasswordStrength({ value }: { value: string }) {
         {bars.map((i) => (
           <span
             key={i}
-            className={clsx(
-              "h-1.5 flex-1 rounded-full transition-colors",
-              i < score ? "bg-ink" : "bg-paper-cool"
-            )}
+            className={clsx("h-1.5 flex-1 rounded-full transition-colors", i < score ? "bg-ink" : "bg-paper-cool")}
           />
         ))}
       </div>
@@ -459,12 +505,18 @@ function PasswordStrength({ value }: { value: string }) {
   );
 }
 
-function ErrorText({ children }: { children: React.ReactNode }) {
+function ErrorText({ children }: { children: ReactNode }) {
   return (
     <div className="px-4 py-2.5 rounded-[14px] bg-[#fbeaea] border border-[#e6c3c3] text-[12.5px] text-[#b02a2a]">
       {children}
     </div>
   );
+}
+
+function toggleOption(values: string[], option: string): string[] {
+  return values.includes(option)
+    ? values.filter((value) => value !== option)
+    : [...values, option];
 }
 
 function Arrow() {

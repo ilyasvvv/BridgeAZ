@@ -126,7 +126,7 @@ export function MessagesDock({
   }
 
   return (
-    <div className="w-full rounded-[24px] bg-paper border border-paper-line shadow-pop overflow-hidden flex flex-col h-[min(720px,calc(100dvh-7rem))] min-h-[500px]">
+    <div className="w-full rounded-[24px] bg-paper border border-paper-line shadow-pop overflow-hidden flex flex-col h-full min-h-0">
       <div className="flex items-center justify-between p-4 border-b border-paper-line">
         <div className="flex items-center gap-2">
           <span className="w-7 h-7 rounded-full bg-ink text-paper inline-flex items-center justify-center">
@@ -294,5 +294,78 @@ export function MessagesDock({
         </div>
       </div>
     </div>
+  );
+}
+
+export function FloatingMessagesDock({
+  open,
+  onToggle,
+  onClose,
+}: {
+  open: boolean;
+  onToggle: () => void;
+  onClose: () => void;
+}) {
+  const { user, status } = useAuth();
+  const enabled = status === "authenticated";
+  const { threads } = useLive();
+  useThreadsFast(enabled);
+  const totalUnread = threads.reduce((sum, t) => sum + unreadCount(t, user?._id), 0);
+
+  const previewNames = threads
+    .filter((t) => unreadCount(t, user?._id) > 0)
+    .map((t) => otherFor(t, user?._id)?.name)
+    .filter(Boolean) as string[];
+  const previewLabel = previewNames.length
+    ? previewNames.length <= 2
+      ? previewNames.join(", ")
+      : `${previewNames.slice(0, 2).join(", ")}, +${previewNames.length - 2}`
+    : "no new replies";
+
+  if (!open) {
+    return (
+      <div className="fixed bottom-5 right-5 z-50">
+        <button
+          onClick={onToggle}
+          aria-label="Open messages"
+          className="group flex items-center gap-3 h-14 pl-3 pr-5 rounded-pill bg-ink text-paper shadow-pop btn-press hover:-translate-y-[1px] transition-transform"
+        >
+          <span className="relative inline-flex items-center justify-center w-9 h-9 rounded-full bg-paper text-ink">
+            <Icon.Chat size={16} />
+            {totalUnread > 0 && (
+              <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1 rounded-full bg-ink text-paper text-[10px] font-bold flex items-center justify-center border-2 border-paper">
+                {totalUnread}
+              </span>
+            )}
+          </span>
+          <span className="text-left">
+            <span className="block text-[12.5px] font-semibold tracking-tight leading-tight">Messages</span>
+            <span className="block text-[10.5px] font-medium text-paper/55 leading-tight mt-0.5">
+              {totalUnread > 0 ? `${totalUnread} unread · ${previewLabel}` : "all caught up"}
+            </span>
+          </span>
+          <span className="text-paper/60 group-hover:text-paper transition text-[14px] leading-none">→</span>
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <>
+      <div
+        className="fixed inset-0 z-40 bg-ink/10 md:bg-transparent"
+        onClick={onClose}
+        aria-hidden
+      />
+      <div
+        className="fixed bottom-5 right-5 left-5 md:left-auto z-50 animate-dock-rise"
+        style={{
+          width: "min(760px, calc(100vw - 2.5rem))",
+          height: "min(560px, calc(100vh - 2.5rem))",
+        }}
+      >
+        <MessagesDock open={true} onToggle={onClose} />
+      </div>
+    </>
   );
 }

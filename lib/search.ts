@@ -11,7 +11,7 @@ export type SearchUser = {
   profilePictureUrl?: string;
   headline?: string;
   currentRegion?: string;
-  locationNow?: { country?: string; city?: string };
+  locationNow?: { country?: string; city?: string; region?: string; lat?: number; lon?: number; lng?: number };
   isMentor?: boolean;
   education?: { institution?: string; fieldOfStudy?: string }[];
   experience?: { company?: string; org?: string; title?: string }[];

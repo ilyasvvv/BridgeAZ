@@ -37,7 +37,10 @@ export function PeopleForYou({ items }: { items: MiniProfile[] }) {
   return (
     <section className="rail-card rail-card-left rounded-[22px] bg-paper border border-paper-line p-4 [--rail-compact:226px] [--rail-expanded:520px]">
       <div className="flex items-center justify-between">
-        <h3 className="text-[11px] font-bold tracking-[0.18em] text-ink/55">PEOPLE FOR YOU</h3>
+        <div>
+          <h3 className="text-[11px] font-bold tracking-[0.18em] text-ink/55">PEOPLE FOR YOU</h3>
+          <p className="mt-0.5 text-[10.5px] font-semibold text-ink/38">closest first</p>
+        </div>
         <Link href="/search?scope=people" className="text-[11px] text-ink/50 hover:text-ink">see all</Link>
       </div>
       <ul className="mt-3 space-y-2.5">

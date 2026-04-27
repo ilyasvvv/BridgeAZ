@@ -16,7 +16,7 @@ export type UserSearchResult = {
   headline?: string;
   bio?: string;
   skills?: string[];
-  locationNow?: { country?: string; city?: string };
+  locationNow?: { country?: string; city?: string; region?: string; lat?: number; lon?: number; lng?: number };
 };
 
 export type UpdateProfileInput = Partial<{
@@ -39,7 +39,7 @@ export type UpdateProfileInput = Partial<{
   links: { label?: string; type?: string; url: string }[];
   socialLinks: { linkedin?: string; github?: string; website?: string };
   isMentor: boolean;
-  locationNow: { country?: string; city?: string };
+  locationNow: { country?: string; city?: string; region?: string; lat?: number; lon?: number; lng?: number };
   mentorshipAvailability: string;
 }>;
 

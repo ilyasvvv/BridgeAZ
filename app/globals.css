@@ -57,6 +57,57 @@ html {
   justify-content: center;
 }
 
+/* ── Messages page design helpers ─────────────────────────────────────────── */
+@keyframes msgBubbleIn {
+  0% { opacity: 0; transform: translateY(6px) scale(0.96); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+.msg-bubble-in { animation: msgBubbleIn 260ms cubic-bezier(0.2,0.8,0.2,1) both; }
+
+@keyframes msgBounceDot {
+  0%,80%,100% { transform: translateY(0); opacity: .35; }
+  40% { transform: translateY(-3px); opacity: 1; }
+}
+.msg-typing-dot { animation: msgBounceDot 1.2s ease-in-out infinite; }
+
+@keyframes msgFloatUp {
+  0% { opacity: 0; transform: translate(0, 20px) scale(0.6) rotate(var(--r0,0deg)); }
+  20% { opacity: 1; }
+  100% { opacity: 0; transform: translate(var(--dx,0px), -180px) scale(1.05) rotate(var(--r1,0deg)); }
+}
+.msg-float-up { animation: msgFloatUp 1800ms cubic-bezier(0.2,0.6,0.2,1) forwards; }
+
+@keyframes msgEggPop {
+  0% { opacity: 0; transform: translate(-50%, -50%) scale(0.8); filter: blur(6px); }
+  20% { opacity: 1; filter: blur(0); }
+  100% { opacity: 0; transform: translate(-50%, calc(-50% - 30px)) scale(1.04); filter: blur(0); }
+}
+.msg-egg-pop { animation: msgEggPop 2400ms cubic-bezier(0.2,0.7,0.2,1) forwards; }
+
+@keyframes msgConfetti {
+  0% { opacity: 0; transform: translate(0,0) rotate(0); }
+  10% { opacity: 1; }
+  100% { opacity: 0; transform: translate(var(--cx,80px), var(--cy,140px)) rotate(var(--cr,360deg)); }
+}
+.msg-confetti-piece { animation: msgConfetti 2200ms cubic-bezier(0.2,0.7,0.3,1) forwards; }
+
+.msg-chat-active { box-shadow: inset 3px 0 0 0 #0A0A0A; }
+
+.msg-paper-grain {
+  background-image:
+    radial-gradient(rgba(0,0,0,0.018) 1px, transparent 1px),
+    radial-gradient(rgba(0,0,0,0.012) 1px, transparent 1px);
+  background-size: 18px 18px, 32px 32px;
+  background-position: 0 0, 9px 9px;
+}
+
+.msg-surface-warm     { background: #FAFAF8; }
+.msg-surface-mint     { background: #F0FAF1; }
+.msg-surface-sand     { background: #FBF7EE; }
+.msg-surface-sky      { background: #F0F5FB; }
+.msg-surface-rose     { background: #FBF1F4; }
+.msg-surface-graphite { background: #EFEFEC; }
+
 /* Button press effect */
 .btn-press {
   transition: transform 180ms cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 180ms ease, background 180ms ease;
@@ -1948,7 +1999,7 @@ html {
 
 .brand-accent-btn:hover {
   background: var(--accent-hover, #b4f25f) !important;
-  box-shadow: 0 0 0 6px var(--accent-ring, rgba(193, 255, 114, 0.55));
+  box-shadow: 0 0 0 2px #0a0a0a;
 }
 
 .brand-accent-btn:active {
@@ -1970,8 +2021,8 @@ html {
 .brand-accent-btn-outline:hover {
   background: var(--accent-hover-bg, #c1ff72);
   color: var(--accent-hover-text, #0a0a0a);
-  border-color: var(--accent-hover-bg, #c1ff72);
-  box-shadow: 0 0 0 6px var(--accent-ring, rgba(193, 255, 114, 0.55));
+  border-color: #0a0a0a;
+  box-shadow: 0 0 0 2px #0a0a0a;
 }
 
 .brand-accent-btn-outline:active {

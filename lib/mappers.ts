@@ -169,15 +169,17 @@ export function apiPostToUiPost(
 
 function authorLocation(a: ApiAuthor): string {
   const city = a.locationNow?.city;
+  const region = a.locationNow?.region;
   const country = a.locationNow?.country;
-  if (city && country) return `${city}, ${country}`;
+  if (city && country) return [city, region, country].filter(Boolean).join(", ");
   return city || a.currentRegion || country || "";
 }
 
 function userLocation(u: ApiUser): string {
   const city = u.locationNow?.city;
+  const region = u.locationNow?.region;
   const country = u.locationNow?.country;
-  if (city && country) return `${city}, ${country}`;
+  if (city && country) return [city, region, country].filter(Boolean).join(", ");
   return u.currentRegion || country || city || "—";
 }
 

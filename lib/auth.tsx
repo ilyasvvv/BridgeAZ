@@ -29,8 +29,12 @@ export interface RegisterInput {
   email: string;
   username: string;
   password: string;
-  accountType: "personal" | "circle";
+  accountType?: "personal";
   currentRegion?: string;
+  locationNow?: { country?: string; city?: string; region?: string; lat?: number; lon?: number; lng?: number };
+  canHelpWith?: string[];
+  lookingFor?: string[];
+  languages?: string[];
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -81,9 +85,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         email: input.email,
         username: input.username,
         password: input.password,
-        accountType: input.accountType,
-        userType: input.accountType === "circle" ? "circle" : "member",
+        accountType: "personal",
+        userType: "member",
         currentRegion: input.currentRegion || "",
+        locationNow: input.locationNow,
+        canHelpWith: input.canHelpWith || [],
+        lookingFor: input.lookingFor || [],
+        languages: input.languages || [],
       },
       { auth: false, timeoutMs: AUTH_TIMEOUT_MS }
     );

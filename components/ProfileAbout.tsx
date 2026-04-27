@@ -23,7 +23,7 @@ export function ProfileAbout({ user, isOwner = false }: ProfileAboutProps) {
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <ProfileFact icon="User" label="Role" value={role} />
-        <ProfileFact icon="Pin" label="Location" value={user.currentRegion || user.locationNow?.country || "Not set"} />
+        <ProfileFact icon="Pin" label="Location" value={profileLocation(user)} />
         <ProfileFact icon="Globe" label="From" value={user.originCountry || "Not set"} />
         <ProfileFact icon="Calendar" label="Joined" value={formatJoined(user.createdAt)} />
       </div>
@@ -116,6 +116,14 @@ function ProfileFact({
       </div>
     </div>
   );
+}
+
+function profileLocation(user: ApiUser): string {
+  const city = user.locationNow?.city?.trim();
+  const region = user.locationNow?.region?.trim();
+  const country = user.locationNow?.country?.trim();
+  if (city && country) return [city, region, country].filter(Boolean).join(", ");
+  return city || user.currentRegion || country || "Not set";
 }
 
 function profileLinks(user: ApiUser) {

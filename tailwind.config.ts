@@ -21,6 +21,11 @@ const config: Config = {
           cool: "#F4F4F2",
           line: "#E8E8E6",
         },
+        lime: {
+          DEFAULT: "#C1FF72",
+          soft: "#E4FFC0",
+          deep: "#A8E85A",
+        },
       },
       boxShadow: {
         soft: "0 1px 2px rgba(0,0,0,0.04), 0 8px 24px -8px rgba(0,0,0,0.08)",
@@ -37,8 +42,13 @@ const config: Config = {
         "float": "float 6s ease-in-out infinite",
         "pulse-ring": "pulseRing 2.4s cubic-bezier(0.455, 0.03, 0.515, 0.955) infinite",
         "fade-up": "fadeUp 0.6s ease forwards",
+        "dock-rise": "dockRise 320ms cubic-bezier(0.2,0.8,0.2,1)",
       },
       keyframes: {
+        dockRise: {
+          "0%": { transform: "translateY(12px) scale(0.98)", opacity: "0" },
+          "100%": { transform: "translateY(0) scale(1)", opacity: "1" },
+        },
         float: {
           "0%,100%": { transform: "translateY(0)" },
           "50%": { transform: "translateY(-8px)" },

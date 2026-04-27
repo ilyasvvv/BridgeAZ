@@ -374,8 +374,9 @@ function ToolBtn({ icon, onClick }: { icon: keyof typeof Icon; onClick?: () => v
 
 function userOriginLocation(user: ApiUser | null): string | undefined {
   const city = user?.locationNow?.city?.trim();
+  const region = user?.locationNow?.region?.trim();
   const country = user?.locationNow?.country?.trim();
-  if (city && country) return `${city}, ${country}`;
+  if (city && country) return [city, region, country].filter(Boolean).join(", ");
   return city || user?.currentRegion || country || undefined;
 }
 
