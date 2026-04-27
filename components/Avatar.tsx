@@ -5,12 +5,16 @@ export function Avatar({
   hue = 220,
   kind = "personal",
   label,
+  src,
+  alt = "",
   className,
 }: {
   size?: number;
   hue?: number;
   kind?: "personal" | "circle";
   label?: string;
+  src?: string;
+  alt?: string;
   className?: string;
 }) {
   return (
@@ -26,9 +30,13 @@ export function Avatar({
         background: `conic-gradient(from ${hue}deg, #0A0A0A, #6B6B6B, #2B2B2B, #0A0A0A)`,
         fontSize: size * 0.34,
       }}
-      aria-hidden
+      aria-hidden={!src}
     >
-      {label ? <span className="relative z-10 tracking-tight">{label}</span> : null}
+      {src ? (
+        <img src={src} alt={alt} className="h-full w-full object-cover" />
+      ) : label ? (
+        <span className="relative z-10 tracking-tight">{label}</span>
+      ) : null}
     </span>
   );
 }
