@@ -4,6 +4,7 @@ import { Suspense, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { TopBar } from "@/components/TopBar";
 import { ProfileHeader, ProfileTabs } from "@/components/ProfileHeader";
+import { ProfileAbout } from "@/components/ProfileAbout";
 import { PostCard, type Post } from "@/components/PostCard";
 import { Icon } from "@/components/Icon";
 import { AnimatedLogo } from "@/components/AnimatedLogo";
@@ -24,11 +25,14 @@ export default function ProfilePage() {
 function ProfilePageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const initialTab = searchParams.get("tab") || "posts";
+  const initialTab = searchParams.get("tab") === "about" ? "about" : "posts";
+  const initialEditOpen =
+    searchParams.get("edit") === "profile" || searchParams.get("tab") === "edit";
   const { user, status, refresh } = useAuth();
   const [profileUser, setProfileUser] = useState<ApiUser | null>(null);
   const [posts, setPosts] = useState<Post[]>([]);
   const [tab, setTab] = useState(initialTab);
+  const [editOpen, setEditOpen] = useState(initialEditOpen);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
@@ -42,6 +46,10 @@ function ProfilePageContent() {
     city: "",
     country: "",
     skills: "",
+    canHelpWith: "",
+    needHelpWith: "",
+    lookingFor: "",
+    languages: "",
     website: "",
     linkedin: "",
     github: "",
@@ -50,6 +58,12 @@ function ProfilePageContent() {
   useEffect(() => {
     if (status === "unauthenticated") router.replace("/signin");
   }, [status, router]);
+
+  useEffect(() => {
+    const nextTab = searchParams.get("tab");
+    if (nextTab === "about" || nextTab === "posts") setTab(nextTab);
+    if (searchParams.get("edit") === "profile" || nextTab === "edit") setEditOpen(true);
+  }, [searchParams]);
 
   useEffect(() => {
     if (status !== "authenticated") return;
@@ -73,6 +87,10 @@ function ProfilePageContent() {
           city: me.locationNow?.city || "",
           country: me.locationNow?.country || "",
           skills: (me.skills || []).join(", "),
+          canHelpWith: (me.canHelpWith || []).join(", "),
+          needHelpWith: (me.needHelpWith || me.needsHelpWith || []).join(", "),
+          lookingFor: (me.lookingFor || []).join(", "),
+          languages: (me.languages || []).join(", "),
           website: me.socialLinks?.website || "",
           linkedin: me.socialLinks?.linkedin || "",
           github: me.socialLinks?.github || "",
@@ -89,12 +107,22 @@ function ProfilePageContent() {
   }, [status, user?._id]);
 
   const profile = useMemo(
-    () => (profileUser ? userToProfileMeta(profileUser, true) : null),
-    [profileUser]
+    () =>
+      profileUser
+        ? {
+            ...userToProfileMeta(profileUser, true),
+            stats: [
+              { label: "POSTS", value: String(posts.length) },
+              { label: "FOLLOWERS", value: "—" },
+              { label: "FOLLOWING", value: "—" },
+            ],
+          }
+        : null,
+    [profileUser, posts.length]
   );
 
   async function saveProfile() {
-    if (saving) return;
+    if (saving) return false;
     setSaving(true);
     setError(null);
     setSaved(false);
@@ -113,6 +141,10 @@ function ProfilePageContent() {
           .split(",")
           .map((skill) => skill.trim())
           .filter(Boolean),
+        canHelpWith: parseList(form.canHelpWith),
+        needHelpWith: parseList(form.needHelpWith),
+        lookingFor: parseList(form.lookingFor),
+        languages: parseList(form.languages),
         socialLinks: {
           website: form.website.trim() || undefined,
           linkedin: form.linkedin.trim() || undefined,
@@ -122,8 +154,10 @@ function ProfilePageContent() {
       setProfileUser(updated);
       setSaved(true);
       await refresh();
+      return true;
     } catch (err: any) {
       setError(err?.message || "Failed to save profile.");
+      return false;
     } finally {
       setSaving(false);
     }
@@ -131,7 +165,6 @@ function ProfilePageContent() {
 
   const tabs = [
     { key: "posts", label: "Posts", count: posts.length },
-    { key: "edit", label: "Edit profile" },
     { key: "about", label: "About" },
   ];
 
@@ -143,7 +176,7 @@ function ProfilePageContent() {
     <div className="min-h-screen bg-paper-warm">
       <TopBar />
       <main className="max-w-[1100px] mx-auto px-6 py-8 space-y-5">
-        <ProfileHeader profile={profile} onEditProfile={() => setTab("edit")} />
+        <ProfileHeader profile={profile} onEditProfile={() => setEditOpen(true)} />
 
         {error && (
           <div className="rounded-[18px] border border-paper-line bg-paper p-4 text-[13px] text-red-700">
@@ -165,20 +198,24 @@ function ProfilePageContent() {
                 </div>
               ))}
 
-            {tab === "edit" && (
-              <ProfileForm
-                form={form}
-                onChange={(key, value) => setForm((current) => ({ ...current, [key]: value }))}
-                onSave={saveProfile}
-                saving={saving}
-                saved={saved}
-              />
-            )}
-
-            {tab === "about" && <AboutPanel user={profileUser} />}
+            {tab === "about" && <ProfileAbout user={profileUser} isOwner />}
           </div>
         </div>
       </main>
+
+      {editOpen && (
+        <ProfileEditorDialog
+          form={form}
+          onChange={(key, value) => {
+            setSaved(false);
+            setForm((current) => ({ ...current, [key]: value }));
+          }}
+          onClose={() => setEditOpen(false)}
+          onSave={saveProfile}
+          saving={saving}
+          saved={saved}
+        />
+      )}
     </div>
   );
 }
@@ -194,48 +231,106 @@ function ProfileLoading() {
   );
 }
 
-function ProfileForm({
+function ProfileEditorDialog({
   form,
   onChange,
+  onClose,
   onSave,
   saving,
   saved,
 }: {
   form: Record<string, string>;
   onChange: (key: string, value: string) => void;
-  onSave: () => void;
+  onClose: () => void;
+  onSave: () => Promise<boolean>;
   saving: boolean;
   saved: boolean;
 }) {
   return (
-    <div className="grid gap-4 max-w-2xl">
-      <div className="grid md:grid-cols-2 gap-4">
-        <Field label="Name" value={form.name} onChange={(value) => onChange("name", value)} />
-        <Field label="Username" value={form.username} onChange={(value) => onChange("username", value.toLowerCase().replace(/[^a-z0-9_]/g, ""))} />
-      </div>
-      <Field label="Headline" value={form.headline} onChange={(value) => onChange("headline", value)} />
-      <Textarea label="Bio" value={form.bio} onChange={(value) => onChange("bio", value)} />
-      <div className="grid md:grid-cols-3 gap-4">
-        <Field label="Region" value={form.currentRegion} onChange={(value) => onChange("currentRegion", value)} />
-        <Field label="City" value={form.city} onChange={(value) => onChange("city", value)} />
-        <Field label="Country" value={form.country} onChange={(value) => onChange("country", value)} />
-      </div>
-      <Field label="Skills" hint="Comma separated" value={form.skills} onChange={(value) => onChange("skills", value)} />
-      <div className="grid md:grid-cols-3 gap-4">
-        <Field label="Website" value={form.website} onChange={(value) => onChange("website", value)} />
-        <Field label="LinkedIn" value={form.linkedin} onChange={(value) => onChange("linkedin", value)} />
-        <Field label="GitHub" value={form.github} onChange={(value) => onChange("github", value)} />
-      </div>
-      <div className="flex items-center gap-3">
-        <button
-          type="button"
-          onClick={onSave}
-          disabled={saving || !form.name.trim() || !form.username.trim()}
-          className="btn-press h-10 px-5 rounded-pill bg-ink text-paper text-[12.5px] font-semibold disabled:opacity-50"
-        >
-          {saving ? "Saving..." : "Save profile"}
-        </button>
-        {saved && <span className="text-[12px] text-ink/55">Saved.</span>}
+    <div
+      className="fixed inset-0 z-50 flex items-end justify-center bg-ink/35 px-4 py-5 backdrop-blur-sm sm:items-center"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="profile-editor-title"
+    >
+      <div className="max-h-[90vh] w-full max-w-[760px] overflow-y-auto rounded-[24px] border border-paper-line bg-paper shadow-pop">
+        <div className="sticky top-0 z-10 flex items-center gap-4 border-b border-paper-line bg-paper/95 px-5 py-4 backdrop-blur">
+          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#C1FF72] text-ink">
+            <Icon.Edit size={16} />
+          </div>
+          <div className="min-w-0 flex-1">
+            <h2 id="profile-editor-title" className="font-display text-[20px] font-semibold tracking-[-0.015em]">
+              Edit profile
+            </h2>
+            <p className="text-[12px] text-ink/50">
+              Update the details people see on your profile.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="btn-press flex h-9 w-9 items-center justify-center rounded-full border border-paper-line hover:border-ink/30"
+            aria-label="Close profile editor"
+          >
+            <Icon.Close size={14} />
+          </button>
+        </div>
+
+        <div className="grid gap-5 p-5">
+          <section className="grid gap-4">
+            <div className="grid gap-4 md:grid-cols-2">
+              <Field label="Name" value={form.name} onChange={(value) => onChange("name", value)} />
+              <Field label="Username" value={form.username} onChange={(value) => onChange("username", value.toLowerCase().replace(/[^a-z0-9_]/g, ""))} />
+            </div>
+            <Field label="Role / title" value={form.headline} onChange={(value) => onChange("headline", value)} />
+            <Textarea label="Bio" value={form.bio} onChange={(value) => onChange("bio", value)} rows={4} />
+          </section>
+
+          <section className="grid gap-4 border-t border-paper-line pt-5">
+            <div className="grid gap-4 md:grid-cols-3">
+              <Field label="Region" value={form.currentRegion} onChange={(value) => onChange("currentRegion", value)} />
+              <Field label="City" value={form.city} onChange={(value) => onChange("city", value)} />
+              <Field label="Country" value={form.country} onChange={(value) => onChange("country", value)} />
+            </div>
+          </section>
+
+          <section className="grid gap-4 border-t border-paper-line pt-5">
+            <Field label="Skills" hint="Comma separated" value={form.skills} onChange={(value) => onChange("skills", value)} />
+            <Textarea label="What I can help with" value={form.canHelpWith} onChange={(value) => onChange("canHelpWith", value)} rows={3} />
+            <Textarea label="What I need help with" value={form.needHelpWith} onChange={(value) => onChange("needHelpWith", value)} rows={3} />
+            <div className="grid gap-4 md:grid-cols-2">
+              <Field label="Looking for" hint="Comma separated" value={form.lookingFor} onChange={(value) => onChange("lookingFor", value)} />
+              <Field label="Languages" hint="Comma separated" value={form.languages} onChange={(value) => onChange("languages", value)} />
+            </div>
+          </section>
+
+          <section className="grid gap-4 border-t border-paper-line pt-5">
+            <div className="grid gap-4 md:grid-cols-3">
+              <Field label="Website" value={form.website} onChange={(value) => onChange("website", value)} />
+              <Field label="LinkedIn" value={form.linkedin} onChange={(value) => onChange("linkedin", value)} />
+              <Field label="GitHub" value={form.github} onChange={(value) => onChange("github", value)} />
+            </div>
+          </section>
+
+          <div className="sticky bottom-0 -mx-5 -mb-5 flex items-center gap-3 border-t border-paper-line bg-paper/95 px-5 py-4 backdrop-blur">
+            <button
+              type="button"
+              onClick={onSave}
+              disabled={saving || !form.name.trim() || !form.username.trim()}
+              className="btn-press h-10 rounded-pill bg-ink px-5 text-[12.5px] font-semibold text-paper disabled:opacity-50"
+            >
+              {saving ? "Saving..." : "Save profile"}
+            </button>
+            <button
+              type="button"
+              onClick={onClose}
+              className="btn-press h-10 rounded-pill border border-paper-line px-5 text-[12.5px] font-semibold hover:border-ink/30"
+            >
+              Done
+            </button>
+            {saved && <span className="text-[12px] text-ink/55">Saved.</span>}
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -271,10 +366,12 @@ function Textarea({
   label,
   value,
   onChange,
+  rows = 5,
 }: {
   label: string;
   value: string;
   onChange: (value: string) => void;
+  rows?: number;
 }) {
   return (
     <label className="block">
@@ -284,47 +381,10 @@ function Textarea({
       <textarea
         value={value}
         onChange={(event) => onChange(event.target.value)}
-        rows={5}
+        rows={rows}
         className="w-full px-4 py-3 rounded-[14px] bg-paper-warm border border-paper-line text-[14px] outline-none focus:border-ink/40 resize-none"
       />
     </label>
-  );
-}
-
-function AboutPanel({ user }: { user: ApiUser }) {
-  return (
-    <div className="max-w-prose text-[13.5px] text-ink/75 leading-relaxed space-y-4">
-      <p>{user.bio || "No bio yet."}</p>
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-3 border-t border-paper-line">
-        <Fact icon="Pin" label="Location" value={user.currentRegion || user.locationNow?.country || "Not set"} />
-        <Fact icon="Globe" label="From" value={user.originCountry || "Not set"} />
-        <Fact icon="Calendar" label="Joined" value={formatJoined(user.createdAt)} />
-        <Fact icon="User" label="Type" value={user.isMentor ? "Mentor" : "Member"} />
-      </div>
-    </div>
-  );
-}
-
-function Fact({
-  icon,
-  label,
-  value,
-}: {
-  icon: keyof typeof Icon;
-  label: string;
-  value: string;
-}) {
-  const Ico = Icon[icon];
-  return (
-    <div className="flex items-center gap-3">
-      <span className="w-9 h-9 rounded-full bg-paper-cool flex items-center justify-center text-ink/70">
-        <Ico size={14} />
-      </span>
-      <div>
-        <div className="text-[10.5px] tracking-[0.14em] text-ink/45 uppercase">{label}</div>
-        <div className="text-[13px] font-semibold">{value}</div>
-      </div>
-    </div>
   );
 }
 
@@ -344,9 +404,9 @@ function EmptyState() {
   );
 }
 
-function formatJoined(value?: string) {
-  if (!value) return "Recently";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "Recently";
-  return date.toLocaleDateString(undefined, { month: "long", year: "numeric" });
+function parseList(value: string) {
+  return value
+    .split(/,|\n/)
+    .map((item) => item.trim())
+    .filter(Boolean);
 }

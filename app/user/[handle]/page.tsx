@@ -1,12 +1,11 @@
 "use client";
 
 import { use, useEffect, useMemo, useState } from "react";
-import clsx from "clsx";
 import { useRouter } from "next/navigation";
 import { TopBar } from "@/components/TopBar";
 import { ProfileHeader, ProfileTabs } from "@/components/ProfileHeader";
+import { ProfileAbout } from "@/components/ProfileAbout";
 import { PostCard, type Post } from "@/components/PostCard";
-import { Icon } from "@/components/Icon";
 import { AnimatedLogo } from "@/components/AnimatedLogo";
 import { useAuth } from "@/lib/auth";
 import { postsApi } from "@/lib/posts";
@@ -97,8 +96,18 @@ export default function UserProfilePage({
 
   const isOwner = !!user && !!profileUser && user._id === profileUser._id;
   const profile = useMemo(
-    () => (profileUser ? userToProfileMeta(profileUser, isOwner) : null),
-    [profileUser, isOwner]
+    () =>
+      profileUser
+        ? {
+            ...userToProfileMeta(profileUser, isOwner),
+            stats: [
+              { label: "POSTS", value: String(posts.length) },
+              { label: "FOLLOWERS", value: "—" },
+              { label: "FOLLOWING", value: "—" },
+            ],
+          }
+        : null,
+    [profileUser, isOwner, posts.length]
   );
 
   async function startMessage() {
@@ -170,7 +179,7 @@ export default function UserProfilePage({
         <ProfileHeader
           profile={profile}
           onMessage={isOwner ? undefined : startMessage}
-          onEditProfile={isOwner ? () => router.push("/profile?tab=edit") : undefined}
+          onEditProfile={isOwner ? () => router.push("/profile?edit=profile") : undefined}
           onPrimaryAction={isOwner ? undefined : toggleFollow}
           primaryActionLabel={relationship?.following ? "Following" : "Follow"}
           primaryActionBusy={followBusy}
@@ -196,7 +205,7 @@ export default function UserProfilePage({
                 </div>
               ))}
 
-            {tab === "about" && <AboutPanel user={profileUser} />}
+            {tab === "about" && <ProfileAbout user={profileUser} isOwner={isOwner} />}
           </div>
         </div>
       </main>
@@ -231,86 +240,4 @@ function EmptyFeed({ isOwner }: { isOwner: boolean }) {
       </h3>
     </div>
   );
-}
-
-function AboutPanel({ user }: { user: ApiUser }) {
-  const links = [
-    ...(user.links || []).map((link) => ({ label: link.label || link.type || "Link", url: link.url })),
-    ...Object.entries(user.socialLinks || {})
-      .filter(([, url]) => !!url)
-      .map(([label, url]) => ({ label, url: url as string })),
-  ];
-
-  return (
-    <div className="max-w-prose text-[13.5px] text-ink/75 leading-relaxed space-y-5">
-      <p>{user.bio || "No bio yet."}</p>
-      {user.skills?.length ? (
-        <div className="flex flex-wrap gap-2">
-          {user.skills.map((skill) => (
-            <span key={skill} className="rounded-pill bg-paper-cool px-3 py-1 text-[11.5px] font-semibold">
-              {skill}
-            </span>
-          ))}
-        </div>
-      ) : null}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-3 border-t border-paper-line">
-        <Fact icon="Pin" label="Location" value={user.currentRegion || user.locationNow?.country || "Not set"} />
-        <Fact icon="Globe" label="Origin" value={user.originCountry || "Not set"} />
-        <Fact icon="User" label="Account" value={user.isMentor ? "Mentor" : "Member"} />
-        <Fact icon="Calendar" label="Joined" value={formatJoined(user.createdAt)} />
-      </div>
-      {links.length ? (
-        <div className="flex flex-wrap gap-2">
-          {links.map((link) => (
-            <a
-              key={`${link.label}-${link.url}`}
-              href={link.url}
-              target="_blank"
-              rel="noreferrer"
-              className="inline-flex items-center gap-1.5 h-8 rounded-pill border border-paper-line px-3 text-[12px] font-semibold hover:border-ink/30"
-            >
-              <Icon.Link size={12} />
-              {link.label}
-            </a>
-          ))}
-        </div>
-      ) : null}
-    </div>
-  );
-}
-
-function Fact({
-  icon,
-  label,
-  value,
-}: {
-  icon: keyof typeof Icon;
-  label: string;
-  value: string;
-}) {
-  const Ico = Icon[icon];
-  return (
-    <div className="flex items-center gap-3">
-      <span
-        className={clsx(
-          "w-9 h-9 rounded-full bg-paper-cool flex items-center justify-center text-ink/70"
-        )}
-      >
-        <Ico size={14} />
-      </span>
-      <div>
-        <div className="text-[10.5px] tracking-[0.14em] text-ink/45 uppercase">
-          {label}
-        </div>
-        <div className="text-[13px] font-semibold">{value}</div>
-      </div>
-    </div>
-  );
-}
-
-function formatJoined(value?: string) {
-  if (!value) return "Recently";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "Recently";
-  return date.toLocaleDateString(undefined, { month: "long", year: "numeric" });
 }

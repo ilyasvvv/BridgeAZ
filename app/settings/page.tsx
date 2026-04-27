@@ -82,10 +82,10 @@ export default function SettingsPage() {
           <section className="col-span-12 md:col-span-8 lg:col-span-9 rounded-[22px] bg-paper border border-paper-line p-6 md:p-8">
             {active === "account" && (
               <Panel title="Account">
-                <Field label="Display name" value={user?.name || "—"} editHref="/profile?tab=edit" />
-                <Field label="Handle" value={user?.username ? `@${user.username}` : "—"} editHref="/profile?tab=edit" />
+                <Field label="Display name" value={user?.name || "—"} editHref="/profile?edit=profile" />
+                <Field label="Handle" value={user?.username ? `@${user.username}` : "—"} editHref="/profile?edit=profile" />
                 <Field label="Email" value={user?.email || "—"} />
-                <Field label="Region" value={user?.currentRegion || "—"} editHref="/profile?tab=edit" />
+                <Field label="Region" value={user?.currentRegion || "—"} editHref="/profile?edit=profile" />
                 <div className="mt-4 rounded-[18px] border border-paper-line bg-paper-warm p-4 flex items-center gap-3">
                   <span className="w-9 h-9 rounded-full bg-ink text-paper flex items-center justify-center">
                     <Icon.SignOut size={14} />

@@ -32,6 +32,10 @@ export type UpdateProfileInput = Partial<{
   avatarUrl: string;
   resumeUrl: string;
   skills: string[];
+  canHelpWith: string[];
+  needHelpWith: string[];
+  lookingFor: string[];
+  languages: string[];
   links: { label?: string; type?: string; url: string }[];
   socialLinks: { linkedin?: string; github?: string; website?: string };
   isMentor: boolean;

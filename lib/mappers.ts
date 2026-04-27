@@ -81,11 +81,12 @@ export function userToProfileMeta(u: ApiUser, isOwner = false): ProfileMeta {
     joined: monthYear(u.createdAt),
     link,
     hue: hueFromString(u._id || u.username || u.name),
+    avatarUrl: avatarFromAuthor(u),
     isOwner,
     stats: [
-      { label: "SKILLS", value: String(u.skills?.length ?? 0) },
-      { label: "POSTS", value: "—" },
-      { label: "ROLE", value: u.isMentor ? "MENTOR" : "MEMBER" },
+      { label: "POSTS", value: String(u.postCount ?? u.postsCount ?? "—") },
+      { label: "FOLLOWERS", value: String(u.followerCount ?? u.followersCount ?? "—") },
+      { label: "FOLLOWING", value: String(u.followingCount ?? "—") },
     ],
   };
 }
@@ -100,6 +101,7 @@ export function circleToProfileMeta(c: ApiCircle): ProfileMeta {
     location: circleLocation(c),
     joined: monthYear(c.createdAt),
     hue: hueFromString(c._id || c.handle),
+    avatarUrl: c.avatarUrl,
     isOwner: !!c.isOwner,
     stats: [
       { label: "MEMBERS", value: String(c.memberCount ?? 0) },

@@ -22,6 +22,12 @@ export interface ApiUser {
   originCountry?: string;
   profileVisibility?: "public" | "private";
   isPrivate?: boolean;
+  postCount?: number;
+  postsCount?: number;
+  followerCount?: number;
+  followersCount?: number;
+  followingCount?: number;
+  circleCount?: number;
   roles: UserRole[];
   avatarUrl?: string;
   profilePictureUrl?: string;
@@ -32,6 +38,12 @@ export interface ApiUser {
   banned?: boolean;
   bio?: string;
   skills?: string[];
+  canHelpWith?: string[];
+  needHelpWith?: string[];
+  needsHelpWith?: string[];
+  lookingFor?: string[];
+  languages?: string[];
+  mentorshipAvailability?: string;
   links?: ApiLink[];
   education?: unknown[];
   experience?: unknown[];

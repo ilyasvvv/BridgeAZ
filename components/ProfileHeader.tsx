@@ -19,6 +19,7 @@ export type ProfileMeta = {
   link?: string;
   stats: { label: string; value: string }[];
   hue?: number;
+  avatarUrl?: string;
   isOwner?: boolean;
 };
 
@@ -60,13 +61,21 @@ export function ProfileHeader({
             <div className="w-[220px] h-[220px] rounded-full border border-ink/[0.1] absolute" />
           </div>
           {/* The circle "banner" itself */}
-          <div
-            className="relative w-36 h-36 md:w-44 md:h-44 rounded-full shadow-pop"
-            style={{
-              background: `conic-gradient(from ${hue}deg, #0A0A0A, #2B2B2B, #6B6B6B, #0A0A0A)`,
-            }}
-            aria-hidden
-          />
+          {profile.avatarUrl ? (
+            <img
+              src={profile.avatarUrl}
+              alt=""
+              className="relative h-36 w-36 rounded-full object-cover shadow-pop md:h-44 md:w-44"
+            />
+          ) : (
+            <div
+              className="relative w-36 h-36 md:w-44 md:h-44 rounded-full shadow-pop"
+              style={{
+                background: `conic-gradient(from ${hue}deg, #0A0A0A, #2B2B2B, #6B6B6B, #0A0A0A)`,
+              }}
+              aria-hidden
+            />
+          )}
         </div>
       )}
 
@@ -77,6 +86,8 @@ export function ProfileHeader({
               size={96}
               hue={hue}
               kind={profile.kind}
+              src={profile.avatarUrl}
+              alt={`${profile.name} avatar`}
               className="ring-4 ring-paper shadow-soft"
             />
           </div>
@@ -101,19 +112,16 @@ export function ProfileHeader({
 
               <div className="flex items-center gap-2">
                 {profile.isOwner ? (
-                  <>
+                  onEditProfile ? (
                     <button
                       type="button"
                       onClick={onEditProfile}
-                      aria-label="Edit profile action"
-                      className="btn-press h-9 px-4 rounded-pill bg-ink text-paper text-[12px] font-semibold"
+                      className="btn-press brand-glow h-9 px-4 rounded-pill border border-[#8FC23A]/35 bg-[#C1FF72] text-ink hover:bg-[#B4F25F] text-[12px] font-semibold inline-flex items-center gap-1.5"
                     >
-                      Edit profile
+                      <Icon.Edit size={13} />
+                      {profile.kind === "circle" ? "Edit circle" : "Edit profile"}
                     </button>
-                    <button type="button" className="btn-press w-9 h-9 rounded-full border border-paper-line hover:border-ink/30 flex items-center justify-center">
-                      <Icon.More size={15} />
-                    </button>
-                  </>
+                  ) : null
                 ) : (
                   <>
                     <button
