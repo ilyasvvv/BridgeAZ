@@ -724,6 +724,14 @@ html {
   animation: logo-dot-orbit-core 3.4s cubic-bezier(0.45, 0, 0.2, 1) infinite;
 }
 
+.signup-mascot-excited {
+  animation: signup-mascot-greeting 1.5s cubic-bezier(0.2, 0.9, 0.2, 1) both;
+}
+
+.signup-mascot-excited .animated-logo-face {
+  animation: signup-mascot-glow 1.5s ease both;
+}
+
 .animated-logo-active.animated-logo-landing-loop .animated-logo-dots {
   animation: logo-dot-landing-loop 12s cubic-bezier(0.2, 0.8, 0.2, 1) infinite;
 }
@@ -1518,6 +1526,33 @@ html {
   }
   82% {
     transform: translate3d(7px, -5px, 0) rotate(6deg) scale(1);
+  }
+}
+
+@keyframes signup-mascot-greeting {
+  0%, 100% {
+    transform: translate3d(0, 0, 0) rotate(0deg) scale(1);
+  }
+  18% {
+    transform: translate3d(0, -10px, 0) rotate(-4deg) scale(1.035);
+  }
+  38% {
+    transform: translate3d(8px, -2px, 0) rotate(5deg) scale(1.015);
+  }
+  58% {
+    transform: translate3d(-5px, 2px, 0) rotate(-3deg) scale(1.025);
+  }
+  78% {
+    transform: translate3d(2px, -2px, 0) rotate(1.5deg) scale(1.006);
+  }
+}
+
+@keyframes signup-mascot-glow {
+  0%, 100% {
+    filter: none;
+  }
+  30%, 62% {
+    filter: drop-shadow(0 0 12px rgba(193, 255, 114, 0.55));
   }
 }
 

@@ -2,10 +2,9 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useState, type FormEvent, type ReactNode } from "react";
+import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
 import clsx from "clsx";
-import { AnimatedLogo, type LogoMotion } from "@/components/AnimatedLogo";
-import { Logo } from "@/components/Logo";
+import { AnimatedLogo, BizimLogoLockup } from "@/components/AnimatedLogo";
 import { Button } from "@/components/Button";
 import { CityCombobox } from "@/components/CityCombobox";
 import { useAuth } from "@/lib/auth";
@@ -55,7 +54,8 @@ export default function SignupPage({
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [agreed, setAgreed] = useState(false);
-  const [mascotMotion, setMascotMotion] = useState<LogoMotion>("full-sway");
+  const [mascotExcited, setMascotExcited] = useState(false);
+  const mascotTimer = useRef<number | null>(null);
 
   const [loginId, setLoginId] = useState("");
   const [loginPassword, setLoginPassword] = useState("");
@@ -65,11 +65,18 @@ export default function SignupPage({
 
   useEffect(() => {
     void warmApi();
+    return () => {
+      if (mascotTimer.current) window.clearTimeout(mascotTimer.current);
+    };
   }, []);
 
   function exciteMascot() {
-    setMascotMotion("full-party");
-    window.setTimeout(() => setMascotMotion("full-sway"), 1400);
+    if (mascotTimer.current) window.clearTimeout(mascotTimer.current);
+    setMascotExcited(false);
+    window.requestAnimationFrame(() => {
+      setMascotExcited(true);
+      mascotTimer.current = window.setTimeout(() => setMascotExcited(false), 1500);
+    });
   }
 
   async function handleSignup(e: FormEvent) {
@@ -143,21 +150,26 @@ export default function SignupPage({
       <div className="absolute -bottom-60 -right-40 w-[820px] h-[820px] rounded-full border border-ink/[0.06]" />
 
       <div className="relative max-w-[1400px] mx-auto px-6 lg:px-10 py-10 grid lg:grid-cols-[1.05fr,1fr] gap-10 items-center min-h-screen">
-        <div>
-          <Link href="/"><Logo /></Link>
-          <span className="mt-10 inline-flex items-center px-3 py-1 rounded-pill bg-white border border-paper-line shadow-soft text-[10.5px] font-semibold tracking-[0.18em]">
-            BIZIMCIRCLE
-          </span>
-          <h1 className="mt-5 font-display text-[clamp(44px,6.2vw,88px)] leading-[0.92] tracking-[-0.035em] font-medium">
-            Find your <span className="italic font-light">circle</span>
-            <br />
-            by city.
-          </h1>
-          <div className="mt-12 hidden lg:flex items-center gap-7">
-            <div className="relative flex h-[300px] w-[300px] items-center justify-center">
+        <div className="flex flex-col justify-center lg:min-h-[680px]">
+          <Link href="/" aria-label="bizim circle home">
+            <span className="block lg:hidden">
+              <BizimLogoLockup size={68} motion="side-to-side" />
+            </span>
+            <span className="hidden lg:block">
+              <BizimLogoLockup size={104} motion="side-to-side" />
+            </span>
+          </Link>
+          <div className="mt-12 hidden lg:grid grid-cols-[minmax(330px,420px),minmax(260px,320px)] items-center gap-8">
+            <div className="relative flex aspect-square w-full max-w-[420px] items-center justify-center">
               <div className="absolute inset-0 rounded-full border border-ink/10" />
-              <div className="absolute inset-8 rounded-full border border-ink/10 animate-spin-slower" />
-              <AnimatedLogo size={210} motion={mascotMotion} title="bizim circle mascot" />
+              <div className="absolute inset-9 rounded-full border border-ink/10 animate-spin-slower" />
+              <div className="absolute inset-[18%] rounded-full border border-ink/[0.07]" />
+              <AnimatedLogo
+                size={300}
+                motion="full-sway"
+                title="bizim circle mascot"
+                className={clsx(mascotExcited && "signup-mascot-excited")}
+              />
             </div>
             <button
               type="button"
@@ -165,14 +177,16 @@ export default function SignupPage({
                 exciteMascot();
                 emitPlayfulBurst("xoş gəldin", event.clientX, event.clientY);
               }}
-              className="btn-press max-w-[260px] rounded-[22px] border border-paper-line bg-paper p-5 text-left shadow-soft transition hover:-translate-y-0.5 hover:border-ink/20"
+              className="btn-press group relative overflow-hidden rounded-[28px] border border-paper-line bg-paper p-6 text-left shadow-soft transition hover:-translate-y-0.5 hover:border-ink/20"
               aria-label="Greet the bizim circle mascot"
             >
-              <div className="text-[11px] font-bold tracking-[0.16em] text-ink/45">XOŞ GƏLMİSƏN</div>
-              <div className="mt-3 text-[22px] font-semibold leading-tight tracking-tight">
-                Salam, xoş gəldin.
+              <span className="absolute right-5 top-5 h-3 w-3 rounded-full bg-[#C1FF72] shadow-[0_0_0_8px_rgba(193,255,114,0.22)] transition-transform group-hover:scale-125" />
+              <span className="absolute -bottom-10 -right-8 h-28 w-28 rounded-full border border-ink/8" />
+              <div className="text-[11px] font-bold tracking-[0.18em] text-ink/42">BİZİM TƏRƏF</div>
+              <div className="mt-4 max-w-[230px] text-[26px] font-semibold leading-tight tracking-tight">
+                Qapı açıqdır.
               </div>
-              <p className="mt-3 text-[13px] leading-5 text-ink/55">Buyur, öz evindir.</p>
+              <p className="mt-4 text-[14px] leading-5 text-ink/58">Buyur, öz evindir.</p>
             </button>
           </div>
         </div>
