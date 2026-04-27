@@ -105,7 +105,7 @@ export default function HomePage() {
             <TodayNearYou region={regionLabel} />
             {circles.length > 0 && <CirclesForYou items={circles} />}
             {people.length > 0 && <PeopleForYou items={people} />}
-            <div className="rail-card rail-card-left rounded-[22px] bg-ink text-paper p-5 relative overflow-hidden [--rail-compact:108px] [--rail-expanded:260px]">
+            <div className="rail-card rail-card-left rounded-[22px] bg-ink text-paper p-5 relative overflow-hidden [--rail-compact:108px] [--rail-expanded:260px] [--rail-fade:#0A0A0A]">
               <div className="absolute -right-10 -bottom-10 w-40 h-40 rounded-full border border-paper/15 animate-spin-slower" />
               <div className="absolute -right-16 -bottom-16 w-60 h-60 rounded-full border border-paper/10" />
               <h4 className="font-display text-[18px] font-medium leading-tight">Start your own circle</h4>

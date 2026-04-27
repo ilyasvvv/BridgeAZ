@@ -247,7 +247,7 @@ html {
   bottom: 0;
   height: 34px;
   pointer-events: none;
-  background: linear-gradient(to bottom, rgba(255, 255, 255, 0), var(--paper));
+  background: linear-gradient(to bottom, transparent, var(--rail-fade, var(--paper)));
   opacity: 1;
   transition: opacity 180ms ease;
 }
@@ -269,7 +269,7 @@ html {
 
 .rail-card-right:hover,
 .rail-card-right:focus-within {
-  transform: translateY(-2px) translateX(-12px) scale(1.015);
+  transform: translateY(-2px) translateX(-12px) scale(1.01);
 }
 
 .rail-card:hover::before,
@@ -285,8 +285,13 @@ html {
 
   .rail-card-right:hover,
   .rail-card-right:focus-within {
-    width: calc(100% + 88px);
+    width: 100%;
   }
+}
+
+.rail-card:hover .rail-spotlight,
+.rail-card:focus-within .rail-spotlight {
+  max-height: 320px;
 }
 
 @keyframes playful-burst-fade {
