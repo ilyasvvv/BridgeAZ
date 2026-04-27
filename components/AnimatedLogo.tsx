@@ -58,6 +58,7 @@ type AnimatedLogoProps = {
   className?: string;
   title?: string;
   showLoaderOrbit?: boolean;
+  faceColor?: string;
 };
 
 export function AnimatedLogo({
@@ -66,6 +67,7 @@ export function AnimatedLogo({
   className,
   title = "bizim circle animated logo",
   showLoaderOrbit,
+  faceColor = "#C1FF72",
 }: AnimatedLogoProps) {
   const animated = motion !== "none";
 
@@ -147,7 +149,7 @@ export function AnimatedLogo({
           cx="120"
           cy="120"
           r="102"
-          fill="#C1FF72"
+          fill={faceColor}
         />
         {(showLoaderOrbit || motion === "loading" || motion === "comet") && (
           <circle
