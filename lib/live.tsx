@@ -24,8 +24,8 @@ interface LiveContextValue {
 
 const LiveContext = createContext<LiveContextValue | null>(null);
 
-const SLOW_INTERVAL = 30000;
-const FAST_INTERVAL = 6000;
+const SLOW_INTERVAL = 45000;
+const FAST_INTERVAL = 12000;
 
 export function LiveProvider({ children }: { children: ReactNode }) {
   const { status } = useAuth();

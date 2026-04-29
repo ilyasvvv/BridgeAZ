@@ -219,7 +219,15 @@ function MessagesClient() {
     if (status !== "authenticated") return;
     let cancelled = false;
     let timer: ReturnType<typeof setInterval> | null = null;
+    const BASE_INTERVAL = 12000;
+    let interval = BASE_INTERVAL;
+    const schedule = (ms: number) => {
+      if (timer) clearInterval(timer);
+      interval = ms;
+      timer = setInterval(load, ms);
+    };
     const load = async () => {
+      if (typeof document !== "undefined" && document.hidden) return;
       try {
         const next = await chatsApi.threads();
         if (cancelled) return;
@@ -227,15 +235,30 @@ function MessagesClient() {
         if (!activeId && next[0]?._id) {
           setActiveId(next[0]._id);
         }
+        if (interval !== BASE_INTERVAL) schedule(BASE_INTERVAL);
       } catch (err: any) {
-        if (!cancelled) setError(err?.message || "Failed to load chats.");
+        if (cancelled) return;
+        if (err?.status === 429) {
+          schedule(Math.min(interval * 2, 60000));
+          return;
+        }
+        setError(err?.message || "Failed to load chats.");
       }
     };
     load();
-    timer = setInterval(load, 6000);
+    timer = setInterval(load, interval);
+    const onVis = () => {
+      if (typeof document !== "undefined" && !document.hidden) load();
+    };
+    if (typeof document !== "undefined") {
+      document.addEventListener("visibilitychange", onVis);
+    }
     return () => {
       cancelled = true;
       if (timer) clearInterval(timer);
+      if (typeof document !== "undefined") {
+        document.removeEventListener("visibilitychange", onVis);
+      }
     };
   }, [status, activeId]);
 
@@ -244,24 +267,55 @@ function MessagesClient() {
     if (!activeId || status !== "authenticated") return;
     const id = activeId;
     let cancelled = false;
+    let timer: ReturnType<typeof setInterval> | null = null;
+    const BASE_INTERVAL = 8000;
+    let interval = BASE_INTERVAL;
+    let lastMarkedAt: string | null = null;
+    const schedule = (ms: number) => {
+      if (timer) clearInterval(timer);
+      interval = ms;
+      timer = setInterval(load, ms);
+    };
     const load = async () => {
+      if (typeof document !== "undefined" && document.hidden) return;
       try {
         const next = await chatsApi.messages(id);
         if (cancelled) return;
         setMessages(next);
+        const lastAt = next[next.length - 1]?.createdAt || null;
         const prefs = prefsMap[id] || {};
-        if (prefs.readReceipts !== false) {
+        if (
+          prefs.readReceipts !== false &&
+          lastAt &&
+          lastAt !== lastMarkedAt
+        ) {
+          lastMarkedAt = lastAt;
           chatsApi.markRead(id).catch(() => undefined);
         }
+        if (interval !== BASE_INTERVAL) schedule(BASE_INTERVAL);
       } catch (err: any) {
-        if (!cancelled) setError(err?.message || "Failed to load messages.");
+        if (cancelled) return;
+        if (err?.status === 429) {
+          schedule(Math.min(interval * 2, 60000));
+          return;
+        }
+        setError(err?.message || "Failed to load messages.");
       }
     };
     load();
-    const timer = setInterval(load, 4000);
+    timer = setInterval(load, interval);
+    const onVis = () => {
+      if (typeof document !== "undefined" && !document.hidden) load();
+    };
+    if (typeof document !== "undefined") {
+      document.addEventListener("visibilitychange", onVis);
+    }
     return () => {
       cancelled = true;
-      clearInterval(timer);
+      if (timer) clearInterval(timer);
+      if (typeof document !== "undefined") {
+        document.removeEventListener("visibilitychange", onVis);
+      }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeId, status]);
@@ -440,14 +494,21 @@ function MessagesClient() {
     window.setTimeout(() => setEggMessage(null), 2400);
   };
 
-  const sendBody = async (body: string) => {
-    if (!active || !body.trim() || !canSend) return;
+  const sendBody = async (body: string): Promise<boolean> => {
+    if (!active || !body.trim() || !canSend) return false;
     setSending(true);
     try {
       const msg = await chatsApi.send(active._id, { body });
       setMessages((cur) => [...cur, msg]);
+      return true;
     } catch (err: any) {
-      setError(err?.message || "Failed to send.");
+      if (err?.status === 429) {
+        setError("You're sending too fast — give it a second.");
+        setDraft((cur) => cur || body);
+      } else {
+        setError(err?.message || "Failed to send.");
+      }
+      return false;
     } finally {
       setSending(false);
     }
@@ -470,7 +531,11 @@ function MessagesClient() {
       const msg = await chatsApi.send(active._id, { body: STICKER_BODY_PREFIX + id });
       setMessages((cur) => [...cur, msg]);
     } catch (err: any) {
-      setError(err?.message || "Failed to send.");
+      if (err?.status === 429) {
+        setError("You're sending too fast — give it a second.");
+      } else {
+        setError(err?.message || "Failed to send.");
+      }
     } finally {
       setSending(false);
     }
