@@ -1,9 +1,15 @@
 "use client";
 
 import Link from "next/link";
-import { type CSSProperties, type ReactNode, useState } from "react";
-import { AnimatedLogo, BizimLogoLockup } from "@/components/AnimatedLogo";
+import {
+  type CSSProperties,
+  type FormEvent,
+  type ReactNode,
+  useState,
+} from "react";
+import { AnimatedLogo } from "@/components/AnimatedLogo";
 import { CircleMark } from "@/components/CircleMark";
+import { OfficialLogo } from "@/components/OfficialLogo";
 
 const brandAccent = {
   bg: "#C1FF72",
@@ -12,11 +18,15 @@ const brandAccent = {
   ink: "#0A0A0A",
 };
 
+const supportEmail = "support@bizimcircle.com";
+const contactInputClass =
+  "h-12 w-full rounded-[14px] border border-paper-line bg-paper-cool px-4 text-[13px] font-medium text-ink outline-none transition placeholder:text-ink/32 focus:border-ink/30 focus:bg-paper focus:shadow-soft";
+
 const conceptPills = [
   {
     key: "people",
     label: "People",
-    title: "Individuals, not profiles",
+    title: "Real people, shared paths",
     description:
       "People are the members who bring different experiences, cities, languages, careers, student paths, and family backgrounds into the same shared network.",
   },
@@ -40,10 +50,33 @@ type PillKey = (typeof conceptPills)[number]["key"];
 
 export default function Landing() {
   const [activePill, setActivePill] = useState<PillKey | null>(null);
+  const [contactStatus, setContactStatus] = useState("");
   const activeConcept = conceptPills.find((pill) => pill.key === activePill);
 
   function toggleConcept(key: PillKey) {
     setActivePill((current) => (current === key ? null : key));
+  }
+
+  function handleContactSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    const form = event.currentTarget;
+    const formData = new FormData(form);
+    const name = String(formData.get("name") || "").trim();
+    const email = String(formData.get("email") || "").trim();
+    const topic = String(formData.get("topic") || "General question").trim();
+    const message = String(formData.get("message") || "").trim();
+    const subject = `[BizimCircle] ${topic}`;
+    const body = [
+      `Name: ${name}`,
+      `Email: ${email}`,
+      `Topic: ${topic}`,
+      "",
+      message,
+    ].join("\n");
+
+    setContactStatus("Opening your email app...");
+    window.location.href = `mailto:${supportEmail}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
   }
 
   return (
@@ -62,9 +95,9 @@ export default function Landing() {
       />
 
       <header className="relative z-10">
-        <div className="max-w-[1440px] mx-auto px-6 lg:px-10 h-20 flex items-center justify-between">
+        <div className="max-w-[1440px] mx-auto px-6 lg:px-10 h-[84px] pt-1 flex items-center justify-between">
           <Link href="/" aria-label="Home" className="inline-flex items-center">
-            <BizimLogoLockup size={46} motion="side-to-side" />
+            <OfficialLogo width={154} className="max-h-12" />
           </Link>
           <div className="flex items-center gap-2">
             <Link
@@ -88,8 +121,8 @@ export default function Landing() {
       </header>
 
       <section className="relative z-10">
-        <div className="max-w-[1440px] mx-auto px-6 lg:px-10 pt-8 lg:pt-12 pb-20 grid lg:grid-cols-[0.92fr_1.08fr] gap-12 lg:gap-16 items-center min-h-[82vh]">
-          <div className="relative">
+        <div className="max-w-[1440px] mx-auto px-6 lg:px-10 pt-8 lg:pt-10 pb-20 grid lg:grid-cols-[0.98fr_1.02fr] gap-10 lg:gap-12 items-center min-h-[78vh]">
+          <div className="relative max-w-[620px]">
             <h1 className="font-display font-medium tracking-[-0.035em] text-[clamp(52px,8.2vw,128px)] leading-[0.92]">
               Find your <span className="italic font-light">circle</span>
               <br />
@@ -162,7 +195,7 @@ export default function Landing() {
             </div>
           </div>
 
-          <div className="relative flex min-h-[420px] items-center justify-center">
+          <div className="relative flex min-h-[420px] items-center justify-center lg:justify-end">
             <CircleMascot />
           </div>
         </div>
@@ -210,26 +243,101 @@ export default function Landing() {
         </div>
       </section>
 
-      <section id="contact" className="relative z-10 scroll-mt-10">
-        <div className="max-w-[1440px] mx-auto px-6 lg:px-10 pb-20">
-          <div className="mx-auto max-w-2xl rounded-[22px] border border-paper-line bg-paper p-6 text-center shadow-soft sm:p-8">
-            <div className="text-[10px] font-semibold tracking-[0.22em] text-ink/40 uppercase">
+      <section id="contact" className="relative z-10 scroll-mt-10 bg-ink text-paper">
+        <div className="mx-auto grid max-w-[1440px] gap-10 px-6 py-16 lg:grid-cols-[0.78fr_1.22fr] lg:px-10 lg:py-20">
+          <div>
+            <div className="text-[10px] font-semibold tracking-[0.22em] text-paper/45 uppercase">
               Contact
             </div>
-            <h2 className="mt-3 text-[28px] font-semibold tracking-[-0.035em]">
-              Have a question?
+            <h2 className="mt-3 max-w-sm text-[clamp(34px,4vw,54px)] font-semibold leading-none tracking-[-0.04em]">
+              Tell us what you need.
             </h2>
-            <p className="mx-auto mt-3 max-w-lg text-[14px] leading-relaxed text-ink/58">
-              Questions, partnerships, or early community requests can come
-              straight to the team.
+            <p className="mt-4 max-w-md text-[14px] leading-relaxed text-paper/58">
+              Questions, partnerships, student groups, and early community
+              requests go straight to support.
             </p>
-            <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
-              <AccentLink href="mailto:hello@bizim.circle">Email us</AccentLink>
-              <span className="text-[12px] font-semibold text-ink/45">
-                hello@bizim.circle
-              </span>
-            </div>
+            <p className="mt-6 text-[12px] font-semibold text-paper/45">
+              {supportEmail}
+            </p>
           </div>
+
+          <form
+            className="grid gap-4 text-left"
+            onSubmit={handleContactSubmit}
+          >
+              <div className="grid gap-4 sm:grid-cols-2">
+                <Field label="Your name">
+                  <input
+                    name="name"
+                    required
+                    autoComplete="name"
+                    className={contactInputClass}
+                    placeholder="Full name"
+                  />
+                </Field>
+                <Field label="Email address">
+                  <input
+                    name="email"
+                    type="email"
+                    required
+                    autoComplete="email"
+                    className={contactInputClass}
+                    placeholder="you@example.com"
+                  />
+                </Field>
+              </div>
+
+              <Field label="What is this about?">
+                <select
+                  name="topic"
+                  className={contactInputClass}
+                  defaultValue="General question"
+                >
+                  <option>General question</option>
+                  <option>Community or circle request</option>
+                  <option>Partnership</option>
+                  <option>Mentorship</option>
+                  <option>Support issue</option>
+                </select>
+              </Field>
+
+              <Field label="Message">
+                <textarea
+                  name="message"
+                  required
+                  rows={5}
+                  className={`${contactInputClass} min-h-32 resize-y py-3 leading-relaxed`}
+                  placeholder="Tell us a little about what you need."
+                />
+              </Field>
+
+              <div className="flex flex-col gap-3 pt-1 sm:flex-row sm:items-center sm:justify-between">
+                <span className="text-[12px] font-semibold text-paper/45">
+                  Usually replies from the founding team.
+                </span>
+                <button
+                  type="submit"
+                  className="brand-accent-btn relative inline-flex h-12 items-center justify-center gap-2 rounded-pill px-6 text-[14px] font-semibold tracking-[0.01em] shadow-soft"
+                  style={
+                    {
+                      background: brandAccent.bg,
+                      color: brandAccent.ink,
+                      "--accent-hover": brandAccent.hover,
+                      "--accent-ring": brandAccent.ring,
+                    } as CSSProperties
+                  }
+                >
+                  Send message
+                  <Arrow />
+                </button>
+              </div>
+
+              {contactStatus && (
+                <p className="text-[12px] font-semibold text-paper/50">
+                  {contactStatus}
+                </p>
+              )}
+            </form>
         </div>
       </section>
 
@@ -255,21 +363,23 @@ export default function Landing() {
 
 function CircleMascot() {
   return (
-    <div className="relative h-[320px] w-[320px] sm:h-[360px] sm:w-[360px]">
+    <div className="relative h-[340px] w-[340px] sm:h-[400px] sm:w-[400px] lg:h-[480px] lg:w-[480px]">
       <div
         aria-hidden
         className="absolute inset-3 rounded-full border border-ink/[0.06]"
       />
       <div
         aria-hidden
-        className="absolute left-1/2 top-7 h-72 w-72 -translate-x-1/2 rounded-full bg-paper shadow-pop"
+        className="absolute left-1/2 top-8 h-[290px] w-[290px] -translate-x-1/2 rounded-full bg-paper shadow-pop sm:h-[340px] sm:w-[340px] lg:h-[410px] lg:w-[410px]"
       />
-      <div className="absolute left-1/2 top-11 -translate-x-1/2">
-        <AnimatedLogo size={250} motion="landing-loop" />
+      <div className="absolute left-1/2 top-12 -translate-x-1/2 sm:top-14 lg:top-16">
+        <AnimatedLogo size={310} motion="landing-loop" className="hidden lg:inline-flex" />
+        <AnimatedLogo size={270} motion="landing-loop" className="hidden sm:inline-flex lg:hidden" />
+        <AnimatedLogo size={232} motion="landing-loop" className="inline-flex sm:hidden" />
       </div>
       <div
         aria-hidden
-        className="absolute bottom-4 left-1/2 h-5 w-44 -translate-x-1/2 rounded-full bg-ink/10 blur-md"
+        className="absolute bottom-5 left-1/2 h-6 w-56 -translate-x-1/2 rounded-full bg-ink/10 blur-md lg:w-72"
       />
     </div>
   );
@@ -331,6 +441,23 @@ function OutlineLink({
     >
       {children}
     </Link>
+  );
+}
+
+function Field({
+  label,
+  children,
+}: {
+  label: string;
+  children: ReactNode;
+}) {
+  return (
+    <label className="block">
+      <span className="mb-2 block text-[11px] font-semibold tracking-[0.12em] text-paper/55 uppercase">
+        {label}
+      </span>
+      {children}
+    </label>
   );
 }
 

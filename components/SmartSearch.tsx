@@ -8,9 +8,11 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Avatar } from "@/components/Avatar";
 import { Icon } from "@/components/Icon";
 import { useAuth } from "@/lib/auth";
-import { searchApi, type SearchResponse, type SearchTypes } from "@/lib/search";
+import { searchApi, type SearchResponse, type SearchTypes, type SearchUser } from "@/lib/search";
+import { usersApi } from "@/lib/users";
 import { hueFromString, profileHref, relativeTime } from "@/lib/format";
 import { emitPlayfulBurst } from "@/lib/playful";
+import type { ApiUser } from "@/lib/types";
 
 type Scope = "all" | "people" | "circles" | "posts" | "opportunities";
 type View = "stack" | "constellation" | "atlas";
@@ -137,12 +139,13 @@ function unifyResults(r: SearchResponse, q: string): UnifiedItem[] {
 
   r.posts.forEach((p: any) => {
     const created = p.createdAt || p.created_at;
+    const body = p.content || p.body || "";
     items.push({
       _id: p._id,
       _t: "post",
-      _score: score([p.body || "", p.author?.name || "", (p.tags || []).join(" ")], q),
-      name: (p.body || "").slice(0, 80),
-      body: p.body || "",
+      _score: score([body, p.author?.name || "", (p.tags || []).join(" ")], q),
+      name: body.slice(0, 80),
+      body,
       tags: p.tags,
       category: p.category || "Note",
       authorName: p.author?.name,
@@ -317,6 +320,14 @@ function SearchClient({
           types: scopeTypes(scope),
           limit: 30,
         });
+        if ((scope === "all" || scope === "people") && trimmed.length >= 2) {
+          const mergedUsers = await searchUsersFallback(trimmed, next.users || []);
+          next.users = mergedUsers;
+          next.counts = {
+            ...next.counts,
+            users: Math.max(next.counts?.users || 0, mergedUsers.length),
+          };
+        }
         if (!cancelled) setResults({ ...EMPTY, ...next, counts: { ...EMPTY.counts, ...next.counts } });
       } catch (err: any) {
         if (!cancelled) setError(err?.message || "Search failed.");
@@ -1072,6 +1083,57 @@ function SearchShell({ children }: { children: React.ReactNode }) {
 
 function parseScope(value: string | null): Scope {
   return SCOPES.some((scope) => scope.key === value) ? (value as Scope) : "all";
+}
+
+async function searchUsersFallback(query: string, current: SearchResponse["users"]) {
+  const [directMatches, listedUsers] = await Promise.all([
+    usersApi.search(query, 20).catch(() => []),
+    usersApi.list({ accountType: "personal" }).catch(() => []),
+  ]);
+  const locationMatches = listedUsers.filter((user) => userMatchesQuery(user, query));
+  const seen = new Set<string>();
+  return [...current, ...directMatches.map(toSearchUser), ...locationMatches.map(toSearchUser)].filter((user) => {
+    if (!user?._id || seen.has(user._id)) return false;
+    seen.add(user._id);
+    return true;
+  });
+}
+
+function toSearchUser(user: Partial<ApiUser> & { _id: string; name?: string; username?: string }): SearchUser {
+  return {
+    _id: user._id,
+    name: user.name || "Unknown",
+    username: user.username,
+    accountType: user.accountType === "circle" ? "circle" : "personal",
+    avatarUrl: user.avatarUrl,
+    profilePhotoUrl: user.profilePhotoUrl,
+    profilePictureUrl: user.profilePictureUrl,
+    headline: user.headline,
+    currentRegion: user.currentRegion,
+    locationNow: user.locationNow,
+    isMentor: user.isMentor,
+  };
+}
+
+function userMatchesQuery(user: ApiUser, query: string): boolean {
+  const q = query.toLowerCase().trim();
+  if (!q) return false;
+  return [
+    user.name,
+    user.username,
+    user.headline,
+    user.bio,
+    user.currentRegion,
+    user.locationNow?.city,
+    user.locationNow?.region,
+    user.locationNow?.country,
+    [user.locationNow?.city, user.locationNow?.region, user.locationNow?.country]
+      .filter(Boolean)
+      .join(", "),
+    ...(user.skills || []),
+  ]
+    .filter(Boolean)
+    .some((value) => String(value).toLowerCase().includes(q));
 }
 
 function scopeTypes(scope: Scope): SearchTypes[] | undefined {

@@ -20,6 +20,7 @@ export type ProfileMeta = {
   stats: { label: string; value: string }[];
   hue?: number;
   avatarUrl?: string;
+  bannerUrl?: string;
   isOwner?: boolean;
 };
 
@@ -46,14 +47,38 @@ export function ProfileHeader({
         <div
           className="h-36 md:h-44 relative"
           style={{
-            background: `linear-gradient(135deg, #0A0A0A 0%, #2B2B2B 30%, #6B6B6B 70%, #0A0A0A 100%)`,
+            background: profile.bannerUrl
+              ? "#0A0A0A"
+              : defaultBackdrop(profile.kind, hue),
           }}
         >
-          <div className="absolute inset-0 opacity-30" style={{ backgroundImage: "radial-gradient(circle at 20% 30%, rgba(255,255,255,0.25), transparent 50%)" }} />
-          <div className="absolute inset-0 opacity-20" style={{ backgroundImage: "radial-gradient(circle at 80% 70%, rgba(255,255,255,0.2), transparent 50%)" }} />
+          {profile.bannerUrl ? (
+            <img
+              src={profile.bannerUrl}
+              alt=""
+              className="absolute inset-0 h-full w-full object-cover"
+            />
+          ) : (
+            <>
+              <div className="absolute inset-0 opacity-60" style={{ backgroundImage: "linear-gradient(90deg, rgba(193,255,114,0.18) 0 1px, transparent 1px), linear-gradient(0deg, rgba(255,255,255,0.08) 0 1px, transparent 1px)", backgroundSize: "32px 32px" }} />
+              <div className="absolute left-8 top-8 h-16 w-16 rounded-full border border-[#C1FF72]/40" />
+              <div className="absolute right-10 bottom-8 h-24 w-24 rounded-full border border-paper/20" />
+            </>
+          )}
+          <div className="absolute inset-0 bg-gradient-to-t from-ink/20 to-transparent" />
         </div>
       ) : (
-        <div className="h-48 md:h-64 flex items-center justify-center bg-paper-warm relative overflow-hidden">
+        <div
+          className="h-48 md:h-64 flex items-center justify-center bg-paper-warm relative overflow-hidden"
+          style={{ background: profile.bannerUrl ? "#F4F4F2" : defaultBackdrop(profile.kind, hue) }}
+        >
+          {profile.bannerUrl && (
+            <img
+              src={profile.bannerUrl}
+              alt=""
+              className="absolute inset-0 h-full w-full object-cover"
+            />
+          )}
           {/* decorative rings */}
           <div className="absolute inset-0 flex items-center justify-center">
             <div className="w-[480px] h-[480px] rounded-full border border-ink/[0.06] absolute" />
@@ -92,22 +117,39 @@ export function ProfileHeader({
             />
           </div>
           <div className="flex-1 min-w-0 pt-12">
-            <div className="flex items-start justify-between flex-wrap gap-3">
-              <div>
-                <div className="flex items-center gap-2 flex-wrap">
-                  <h1 className="font-display text-[26px] md:text-[30px] font-semibold tracking-[-0.02em]">
-                    {profile.name}
-                  </h1>
-                  {profile.kind === "circle" && (
-                    <span className="text-[10px] font-bold tracking-[0.16em] text-ink/55 uppercase bg-paper-cool px-2 py-0.5 rounded-full">
-                      Circle
-                    </span>
-                  )}
+            <div className="flex items-start justify-between flex-wrap gap-4">
+              <div className="min-w-0 flex-1">
+                <div className="flex items-start gap-x-6 gap-y-3 flex-wrap">
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h1 className="font-display text-[26px] md:text-[30px] font-semibold tracking-[-0.02em]">
+                        {profile.name}
+                      </h1>
+                      {profile.kind === "circle" && (
+                        <span className="text-[10px] font-bold tracking-[0.16em] text-ink/55 uppercase bg-paper-cool px-2 py-0.5 rounded-full">
+                          Circle
+                        </span>
+                      )}
+                    </div>
+                    <div className="text-[12.5px] text-ink/50 mt-0.5">@{profile.handle}</div>
+                    {profile.tagline && (
+                      <div className="mt-2 text-[13px] text-ink/75">{profile.tagline}</div>
+                    )}
+                  </div>
+
+                  <div className="flex items-center gap-5 pt-1.5">
+                    {profile.stats.map((s) => (
+                      <div key={s.label} className="min-w-[58px]">
+                        <div className="font-display text-[19px] md:text-[21px] font-semibold tracking-tight">
+                          {s.value}
+                        </div>
+                        <div className="text-[9.5px] md:text-[10px] tracking-[0.14em] text-ink/45 uppercase mt-0.5">
+                          {s.label}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
-                <div className="text-[12.5px] text-ink/50 mt-0.5">@{profile.handle}</div>
-                {profile.tagline && (
-                  <div className="mt-2 text-[13px] text-ink/75">{profile.tagline}</div>
-                )}
               </div>
 
               <div className="flex items-center gap-2">
@@ -169,19 +211,16 @@ export function ProfileHeader({
             </a>
           )}
         </div>
-
-        {/* Stats row */}
-        <div className="mt-6 flex items-center gap-8 border-t border-paper-line pt-5">
-          {profile.stats.map((s) => (
-            <div key={s.label}>
-              <div className="font-display text-[22px] font-semibold tracking-tight">{s.value}</div>
-              <div className="text-[10.5px] tracking-[0.14em] text-ink/50 uppercase mt-0.5">{s.label}</div>
-            </div>
-          ))}
-        </div>
       </div>
     </header>
   );
+}
+
+function defaultBackdrop(kind: ProfileKind, hue: number) {
+  if (kind === "circle") {
+    return `radial-gradient(circle at 50% 50%, rgba(193,255,114,0.32), transparent 18%), radial-gradient(circle at 18% 24%, hsl(${hue} 55% 78% / 0.5), transparent 24%), linear-gradient(135deg, #F4F4F2 0%, #EAFCC4 42%, #0A0A0A 100%)`;
+  }
+  return `radial-gradient(circle at 18% 28%, rgba(193,255,114,0.45), transparent 24%), radial-gradient(circle at 82% 70%, hsl(${hue} 58% 70% / 0.34), transparent 28%), linear-gradient(135deg, #0A0A0A 0%, #2B2B2B 48%, #F4F4F2 100%)`;
 }
 
 export function ProfileTabs({

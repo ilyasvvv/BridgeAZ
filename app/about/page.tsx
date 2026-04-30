@@ -32,8 +32,8 @@ export default function AboutPage() {
           <p>
             We're early. The product, the team, the rules — all still being shaped. If you
             want to help shape it, write to us at{" "}
-            <a className="underline hover:text-ink" href="mailto:hello@bizim.circle">
-              hello@bizim.circle
+            <a className="underline hover:text-ink" href="mailto:support@bizimcircle.com">
+              support@bizimcircle.com
             </a>
             .
           </p>

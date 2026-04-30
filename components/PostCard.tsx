@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import clsx from "clsx";
 import Link from "next/link";
 import { Avatar } from "./Avatar";
@@ -11,13 +11,16 @@ import { relativeTime, profileHref } from "@/lib/format";
 import { useAuth } from "@/lib/auth";
 import { hueFromString } from "@/lib/format";
 import { emitPlayfulBurst } from "@/lib/playful";
+import { getPostInteraction, setPostInteraction } from "@/lib/postInteractions";
 
-export type PostCategory = "Note" | "Announcement" | "Event" | "Opportunity" | "Searching for";
+export type PostCategory = "Note" | "Announcement" | "Event" | "Opportunity" | "Searching for" | "Poll";
 
 export type PostComment = {
   id: string;
+  authorId?: string;
   authorName: string;
   authorHandle?: string;
+  author?: MiniProfile;
   body: string;
   time: string;
   hue: number;
@@ -36,9 +39,11 @@ export type Post = {
   mediaHue?: number;
   stats: { likes: number; comments: number; shares: number };
   likedByMe?: boolean;
+  savedByMe?: boolean;
   comments?: PostComment[];
   eventMeta?: { date: string; venue: string };
   opportunityMeta?: { role: string; type: string };
+  pollMeta?: { duration: string; options: string[] };
 };
 
 const categoryStyles: Record<PostCategory, {
@@ -83,19 +88,33 @@ const categoryStyles: Record<PostCategory, {
     accent: "from-[#B8D8E8]/35 to-paper",
     action: { icon: "Send", label: "I can help", activeLabel: "Offered help" },
   },
+  Poll: {
+    bg: "bg-[#B8D8E8]/35 border border-[#B8D8E8]",
+    fg: "text-ink",
+    icon: "Poll",
+    accent: "from-[#B8D8E8]/45 to-paper",
+    action: { icon: "Bookmark", label: "Save", activeLabel: "Saved" },
+  },
 };
 
-export function PostCard({ post }: { post: Post }) {
+export function PostCard({
+  post,
+  onSavedChange,
+}: {
+  post: Post;
+  onSavedChange?: () => void;
+}) {
   const { user } = useAuth();
   const [liked, setLiked] = useState(!!post.likedByMe);
   const [likeCount, setLikeCount] = useState(post.stats.likes);
   const [busy, setBusy] = useState(false);
+  const [saved, setSaved] = useState(!!post.savedByMe);
+  const [saveBusy, setSaveBusy] = useState(false);
   const [commentsOpen, setCommentsOpen] = useState(false);
   const [comments, setComments] = useState<PostComment[]>(post.comments ?? []);
   const [commentCount, setCommentCount] = useState(post.stats.comments);
   const [draft, setDraft] = useState("");
   const [posting, setPosting] = useState(false);
-  const [contextActive, setContextActive] = useState(false);
   const [celebrating, setCelebrating] = useState(false);
 
   const cat = categoryStyles[post.category];
@@ -136,8 +155,34 @@ export function PostCard({ post }: { post: Post }) {
       setComments((cs) => [
         {
           id: newComment._id,
+          authorId: newComment.author?._id,
           authorName: newComment.author?.name || user?.name || "You",
           authorHandle: newComment.author?.username,
+          author: newComment.author
+            ? {
+                id: newComment.author._id,
+                name: newComment.author.name || user?.name || "You",
+                handle: newComment.author.username || newComment.author._id,
+                kind: newComment.author.accountType === "circle" ? "circle" : "personal",
+                location: newComment.author.currentRegion || "",
+                bio: "",
+                hue: hueFromString(newComment.author._id || newComment._id),
+                avatarUrl:
+                  newComment.author.avatarUrl ||
+                  newComment.author.profilePictureUrl ||
+                  newComment.author.profilePhotoUrl ||
+                  newComment.author.photoUrl,
+                bannerUrl:
+                  newComment.author.bannerUrl ||
+                  newComment.author.profileBannerUrl ||
+                  newComment.author.coverPhotoUrl,
+                stats: [
+                  { label: "POSTS", value: "—" },
+                  { label: "FOLLOWERS", value: "—" },
+                  { label: "CIRCLES", value: "—" },
+                ],
+              }
+            : undefined,
           body: newComment.content,
           time: relativeTime(newComment.createdAt),
           hue: hueFromString(newComment.author?._id || newComment._id),
@@ -153,6 +198,25 @@ export function PostCard({ post }: { post: Post }) {
     }
   }
 
+  async function toggleSave() {
+    if (saveBusy) return;
+    const wasSaved = saved;
+    setSaveBusy(true);
+    setSaved(!wasSaved);
+    try {
+      const result = wasSaved
+        ? await postsApi.unsave(post.id)
+        : await postsApi.save(post.id);
+      setSaved(Boolean(result.saved ?? result.savedByMe ?? result.post?.savedByMe ?? !wasSaved));
+      onSavedChange?.();
+      if (!wasSaved) emitPlayfulBurst("saved");
+    } catch {
+      setSaved(wasSaved);
+    } finally {
+      setSaveBusy(false);
+    }
+  }
+
   return (
     <article
       id={`post-${post.id}`}
@@ -165,8 +229,14 @@ export function PostCard({ post }: { post: Post }) {
       <div className="p-5">
         <div className="flex items-start gap-3">
           <MiniProfileCard profile={post.author}>
-            <Link href={profileHref(post.author.kind, post.author.handle)}>
-              <Avatar size={42} hue={post.author.hue ?? 220} kind={post.author.kind} />
+            <Link href={profileHref(post.author.kind, post.author.handle, post.author.id)}>
+              <Avatar
+                size={42}
+                hue={post.author.hue ?? 220}
+                kind={post.author.kind}
+                src={post.author.avatarUrl}
+                alt={`${post.author.name} avatar`}
+              />
             </Link>
           </MiniProfileCard>
 
@@ -174,7 +244,7 @@ export function PostCard({ post }: { post: Post }) {
             <div className="flex items-center gap-2 flex-wrap">
               <MiniProfileCard profile={post.author}>
                 <Link
-                  href={profileHref(post.author.kind, post.author.handle)}
+                  href={profileHref(post.author.kind, post.author.handle, post.author.id)}
                   className="text-[14px] font-semibold tracking-tight hover:underline"
                 >
                   {post.author.name}
@@ -230,18 +300,28 @@ export function PostCard({ post }: { post: Post }) {
             </button>
           </div>
         )}
+        {post.pollMeta && (
+          <PollBlock
+            postId={post.id}
+            userId={user?._id}
+            duration={post.pollMeta.duration}
+            options={post.pollMeta.options}
+          />
+        )}
 
-        <p className="mt-4 text-[14px] leading-relaxed text-ink/85 whitespace-pre-wrap">
-          {post.body}
-          {post.tags.length > 0 && (
-            <>
-              {" "}
-              <span className="text-ink">
-                {post.tags.map((t) => `#${t}`).join(" ")}
-              </span>
-            </>
-          )}
-        </p>
+        {(post.body || post.tags.length > 0) && (
+          <p className="mt-4 text-[14px] leading-relaxed text-ink/85 whitespace-pre-wrap">
+            {post.body}
+            {post.tags.length > 0 && (
+              <>
+                {" "}
+                <span className="text-ink">
+                  {post.tags.map((t) => `#${t}`).join(" ")}
+                </span>
+              </>
+            )}
+          </p>
+        )}
       </div>
 
       {post.hasMedia && (
@@ -288,13 +368,10 @@ export function PostCard({ post }: { post: Post }) {
         />
         <ActionBtn icon="Chat" label="Comment" onClick={() => setCommentsOpen((v) => !v)} />
         <ActionBtn
-          icon={cat.action.icon}
-          label={contextActive ? cat.action.activeLabel : cat.action.label}
-          active={contextActive}
-          onClick={() => {
-            setContextActive((v) => !v);
-            if (!contextActive) emitPlayfulBurst(cat.action.activeLabel);
-          }}
+          icon="Bookmark"
+          label={saved ? "Saved" : saveBusy ? "Saving" : "Save"}
+          active={saved}
+          onClick={toggleSave}
         />
         <ActionBtn icon="Share" label="Share" />
       </div>
@@ -302,7 +379,14 @@ export function PostCard({ post }: { post: Post }) {
       {commentsOpen && (
         <div className="border-t border-paper-line bg-paper-warm/40 p-4 space-y-3">
           <div className="flex items-start gap-2">
-            <Avatar size={28} hue={hueFromString(user?._id || "me")} />
+            <Link href="/profile" className="shrink-0 rounded-full focus:outline-none focus:ring-2 focus:ring-ink">
+              <Avatar
+                size={28}
+                hue={hueFromString(user?._id || "me")}
+                src={user?.avatarUrl || user?.profilePictureUrl || user?.profilePhotoUrl || user?.photoUrl}
+                alt={`${user?.name || "Your"} avatar`}
+              />
+            </Link>
             <div className="flex-1">
               <textarea
                 value={draft}
@@ -334,10 +418,52 @@ export function PostCard({ post }: { post: Post }) {
             <ul className="space-y-2">
               {comments.map((c) => (
                 <li key={c.id} className="flex items-start gap-2">
-                  <Avatar size={28} hue={c.hue} />
+                  {c.author ? (
+                    <MiniProfileCard profile={c.author}>
+                      <Link
+                        href={profileHref(c.author.kind, c.author.handle, c.author.id)}
+                        className="shrink-0 rounded-full focus:outline-none focus:ring-2 focus:ring-ink"
+                      >
+                        <Avatar
+                          size={28}
+                          hue={c.author.hue ?? c.hue}
+                          kind={c.author.kind}
+                          src={c.author.avatarUrl}
+                          alt={`${c.author.name} avatar`}
+                        />
+                      </Link>
+                    </MiniProfileCard>
+                  ) : c.authorHandle || c.authorId ? (
+                    <Link
+                      href={profileHref("user", c.authorHandle, c.authorId)}
+                      className="shrink-0 rounded-full focus:outline-none focus:ring-2 focus:ring-ink"
+                    >
+                      <Avatar size={28} hue={c.hue} />
+                    </Link>
+                  ) : (
+                    <Avatar size={28} hue={c.hue} />
+                  )}
                   <div className="flex-1 rounded-[14px] bg-paper border border-paper-line px-3 py-2">
                     <div className="flex items-center gap-2 text-[12px]">
-                      <span className="font-semibold">{c.authorName}</span>
+                      {c.author ? (
+                        <MiniProfileCard profile={c.author}>
+                          <Link
+                            href={profileHref(c.author.kind, c.author.handle, c.author.id)}
+                            className="font-semibold hover:underline"
+                          >
+                            {c.authorName}
+                          </Link>
+                        </MiniProfileCard>
+                      ) : c.authorHandle || c.authorId ? (
+                        <Link
+                          href={profileHref("user", c.authorHandle, c.authorId)}
+                          className="font-semibold hover:underline"
+                        >
+                          {c.authorName}
+                        </Link>
+                      ) : (
+                        <span className="font-semibold">{c.authorName}</span>
+                      )}
                       <span className="text-ink/40">{c.time}</span>
                     </div>
                     <p className="mt-1 text-[13px] text-ink/80 whitespace-pre-wrap">{c.body}</p>
@@ -375,5 +501,67 @@ function ActionBtn({
       <Ico size={14} />
       {label}
     </button>
+  );
+}
+
+function PollBlock({
+  postId,
+  userId,
+  duration,
+  options,
+}: {
+  postId: string;
+  userId?: string;
+  duration: string;
+  options: string[];
+}) {
+  const [vote, setVote] = useState<string | null>(null);
+
+  useEffect(() => {
+    const stored = getPostInteraction(userId, postId, "pollVote");
+    setVote(typeof stored === "string" ? stored : null);
+  }, [postId, userId]);
+
+  return (
+    <div className="mt-4 rounded-[16px] border border-paper-line bg-paper-warm p-3">
+      <div className="mb-2 flex items-center justify-between gap-3 text-[11px] font-bold uppercase tracking-[0.12em] text-ink/42">
+        <span className="inline-flex items-center gap-1.5">
+          <Icon.Poll size={12} />
+          Poll
+        </span>
+        <span>{duration}</span>
+      </div>
+      <div className="space-y-2">
+        {options.map((option) => {
+          const active = vote === option;
+          return (
+            <button
+              key={option}
+              type="button"
+              aria-pressed={active}
+              onClick={() => {
+                setVote(option);
+                setPostInteraction(userId, postId, "pollVote", option);
+                emitPlayfulBurst("voted");
+              }}
+              className={clsx(
+                "btn-press relative flex min-h-10 w-full items-center justify-between overflow-hidden rounded-[12px] border px-3 py-2 text-left text-[12.5px] font-semibold transition",
+                active
+                  ? "border-ink bg-[#EAFCC4] text-ink"
+                  : "border-paper-line bg-paper hover:border-ink/30"
+              )}
+            >
+              <span className="relative z-10 min-w-0 truncate">{option}</span>
+              {active && (
+                <span className="relative z-10 inline-flex items-center gap-1 text-[11px] font-bold text-[#4A7018]">
+                  <Icon.Check size={12} />
+                  Voted
+                </span>
+              )}
+            </button>
+          );
+        })}
+      </div>
+    </div>
   );
 }

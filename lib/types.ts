@@ -30,6 +30,9 @@ export interface ApiUser {
   circleCount?: number;
   roles: UserRole[];
   avatarUrl?: string;
+  bannerUrl?: string;
+  coverPhotoUrl?: string;
+  profileBannerUrl?: string;
   profilePictureUrl?: string;
   photoUrl?: string;
   profilePhoto?: string;
@@ -57,6 +60,9 @@ export interface ApiAuthor {
   name: string;
   username?: string;
   avatarUrl?: string;
+  bannerUrl?: string;
+  coverPhotoUrl?: string;
+  profileBannerUrl?: string;
   photoUrl?: string;
   profilePhoto?: string;
   profilePhotoUrl?: string;
@@ -91,7 +97,35 @@ export interface ApiCircle {
   isAdmin?: boolean;
   memberRole?: "owner" | "admin" | "member";
   membershipStatus?: "none" | "pending" | "active" | "rejected";
+  channels?: ApiCircleChannel[];
   createdAt?: string;
+  updatedAt?: string;
+}
+
+export type CircleChannelVisibility = "members" | "admins" | "public";
+export type CircleChannelPostingRole = "members" | "admins";
+
+export interface ApiCircleChannel {
+  _id: string;
+  circleId: string;
+  name: string;
+  description?: string;
+  visibility: CircleChannelVisibility;
+  postingRole?: CircleChannelPostingRole;
+  memberCount?: number;
+  messageCount?: number;
+  lastMessageAt?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface ApiCircleChannelMessage {
+  _id: string;
+  channelId: string;
+  circleId: string;
+  author: ApiAuthor;
+  body: string;
+  createdAt: string;
   updatedAt?: string;
 }
 
@@ -115,6 +149,8 @@ export interface ApiPost {
   likes?: string[];
   likesCount: number;
   likedByMe: boolean;
+  savedByMe?: boolean;
+  savedCount?: number;
   comments?: ApiComment[];
   commentCount?: number;
   createdAt: string;

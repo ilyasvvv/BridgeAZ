@@ -30,6 +30,9 @@ export type UpdateProfileInput = Partial<{
   profilePictureUrl: string;
   profilePhotoUrl: string;
   avatarUrl: string;
+  bannerUrl: string;
+  coverPhotoUrl: string;
+  profileBannerUrl: string;
   resumeUrl: string;
   skills: string[];
   canHelpWith: string[];
@@ -100,6 +103,18 @@ export async function resolveHandle(handle: string): Promise<ApiUser | null> {
     return await usersApi.getByHandle(lower);
   } catch {
     // Fall through to search for older API deployments.
+  }
+
+  try {
+    return await usersApi.get(handle);
+  } catch {
+    // Fall through to search when the route segment is not a user id.
+  }
+
+  try {
+    return await usersApi.get(handle);
+  } catch {
+    // Fall through to search for links generated before id fallbacks existed.
   }
 
   try {

@@ -1,5 +1,12 @@
 import { api } from "./api";
-import type { ApiCircle, ApiPost } from "./types";
+import type {
+  ApiCircle,
+  ApiCircleChannel,
+  ApiCircleChannelMessage,
+  ApiPost,
+  CircleChannelPostingRole,
+  CircleChannelVisibility,
+} from "./types";
 
 export type CreateCircleInput = {
   name: string;
@@ -11,6 +18,13 @@ export type CreateCircleInput = {
   minAge?: boolean;
   avatarUrl?: string;
   bannerUrl?: string;
+};
+
+export type CreateCircleChannelInput = {
+  name: string;
+  description?: string;
+  visibility?: CircleChannelVisibility;
+  postingRole?: CircleChannelPostingRole;
 };
 
 export const circlesApi = {
@@ -32,4 +46,22 @@ export const circlesApi = {
     api.post<ApiCircle>(`/circles/${encodeURIComponent(idOrHandle)}/join`, {}),
   leave: (idOrHandle: string) =>
     api.delete<{ ok: true }>(`/circles/${encodeURIComponent(idOrHandle)}/join`),
+  channels: (idOrHandle: string) =>
+    api.get<ApiCircleChannel[]>(
+      `/circles/${encodeURIComponent(idOrHandle)}/channels`
+    ),
+  createChannel: (idOrHandle: string, input: CreateCircleChannelInput) =>
+    api.post<ApiCircleChannel>(
+      `/circles/${encodeURIComponent(idOrHandle)}/channels`,
+      input
+    ),
+  channelMessages: (idOrHandle: string, channelId: string) =>
+    api.get<ApiCircleChannelMessage[]>(
+      `/circles/${encodeURIComponent(idOrHandle)}/channels/${encodeURIComponent(channelId)}/messages`
+    ),
+  sendChannelMessage: (idOrHandle: string, channelId: string, body: string) =>
+    api.post<ApiCircleChannelMessage>(
+      `/circles/${encodeURIComponent(idOrHandle)}/channels/${encodeURIComponent(channelId)}/messages`,
+      { body }
+    ),
 };

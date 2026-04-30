@@ -14,7 +14,7 @@ export function authorToMiniProfile(
   fallback?: { followers?: number; circles?: number }
 ): MiniProfile {
   const kind = a.accountType === "circle" ? "circle" : "personal";
-  const handle = a.username || (a.name || "user").toLowerCase().replace(/\s+/g, "");
+  const handle = a.username || a._id || (a.name || "user").toLowerCase().replace(/\s+/g, "");
   return {
     id: a._id,
     name: a.name || "Unknown",
@@ -23,6 +23,8 @@ export function authorToMiniProfile(
     location: authorLocation(a),
     bio: "",
     hue: hueFromString(a._id || a.name || handle),
+    avatarUrl: avatarFromAuthor(a),
+    bannerUrl: a.bannerUrl || a.profileBannerUrl || a.coverPhotoUrl,
     stats: [
       { label: "POSTS", value: "—" },
       { label: "FOLLOWERS", value: fallback?.followers != null ? String(fallback.followers) : "—" },
@@ -48,18 +50,33 @@ export function userToMiniProfile(u: ApiUser): MiniProfile {
     ...mini,
     bio: u.bio || u.headline || "",
     location: userLocation(u),
+    avatarUrl: avatarFromAuthor(u),
+    bannerUrl: u.bannerUrl || u.profileBannerUrl || u.coverPhotoUrl,
+    stats: [
+      { label: "POSTS", value: String(u.postCount ?? u.postsCount ?? "—") },
+      { label: "FOLLOWERS", value: String(u.followerCount ?? u.followersCount ?? "—") },
+      { label: "CIRCLES", value: String(u.circleCount ?? "—") },
+    ],
   };
 }
 
 export function circleToMiniProfile(c: ApiCircle): MiniProfile {
   const location = circleLocation(c);
   return {
+    id: c._id,
     name: c.name,
     handle: c.handle,
     kind: "circle",
     location,
     bio: c.bio || "",
     hue: hueFromString(c._id || c.handle),
+    avatarUrl: c.avatarUrl,
+    bannerUrl: c.bannerUrl,
+    following: c.membershipStatus === "active",
+    membershipStatus: c.membershipStatus,
+    memberRole: c.memberRole,
+    isAdmin: c.isAdmin,
+    isOwner: c.isOwner,
     stats: [
       { label: "MEMBERS", value: String(c.memberCount ?? 0) },
       { label: "POSTS", value: String(c.postCount ?? 0) },
@@ -82,6 +99,7 @@ export function userToProfileMeta(u: ApiUser, isOwner = false): ProfileMeta {
     link,
     hue: hueFromString(u._id || u.username || u.name),
     avatarUrl: avatarFromAuthor(u),
+    bannerUrl: u.bannerUrl || u.profileBannerUrl || u.coverPhotoUrl,
     isOwner,
     stats: [
       { label: "POSTS", value: String(u.postCount ?? u.postsCount ?? "—") },
@@ -102,6 +120,7 @@ export function circleToProfileMeta(c: ApiCircle): ProfileMeta {
     joined: monthYear(c.createdAt),
     hue: hueFromString(c._id || c.handle),
     avatarUrl: c.avatarUrl,
+    bannerUrl: c.bannerUrl,
     isOwner: !!c.isOwner,
     stats: [
       { label: "MEMBERS", value: String(c.memberCount ?? 0) },
@@ -113,6 +132,7 @@ export function circleToProfileMeta(c: ApiCircle): ProfileMeta {
 
 function inferCategory(content: string): PostCategory {
   const lower = (content || "").toLowerCase();
+  if (/^poll\s*\(/im.test(content) || /\n\s*poll\s*\(/i.test(content)) return "Poll";
   if (/(hiring|job|internship|scholarship|apply|role at|we're hiring)/i.test(lower)) return "Opportunity";
   if (/(event|meetup|rsvp|tonight|tomorrow|join us|gathering|hosting)/i.test(lower)) return "Event";
   if (/(looking for|searching for|anyone know|need a|roommate|need help finding)/i.test(lower)) return "Searching for";
@@ -126,7 +146,12 @@ export function apiPostToUiPost(
 ): Post {
   const options = typeof optionsOrIndex === "object" ? optionsOrIndex : {};
   const tags = extractHashtags(p.content || "");
-  const contentWithoutTags = (p.content || "").replace(/\s*#[a-zA-Z0-9_]{2,30}/g, "").trim();
+  const pollMeta = parsePollMeta(p.content || "");
+  const eventMeta = parseEventMeta(p.content || "");
+  const opportunityMeta = parseOpportunityMeta(p.content || "");
+  const contentWithoutTags = stripStructuredBlocks(p.content || "")
+    .replace(/\s*#[a-zA-Z0-9_]{2,30}/g, "")
+    .trim();
   const commentsCount = typeof p.commentCount === "number"
     ? p.commentCount
     : Array.isArray(p.comments) ? p.comments.length : 0;
@@ -151,19 +176,66 @@ export function apiPostToUiPost(
     mediaUrl: p.attachmentKind === "image" ? p.attachmentUrl : undefined,
     mediaHue: hueFromString(p._id),
     likedByMe: !!p.likedByMe,
+    savedByMe: !!p.savedByMe,
     comments: (p.comments || []).map((c) => ({
       id: c._id,
+      authorId: c.author?._id,
       authorName: c.author?.name || "Unknown",
       authorHandle: c.author?.username,
+      author: c.author ? authorToMiniProfile(c.author) : undefined,
       body: c.content,
       time: relativeTime(c.createdAt),
       hue: hueFromString(c.author?._id || c._id),
     })),
+    eventMeta,
+    opportunityMeta,
+    pollMeta,
     stats: {
       likes: p.likesCount || 0,
       comments: commentsCount,
       shares: 0,
     },
+  };
+}
+
+function stripStructuredBlocks(content: string): string {
+  return content
+    .replace(/\n{0,2}Poll\s*\([^)]+\):[\s\S]*$/i, "")
+    .replace(/\n{0,2}(Date\/time|Venue|Capacity):.*(?:\n|$)/gi, "\n")
+    .replace(/\n{0,2}(Role|Location|Apply):.*(?:\n|$)/gi, "\n")
+    .trim();
+}
+
+function parsePollMeta(content: string): Post["pollMeta"] {
+  const match = content.match(/Poll\s*\(([^)]+)\):\s*([\s\S]+)$/i);
+  if (!match) return undefined;
+  const options = match[2]
+    .split(/\n+/)
+    .map((line) => line.match(/^\s*\d+\.\s*(.+?)\s*$/)?.[1])
+    .filter((value): value is string => !!value);
+  if (options.length < 2) return undefined;
+  return { duration: match[1].trim(), options };
+}
+
+function parseEventMeta(content: string): Post["eventMeta"] {
+  const dateTime = content.match(/(?:^|\n)Date\/time:\s*(.+)/i)?.[1]?.trim();
+  const venue = content.match(/(?:^|\n)Venue:\s*(.+)/i)?.[1]?.trim();
+  if (!dateTime && !venue) {
+    const legacy = content.match(/(?:📅|Date:)\s*([^·\n]+)(?:\s*·\s*(?:📍)?\s*(.+))?/i);
+    if (!legacy) return undefined;
+    return { date: legacy[1].trim(), venue: legacy[2]?.trim() || "" };
+  }
+  return { date: dateTime || "Date TBA", venue: venue || "Venue TBA" };
+}
+
+function parseOpportunityMeta(content: string): Post["opportunityMeta"] {
+  const role = content.match(/(?:^|\n)Role:\s*(.+)/i)?.[1]?.trim();
+  const location = content.match(/(?:^|\n)Location:\s*(.+)/i)?.[1]?.trim();
+  const applyLink = content.match(/(?:^|\n)Apply:\s*(.+)/i)?.[1]?.trim();
+  if (!role && !location && !applyLink) return undefined;
+  return {
+    role: role || "Opportunity",
+    type: [location, applyLink ? "Apply link included" : ""].filter(Boolean).join(" · "),
   };
 }
 

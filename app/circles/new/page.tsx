@@ -9,6 +9,7 @@ import { Icon } from "@/components/Icon";
 import { Button } from "@/components/Button";
 import { AnimatedLogo } from "@/components/AnimatedLogo";
 import { circlesApi } from "@/lib/circles";
+import { useIdentity } from "@/lib/identity";
 import { emitPlayfulBurst } from "@/lib/playful";
 
 type Visibility = "public" | "request" | "private";
@@ -34,6 +35,7 @@ const PURPOSES = [
 
 export default function NewCirclePage() {
   const router = useRouter();
+  const { refreshIdentities } = useIdentity();
   const [step, setStep] = useState(0);
   const [name, setName] = useState("");
   const [handle, setHandle] = useState("");
@@ -77,8 +79,9 @@ export default function NewCirclePage() {
         visibility,
       });
       setCreated(true);
+      await refreshIdentities();
       emitPlayfulBurst("circle born");
-      router.push(`/circle/${encodeURIComponent(circle.handle)}`);
+      window.setTimeout(() => router.push(`/circle/${encodeURIComponent(circle.handle)}`), 450);
     } catch (err: any) {
       setError(err?.message || "Failed to create circle");
     } finally {
@@ -105,7 +108,7 @@ export default function NewCirclePage() {
           <div className="rounded-[22px] bg-paper border border-paper-line p-6 md:p-8 space-y-6">
             {step === 0 && (
               <div className="space-y-5">
-                <Field label="Circle name">
+                <Field label="Circle name" hint="Required">
                   <input
                     value={name}
                     onChange={(e) => setName(e.target.value)}
@@ -113,7 +116,10 @@ export default function NewCirclePage() {
                     className="w-full h-11 px-4 rounded-[14px] bg-paper-warm border border-paper-line text-[14px] outline-none focus:border-ink/40"
                   />
                 </Field>
-                <Field label="Palette">
+                <Field label="Default avatar and banner">
+                  <div className="rounded-[18px] border border-[#8FC23A]/35 bg-[#EAFCC4] px-4 py-3 text-[12.5px] leading-relaxed text-ink/72">
+                    BizimCircle generates a branded avatar and banner from this palette until you add custom images later.
+                  </div>
                   <div className="grid gap-2 sm:grid-cols-2">
                     {PALETTES.map((palette) => (
                       <button
@@ -140,7 +146,7 @@ export default function NewCirclePage() {
                     ))}
                   </div>
                 </Field>
-                <Field label="Handle">
+                <Field label="Handle" hint="Required">
                   <div className="flex items-center gap-2 h-11 px-4 rounded-[14px] bg-paper-warm border border-paper-line focus-within:border-ink/40">
                     <span className="text-ink/40 text-[13px]">bizim.circle/</span>
                     <input
@@ -177,7 +183,7 @@ export default function NewCirclePage() {
                     ))}
                   </div>
                 </Field>
-                <Field label="Short bio">
+                <Field label="Short bio" hint="Recommended">
                   <textarea
                     value={bio}
                     onChange={(e) => setBio(e.target.value.slice(0, 140))}
@@ -194,7 +200,7 @@ export default function NewCirclePage() {
 
             {step === 1 && (
               <div className="space-y-4 max-w-lg">
-              <Field label="City">
+              <Field label="City" hint="Required">
                 <input
                   value={city}
                   onChange={(e) => setCity(e.target.value)}
@@ -202,7 +208,7 @@ export default function NewCirclePage() {
                   className="w-full h-11 px-4 rounded-[14px] bg-paper-warm border border-paper-line text-[14px] outline-none focus:border-ink/40"
                 />
               </Field>
-              <Field label="Country">
+              <Field label="Country" hint="Required">
                 <input
                   value={country}
                   onChange={(e) => setCountry(e.target.value)}
@@ -221,9 +227,9 @@ export default function NewCirclePage() {
               <div className="grid gap-2">
                 {(
                   [
-                    { key: "public", label: "Public" },
-                    { key: "request", label: "By request" },
-                    { key: "private", label: "Private" },
+                    { key: "public", label: "Open membership", desc: "Anyone can join and see member channels." },
+                    { key: "request", label: "Request approval", desc: "People ask to join; admins approve." },
+                    { key: "private", label: "Admin invite only", desc: "Only invited members can access the circle." },
                   ] as const
                 ).map((opt) => (
                   <label
@@ -246,9 +252,15 @@ export default function NewCirclePage() {
                       <div className="text-[13.5px] font-semibold">
                         {opt.label}
                       </div>
+                      <div className="mt-0.5 text-[12px] text-ink/52">
+                        {opt.desc}
+                      </div>
                     </div>
                   </label>
                 ))}
+              </div>
+              <div className="rounded-[18px] border border-paper-line bg-paper-warm px-4 py-3 text-[12.5px] text-ink/58">
+                The creator becomes circle owner/admin after creation.
               </div>
               </div>
             )}

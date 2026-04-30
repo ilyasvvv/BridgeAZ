@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { League_Spartan } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/lib/auth";
+import { IdentityProvider } from "@/lib/identity";
 import { LiveProvider } from "@/lib/live";
 import { PlayfulProvider } from "@/lib/playful";
 
@@ -28,7 +29,9 @@ export default function RootLayout({
       <body className="font-sans bg-paper text-ink antialiased">
         <PlayfulProvider>
           <AuthProvider>
-            <LiveProvider>{children}</LiveProvider>
+            <IdentityProvider>
+              <LiveProvider>{children}</LiveProvider>
+            </IdentityProvider>
           </AuthProvider>
         </PlayfulProvider>
       </body>

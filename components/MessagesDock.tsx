@@ -324,11 +324,11 @@ export function FloatingMessagesDock({
 
   if (!open) {
     return (
-      <div className="fixed bottom-5 right-5 z-50">
+      <div className="fixed bottom-5 right-5 z-50 hidden sm:block">
         <button
           onClick={onToggle}
           aria-label="Open messages"
-          className="group flex items-center gap-3 h-14 pl-3 pr-5 rounded-pill bg-ink text-paper shadow-pop btn-press hover:-translate-y-[1px] transition-transform"
+          className="group flex h-14 w-14 items-center justify-center rounded-pill bg-ink p-0 text-paper shadow-pop transition-transform hover:-translate-y-[1px] sm:w-auto sm:justify-start sm:gap-3 sm:pl-3 sm:pr-5 btn-press"
         >
           <span className="relative inline-flex items-center justify-center w-9 h-9 rounded-full bg-paper text-ink">
             <Icon.Chat size={16} />
@@ -338,13 +338,13 @@ export function FloatingMessagesDock({
               </span>
             )}
           </span>
-          <span className="text-left">
+          <span className="hidden text-left sm:block">
             <span className="block text-[12.5px] font-semibold tracking-tight leading-tight">Messages</span>
             <span className="block text-[10.5px] font-medium text-paper/55 leading-tight mt-0.5">
               {totalUnread > 0 ? `${totalUnread} unread · ${previewLabel}` : "all caught up"}
             </span>
           </span>
-          <span className="text-paper/60 group-hover:text-paper transition text-[14px] leading-none">→</span>
+          <span className="hidden text-paper/60 transition group-hover:text-paper sm:inline text-[14px] leading-none">→</span>
         </button>
       </div>
     );

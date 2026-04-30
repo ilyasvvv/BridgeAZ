@@ -5,8 +5,9 @@ import { TopBar } from "@/components/TopBar";
 import { Button, LinkButton } from "@/components/Button";
 import { Avatar } from "@/components/Avatar";
 import { Icon } from "@/components/Icon";
-import { AnimatedLogo, BizimLogoLockup } from "@/components/AnimatedLogo";
+import { AnimatedLogo } from "@/components/AnimatedLogo";
 import type { LogoMotion } from "@/components/AnimatedLogo";
+import { OfficialLogo } from "@/components/OfficialLogo";
 
 const brandAccent = {
   name: "Lime",
@@ -168,10 +169,10 @@ export default function DesignSystemPage() {
           </p>
         </header>
 
-        <Section title="Canva slide 10 · vector lockup">
+        <Section title="Official logo · SVG lockup">
           <div className="grid gap-5 lg:grid-cols-[1.15fr_0.85fr]">
             <div className="design-logo-showcase min-h-72 rounded-[18px] border border-paper-line bg-paper flex items-center justify-center overflow-hidden">
-              <BizimLogoLockup size={150} motion="side-to-side" />
+              <OfficialLogo width={520} className="w-[min(82vw,520px)]" />
             </div>
             <div className="rounded-[18px] border border-paper-line bg-paper-cool p-5 flex flex-col justify-between gap-6">
               <div>
@@ -202,18 +203,19 @@ export default function DesignSystemPage() {
               </div>
               <div className="rounded-[16px] border border-paper-line bg-paper p-4">
                 <div className="text-[12.5px] leading-relaxed text-ink/58">
-                  Rebuilt as SVG and CSS, so the mark stays crisp in the website and
-                  the outer circle remains fixed while the inner dots animate.
+                  The official Illustrator export now lives in the website as a
+                  static SVG asset. Use this lockup anywhere the full logo appears,
+                  especially navigation and account entry points.
                 </div>
               </div>
             </div>
           </div>
         </Section>
 
-        <Section title="Header preview · Canva logo">
+        <Section title="Header preview · official logo">
           <div className="overflow-hidden rounded-[18px] border border-paper-line bg-paper">
             <div className="h-16 px-5 flex items-center gap-5 border-b border-paper-line bg-paper/90">
-              <BizimLogoLockup size={42} motion="side-to-side" />
+              <OfficialLogo width={132} />
               <div className="hidden md:flex flex-1 max-w-md h-10 items-center rounded-pill bg-paper-cool border border-paper-line px-3 text-[13px] text-ink/35">
                 Search people, circles, posts, tags...
               </div>
@@ -229,12 +231,16 @@ export default function DesignSystemPage() {
             </div>
             <div className="p-5 grid gap-4 md:grid-cols-3">
               {[
-                { label: "Compact app header", size: 42, motion: "side-to-side" as const },
-                { label: "Loading header", size: 42, motion: "loading" as const },
-                { label: "Blinking header", size: 42, motion: "wink" as const },
+                { label: "Static app header", logo: true as const },
+                { label: "Loading mark only", motion: "loading" as const },
+                { label: "Friendly idle mark", motion: "wink" as const },
               ].map((item) => (
                 <div key={item.label} className="rounded-[16px] border border-paper-line bg-paper-cool p-4">
-                  <BizimLogoLockup size={item.size} motion={item.motion} />
+                  {"logo" in item ? (
+                    <OfficialLogo width={132} />
+                  ) : (
+                    <AnimatedLogo size={42} motion={item.motion} />
+                  )}
                   <div className="mt-3 text-[11px] font-semibold tracking-[0.16em] text-ink/50 uppercase">
                     {item.label}
                   </div>
@@ -244,7 +250,7 @@ export default function DesignSystemPage() {
           </div>
         </Section>
 
-        <Section title="Landing preview · Canva logo">
+        <Section title="Landing preview · official logo">
           <div className="relative overflow-hidden rounded-[18px] border border-paper-line bg-paper-warm p-6 md:p-8">
             <div
               aria-hidden
@@ -256,15 +262,15 @@ export default function DesignSystemPage() {
             />
             <div className="relative z-10 grid gap-8 lg:grid-cols-[0.92fr_1.08fr] items-center">
               <div>
-                <BizimLogoLockup size={66} motion="side-to-side" />
+                <OfficialLogo width={180} className="max-w-[62vw]" />
                 <h3 className="mt-8 font-display text-[clamp(42px,7vw,86px)] font-medium tracking-[-0.04em] leading-[0.9]">
                   Find your <span className="italic font-light">circle</span>
                   <br />
                   abroad.
                 </h3>
                 <p className="mt-5 max-w-sm text-[15px] leading-relaxed text-ink/55">
-                  A long logo loop for hero sections: loud and playful first, then
-                  it settles into a calmer idle rhythm.
+                  The full logo stays still; the big standalone face carries the
+                  landing-page motion.
                 </p>
                 <div className="mt-7 flex items-center gap-3">
                   <AccentButton size="lg">Join bizim circle <Arrow /></AccentButton>
@@ -305,11 +311,11 @@ export default function DesignSystemPage() {
           </div>
         </Section>
 
-        <Section title="Logo motion">
+        <Section title="Logo motion · mark only">
           <div className="grid gap-5 lg:grid-cols-[1.15fr_0.85fr]">
             <div className="design-logo-showcase min-h-64 rounded-[18px] border border-paper-line bg-paper-cool flex items-center justify-center overflow-hidden">
               <div className="flex flex-col items-center gap-7 px-6 py-8">
-                <BizimLogoLockup size={150} motion="side-to-side" />
+                <AnimatedLogo size={170} motion="landing-loop" />
               </div>
             </div>
             <div className="grid gap-3">

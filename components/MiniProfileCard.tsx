@@ -1,11 +1,18 @@
 "use client";
 
-import { ReactNode, useRef, useState } from "react";
+import { ReactNode, useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import clsx from "clsx";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { Avatar } from "./Avatar";
+import { Icon } from "./Icon";
 import { profileHref } from "@/lib/format";
 import { useAuth } from "@/lib/auth";
 import { usersApi } from "@/lib/users";
+import { circlesApi } from "@/lib/circles";
+import { chatsApi } from "@/lib/chats";
+import { circleToMiniProfile, userToMiniProfile } from "@/lib/mappers";
 
 export type MiniProfile = {
   id?: string;
@@ -16,6 +23,13 @@ export type MiniProfile = {
   bio: string;
   stats: { label: string; value: string }[];
   hue?: number;
+  avatarUrl?: string;
+  bannerUrl?: string;
+  following?: boolean;
+  membershipStatus?: "none" | "pending" | "active" | "rejected";
+  memberRole?: "owner" | "admin" | "member";
+  isAdmin?: boolean;
+  isOwner?: boolean;
 };
 
 /**
@@ -32,13 +46,81 @@ export function MiniProfileCard({
   children: ReactNode;
   placement?: "bottom" | "top" | "right";
 }) {
+  const router = useRouter();
   const { user } = useAuth();
+  const triggerRef = useRef<HTMLSpanElement | null>(null);
+  const [mounted, setMounted] = useState(false);
   const [open, setOpen] = useState(false);
-  const [following, setFollowing] = useState(false);
+  const [rect, setRect] = useState<DOMRect | null>(null);
+  const [detail, setDetail] = useState<MiniProfile>(profile);
+  const [following, setFollowing] = useState(!!profile.following);
   const [followTouched, setFollowTouched] = useState(false);
   const [followBusy, setFollowBusy] = useState(false);
+  const [messageBusy, setMessageBusy] = useState(false);
   const [followError, setFollowError] = useState<string | null>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    setDetail(profile);
+    setFollowing(
+      profile.kind === "circle"
+        ? profile.membershipStatus === "active" || !!profile.following
+        : !!profile.following
+    );
+  }, [profile]);
+
+  useEffect(() => {
+    if (!open) return;
+    const updateRect = () => {
+      const next = triggerRef.current?.getBoundingClientRect();
+      if (next) setRect(next);
+    };
+    updateRect();
+    window.addEventListener("scroll", updateRect, true);
+    window.addEventListener("resize", updateRect);
+    return () => {
+      window.removeEventListener("scroll", updateRect, true);
+      window.removeEventListener("resize", updateRect);
+    };
+  }, [open]);
+
+  useEffect(() => {
+    if (!open || !profile.id) return;
+    let cancelled = false;
+    async function loadDetail() {
+      try {
+        if (profile.kind === "circle") {
+          const circle = await circlesApi.get(profile.handle || profile.id!);
+          if (!cancelled) {
+            const next = circleToMiniProfile(circle);
+            setDetail(next);
+            setFollowing(next.membershipStatus === "active" || !!next.following);
+          }
+          return;
+        }
+
+        const [fullUser, relationship] = await Promise.all([
+          usersApi.get(profile.id!),
+          user?._id === profile.id
+            ? Promise.resolve(null)
+            : usersApi.relationship(profile.id!).catch(() => null),
+        ]);
+        if (cancelled) return;
+        setDetail(userToMiniProfile(fullUser));
+        if (relationship) setFollowing(relationship.following);
+      } catch {
+        // Keep the summary profile if expanded detail is unavailable.
+      }
+    }
+    loadDetail();
+    return () => {
+      cancelled = true;
+    };
+  }, [open, profile.handle, profile.id, profile.kind, user?._id]);
 
   function show() {
     if (timerRef.current) clearTimeout(timerRef.current);
@@ -49,20 +131,37 @@ export function MiniProfileCard({
     timerRef.current = setTimeout(() => setOpen(false), 140);
   }
 
-  const hue = profile.hue ?? 220;
-  const bannerRect =
-    profile.kind === "personal"
-      ? "w-full h-14 rounded-[14px] bg-gradient-to-br from-ink to-ink/70"
-      : "";
-  const canFollow = profile.kind === "personal" && !!profile.id && profile.id !== user?._id;
-  const sharedSignal = profile.kind === "circle"
+  const hue = detail.hue ?? 220;
+  const href = profileHref(detail.kind, detail.handle, detail.id);
+  const isJoinedCircle = detail.kind === "circle" && (following || detail.membershipStatus === "active");
+  const isPendingCircle = detail.kind === "circle" && detail.membershipStatus === "pending";
+  const canFollow =
+    detail.kind === "circle"
+      ? !!(detail.id || detail.handle) && !isPendingCircle
+      : !!detail.id && detail.id !== user?._id;
+  const canMessage = detail.kind === "personal" && !!detail.id && detail.id !== user?._id;
+  const sharedSignal = detail.kind === "circle"
     ? "Circle clubhouse"
-    : profile.location && user?.currentRegion && profile.location.includes(user.currentRegion)
+    : detail.location && user?.currentRegion && detail.location.includes(user.currentRegion)
     ? "Same region"
     : "Warm intro";
+  const floatingStyle = useMemo(() => {
+    if (!rect) return undefined;
+    const width = 276;
+    const gap = 10;
+    const left = Math.min(
+      Math.max(12, placement === "right" ? rect.right + gap : rect.left),
+      window.innerWidth - width - 12
+    );
+    const top =
+      placement === "top"
+        ? Math.max(12, rect.top - 236 - gap)
+        : Math.min(rect.bottom + gap, window.innerHeight - 12);
+    return { left, top, width };
+  }, [placement, rect]);
 
   async function toggleFollow() {
-    if (!canFollow || !profile.id || followBusy) return;
+    if (!canFollow || followBusy) return;
     const wasFollowing = following;
     setFollowBusy(true);
     setFollowTouched(true);
@@ -70,10 +169,23 @@ export function MiniProfileCard({
     setFollowing(!wasFollowing);
 
     try {
-      const result = wasFollowing
-        ? await usersApi.unfollow(profile.id)
-        : await usersApi.follow(profile.id);
-      setFollowing(result.following);
+      if (detail.kind === "circle") {
+        const target = detail.handle || detail.id;
+        if (!target) throw new Error("Circle unavailable");
+        if (wasFollowing) {
+          await circlesApi.leave(target);
+          setFollowing(false);
+        } else {
+          await circlesApi.join(target);
+          setFollowing(true);
+        }
+      } else {
+        if (!detail.id) throw new Error("Profile unavailable");
+        const result = wasFollowing
+          ? await usersApi.unfollow(detail.id)
+          : await usersApi.follow(detail.id);
+        setFollowing(result.following);
+      }
     } catch (err: any) {
       if (err?.status === 409 && !wasFollowing) {
         setFollowing(true);
@@ -86,8 +198,134 @@ export function MiniProfileCard({
     }
   }
 
+  async function startMessage() {
+    if (!canMessage || !detail.id || messageBusy) return;
+    setMessageBusy(true);
+    try {
+      const thread = await chatsApi.startThread(detail.id);
+      router.push(`/messages?thread=${thread._id}`);
+    } finally {
+      setMessageBusy(false);
+    }
+  }
+
+  const preview = mounted && open && floatingStyle
+    ? createPortal(
+        <span
+          className="fixed z-[9999] block"
+          style={floatingStyle}
+          onMouseEnter={show}
+          onMouseLeave={hide}
+          onFocus={show}
+          onBlur={hide}
+        >
+          <span className="block overflow-hidden rounded-[18px] border border-paper-line bg-paper shadow-pop">
+            <span
+              className="block h-16 bg-ink"
+              style={
+                detail.bannerUrl
+                  ? { backgroundImage: `url(${detail.bannerUrl})`, backgroundSize: "cover", backgroundPosition: "center" }
+                  : { background: `linear-gradient(135deg, #0A0A0A, hsl(${hue} 26% 42%), #C1FF72)` }
+              }
+              aria-hidden
+            />
+            <span className="block p-3 pt-0">
+              <span className="flex items-end gap-2">
+                <Link href={href} className="-mt-6 shrink-0 rounded-full focus:outline-none focus:ring-2 focus:ring-ink">
+                  <Avatar
+                    size={52}
+                    hue={hue}
+                    kind={detail.kind}
+                    src={detail.avatarUrl}
+                    alt={`${detail.name} avatar`}
+                    className="ring-4 ring-paper"
+                  />
+                </Link>
+                <span className="min-w-0 flex-1 pb-0.5">
+                  <span className="flex items-center gap-1.5">
+                    <Link href={href} className="truncate text-[13px] font-bold tracking-tight hover:underline">
+                      {detail.name}
+                    </Link>
+                    {detail.kind === "circle" && (
+                      <span className="shrink-0 rounded-full bg-paper-cool px-1.5 py-0.5 text-[8.5px] font-bold uppercase tracking-[0.12em] text-ink/50">
+                        Circle
+                      </span>
+                    )}
+                  </span>
+                  <span className="block text-[10.5px] font-semibold leading-snug text-ink/45">
+                    @{detail.handle}
+                    {detail.stats.slice(0, 3).map((s) => (
+                      <span key={s.label} className="ml-1.5 text-ink/55">
+                        · {s.value} {s.label.toLowerCase()}
+                      </span>
+                    ))}
+                  </span>
+                </span>
+              </span>
+
+              {detail.bio && (
+                <span className="mt-2 line-clamp-2 block text-[12px] leading-snug text-ink/68">
+                  {detail.bio}
+                </span>
+              )}
+
+              <span className="mt-2 flex items-center justify-between gap-2 text-[10.5px] font-bold uppercase tracking-[0.1em] text-ink/42">
+                <span className="truncate normal-case tracking-normal text-[11.5px] font-semibold text-ink/48">
+                  {detail.location}
+                </span>
+                <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-[#EAFCC4] px-2 py-0.5 text-[#4A7018]">
+                  <span className="h-1.5 w-1.5 rounded-full bg-[#8FC23A]" />
+                  {sharedSignal}
+                </span>
+              </span>
+
+              <span className="mt-3 flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={toggleFollow}
+                  disabled={!canFollow || followBusy}
+                  className={clsx(
+                    "btn-press h-8 flex-1 rounded-pill text-[11.5px] font-bold disabled:opacity-45",
+                    following
+                      ? "bg-ink text-paper"
+                      : "border border-[#8FC23A]/45 bg-[#C1FF72] text-ink hover:bg-[#B4F25F]"
+                  )}
+                  >
+                  {followBusy
+                    ? "..."
+                    : detail.kind === "circle"
+                    ? isPendingCircle
+                      ? "Pending"
+                      : isJoinedCircle
+                      ? "Following"
+                      : "Follow"
+                    : following
+                    ? "Following"
+                    : "Follow"}
+                </button>
+                <button
+                  type="button"
+                  onClick={startMessage}
+                  disabled={!canMessage || messageBusy}
+                  className="btn-press inline-flex h-8 flex-1 items-center justify-center gap-1.5 rounded-pill bg-ink text-[11.5px] font-bold text-paper disabled:opacity-45"
+                >
+                  <Icon.Chat size={12} />
+                  {messageBusy ? "..." : "Message"}
+                </button>
+              </span>
+              {followTouched && followError && (
+                <span className="mt-2 block text-[11px] text-red-700">{followError}</span>
+              )}
+            </span>
+          </span>
+        </span>,
+        document.body
+      )
+    : null;
+
   return (
     <span
+      ref={triggerRef}
       className="relative inline-flex"
       onMouseEnter={show}
       onMouseLeave={hide}
@@ -95,117 +333,7 @@ export function MiniProfileCard({
       onBlur={hide}
     >
       {children}
-      <span
-        className={clsx(
-          "pointer-events-none absolute z-50 w-[300px] transition-all duration-200",
-          placement === "bottom" && "top-full left-0 mt-2",
-          placement === "top" && "bottom-full left-0 mb-2",
-          placement === "right" && "left-full top-0 ml-2",
-          open
-            ? "visible opacity-100 translate-y-0 pointer-events-auto"
-            : "invisible opacity-0 translate-y-1"
-        )}
-        aria-hidden={!open}
-      >
-          <span className="block rounded-[22px] bg-paper shadow-pop border border-paper-line p-4 circle-ripple">
-          {/* Banner — rectangular for personal, circular for circle */}
-          {profile.kind === "personal" ? (
-            <span className={clsx("block", bannerRect)} aria-hidden />
-          ) : (
-            <span className="flex justify-center">
-              <span
-                className="block rounded-full"
-                style={{
-                  width: 72,
-                  height: 72,
-                  background: `conic-gradient(from ${hue}deg, #0A0A0A, #6B6B6B, #0A0A0A)`,
-                  boxShadow: "0 6px 24px -8px rgba(0,0,0,0.25)",
-                }}
-                aria-hidden
-              />
-            </span>
-          )}
-
-          <span className="flex items-center gap-3 mt-3">
-            <span
-              className={clsx(
-                "inline-flex shrink-0 items-center justify-center overflow-hidden",
-                "w-11 h-11 rounded-full",
-                profile.kind === "personal" ? "-mt-8 ring-4 ring-paper" : ""
-              )}
-              style={{
-                background: `conic-gradient(from ${hue + 30}deg, #0A0A0A, #555, #0A0A0A)`,
-              }}
-              aria-hidden
-            />
-            <span className="block min-w-0">
-              <span className="flex items-center gap-1.5 text-[14px] font-semibold tracking-tight">
-                {profile.name}
-                {profile.kind === "circle" && (
-                  <span className="text-[9.5px] font-bold tracking-[0.14em] text-ink/50 uppercase bg-paper-cool px-1.5 py-0.5 rounded-full">
-                    Circle
-                  </span>
-                )}
-              </span>
-              <span className="block text-[12px] text-ink/50 truncate">@{profile.handle}</span>
-            </span>
-          </span>
-
-          <span className="block mt-3 text-[12.5px] leading-relaxed text-ink/70">{profile.bio}</span>
-
-          <span className="mt-3 inline-flex items-center gap-1.5 rounded-pill bg-[#EAFCC4] px-2.5 py-1 text-[10.5px] font-bold uppercase tracking-[0.12em] text-[#4A7018]">
-            <span className="h-1.5 w-1.5 rounded-full bg-[#8FC23A]" />
-            {sharedSignal}
-          </span>
-
-          <span className="flex items-center gap-2 mt-3 text-[11.5px] text-ink/50">
-            <span className="inline-block w-1 h-1 rounded-full bg-ink/40" />
-            {profile.location}
-          </span>
-
-          <span className="grid grid-cols-3 gap-2 mt-4 pt-3 border-t border-paper-line">
-            {profile.stats.map((s) => (
-              <span key={s.label} className="block text-center">
-                <span className="block text-[14px] font-semibold">{s.value}</span>
-                <span className="block text-[10px] tracking-[0.12em] text-ink/45 uppercase mt-0.5">
-                  {s.label}
-                </span>
-              </span>
-            ))}
-          </span>
-
-          <span className="flex items-center gap-2 mt-4">
-            <Link
-              href={profileHref(profile.kind, profile.handle)}
-              className="btn-press flex-1 h-9 rounded-pill bg-ink text-paper text-[12px] font-semibold inline-flex items-center justify-center"
-            >
-              View profile
-            </Link>
-            {canFollow ? (
-              <button
-                type="button"
-                onClick={toggleFollow}
-                disabled={followBusy}
-                className={clsx(
-                  "btn-press h-9 px-3 rounded-pill border text-[12px] font-semibold disabled:opacity-50",
-                  following
-                    ? "border-ink bg-ink text-paper"
-                    : "border-paper-line hover:border-ink/30"
-                )}
-              >
-                {followBusy ? "..." : following ? "Following" : "Follow"}
-              </button>
-            ) : (
-              <span className="h-9 px-3 rounded-pill border border-paper-line text-[12px] font-semibold inline-flex items-center justify-center text-ink/45">
-                {profile.kind === "personal" ? "Follow" : "Join"}
-              </span>
-            )}
-          </span>
-          {followTouched && followError && (
-            <span className="block mt-2 text-[11px] text-red-700">{followError}</span>
-          )}
-        </span>
-      </span>
+      {preview}
     </span>
   );
 }

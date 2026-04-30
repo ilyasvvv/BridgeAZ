@@ -5,6 +5,7 @@ import clsx from "clsx";
 import { Icon } from "./Icon";
 import { Avatar } from "./Avatar";
 import { useAuth } from "@/lib/auth";
+import { useIdentity } from "@/lib/identity";
 import { postsApi } from "@/lib/posts";
 import { uploadFile } from "@/lib/uploads";
 import { apiPostToUiPost } from "@/lib/mappers";
@@ -83,6 +84,7 @@ export function Composer({
   onPosted?: (post: Post) => void;
 }) {
   const { user } = useAuth();
+  const { activeIdentity } = useIdentity();
   const [tpl, setTpl] = useState<Template>("note");
   const [text, setText] = useState("");
   const [pollOptions, setPollOptions] = useState<string[]>(["", ""]);
@@ -107,18 +109,15 @@ export function Composer({
     lines.push(prefix + text.trim());
 
     if (tpl === "event") {
-      const bits: string[] = [];
-      if (meta.date) bits.push(`📅 ${meta.date}`);
-      if (meta.venue) bits.push(`📍 ${meta.venue}`);
-      if (meta.capacity) bits.push(`👥 ${meta.capacity}`);
-      if (bits.length) lines.push(bits.join(" · "));
+      const eventDateTime = formatEventDateTime(meta.date, meta.time);
+      if (eventDateTime) lines.push(`Date/time: ${eventDateTime}`);
+      if (meta.venue) lines.push(`Venue: ${meta.venue}`);
+      if (meta.capacity) lines.push(`Capacity: ${meta.capacity}`);
     }
     if (tpl === "opportunity") {
-      const bits: string[] = [];
-      if (meta.role) bits.push(`Role: ${meta.role}`);
-      if (meta.location) bits.push(`Location: ${meta.location}`);
-      if (meta.applyLink) bits.push(`Apply: ${meta.applyLink}`);
-      if (bits.length) lines.push(bits.join(" · "));
+      if (meta.role) lines.push(`Role: ${meta.role}`);
+      if (meta.location) lines.push(`Location: ${meta.location}`);
+      if (meta.applyLink) lines.push(`Apply: ${meta.applyLink}`);
     }
     if (tpl === "searching") {
       const bits: string[] = [];
@@ -162,6 +161,8 @@ export function Composer({
         content: buildContent(),
         attachmentUrl,
         attachmentContentType,
+        circleId: activeIdentity.type === "circle" ? activeIdentity.circle._id : undefined,
+        postedAs: activeIdentity.type === "circle" ? "circle" : "user",
       });
       onPosted?.(
         apiPostToUiPost(created, {
@@ -177,7 +178,11 @@ export function Composer({
     }
   }
 
-  const myHue = hueFromString(user?._id || user?.username || "me");
+  const myHue = activeIdentity.type === "circle"
+    ? hueFromString(activeIdentity.circle._id || activeIdentity.circle.handle)
+    : hueFromString(user?._id || user?.username || "me");
+  const avatarKind = activeIdentity.type === "circle" ? "circle" : "personal";
+  const avatarSrc = activeIdentity.type === "circle" ? activeIdentity.circle.avatarUrl : undefined;
 
   return (
     <div className="rounded-[22px] bg-paper border border-paper-line p-4 shadow-soft circle-ripple">
@@ -205,7 +210,7 @@ export function Composer({
       </div>
 
       <div className="mt-4 flex gap-3 items-start">
-        <Avatar size={38} hue={myHue} kind={user?.accountType === "circle" ? "circle" : "personal"} />
+        <Avatar size={38} hue={myHue} kind={avatarKind} src={avatarSrc} />
         <div className="flex-1">
           <textarea
             value={text}
@@ -217,8 +222,9 @@ export function Composer({
 
           {/* Smart template fields */}
           {tpl === "event" && (
-            <div className="grid grid-cols-3 gap-2 mt-2">
-              <MiniField icon="Calendar" placeholder="Date" value={meta.date} onChange={(v) => setMeta((m) => ({ ...m, date: v }))} />
+            <div className="grid grid-cols-2 gap-2 mt-2 sm:grid-cols-4">
+              <MiniField icon="Calendar" type="date" placeholder="Date" value={meta.date} onChange={(v) => setMeta((m) => ({ ...m, date: v }))} />
+              <MiniField icon="Calendar" type="time" placeholder="Time" value={meta.time} onChange={(v) => setMeta((m) => ({ ...m, time: v }))} />
               <MiniField icon="Pin" placeholder="Venue" value={meta.venue} onChange={(v) => setMeta((m) => ({ ...m, venue: v }))} />
               <MiniField icon="Note" placeholder="Capacity" value={meta.capacity} onChange={(v) => setMeta((m) => ({ ...m, capacity: v }))} />
             </div>
@@ -335,16 +341,13 @@ export function Composer({
               <ToolBtn icon="Calendar" />
             </div>
             <div className="flex items-center gap-2">
-              <span className="text-[11px] text-ink/45 hidden sm:inline">
-                Posting as <b className="text-ink/70">{user?.name || "You"}</b>
-              </span>
               <button
                 onClick={submit}
                 disabled={!canPost}
                 className={clsx(
                   "btn-press h-9 px-5 rounded-pill text-[12.5px] font-semibold inline-flex items-center gap-1.5 transition",
                   canPost
-                    ? "brand-glow bg-[#C1FF72] text-ink shadow-soft hover:bg-[#B4F25F]"
+                    ? "btn-lime bg-lime text-ink shadow-soft hover:bg-lime-deep"
                     : "bg-paper-cool text-ink/40"
                 )}
               >
@@ -383,11 +386,13 @@ function userOriginLocation(user: ApiUser | null): string | undefined {
 function MiniField({
   icon,
   placeholder,
+  type = "text",
   value,
   onChange,
 }: {
   icon: keyof typeof Icon;
   placeholder: string;
+  type?: string;
   value?: string;
   onChange?: (v: string) => void;
 }) {
@@ -396,6 +401,7 @@ function MiniField({
     <label className="flex items-center gap-2 h-9 px-3 rounded-pill bg-paper-cool text-[12.5px]">
       <Ico size={13} className="text-ink/50" />
       <input
+        type={type}
         value={value ?? ""}
         onChange={(e) => onChange?.(e.target.value)}
         placeholder={placeholder}
@@ -403,4 +409,24 @@ function MiniField({
       />
     </label>
   );
+}
+
+function formatEventDateTime(date?: string, time?: string): string {
+  if (!date && !time) return "";
+  if (!date) return time || "";
+
+  const parsed = new Date(`${date}T${time || "00:00"}`);
+  if (Number.isNaN(parsed.getTime())) return [date, time].filter(Boolean).join(" ");
+
+  const datePart = parsed.toLocaleDateString(undefined, {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+  if (!time) return datePart;
+  const timePart = parsed.toLocaleTimeString(undefined, {
+    hour: "numeric",
+    minute: "2-digit",
+  });
+  return `${datePart} at ${timePart}`;
 }

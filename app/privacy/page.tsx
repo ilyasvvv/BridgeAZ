@@ -36,8 +36,8 @@ export default function PrivacyPage() {
             You can update or remove most of your information from{" "}
             <Link href="/settings" className="underline hover:text-ink">Settings</Link>. To
             delete your account, email{" "}
-            <a href="mailto:privacy@bizim.circle" className="underline hover:text-ink">
-              privacy@bizim.circle
+            <a href="mailto:privacy@bizimcircle.com" className="underline hover:text-ink">
+              privacy@bizimcircle.com
             </a>{" "}
             — self-serve deletion is on the way.
           </Section>

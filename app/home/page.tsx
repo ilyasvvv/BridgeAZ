@@ -5,8 +5,8 @@ import { useRouter } from "next/navigation";
 import clsx from "clsx";
 import { TopBar } from "@/components/TopBar";
 import { Composer } from "@/components/Composer";
-import { PostCard, type Post, type PostCategory } from "@/components/PostCard";
-import { CirclesForYou, PeopleForYou, TodayNearYou } from "@/components/SideRail";
+import { PostCard, type Post } from "@/components/PostCard";
+import { CirclesForYou, PeopleForYou, StartYourOwnCircle, TodayNearYou } from "@/components/SideRail";
 import { TrendingCard } from "@/components/TrendingCard";
 import { FloatingMessagesDock } from "@/components/MessagesDock";
 import { Icon } from "@/components/Icon";
@@ -23,9 +23,9 @@ export default function HomePage() {
   const router = useRouter();
   const { user, status } = useAuth();
 
-  const [selectedCategories, setSelectedCategories] = useState<PostCategory[]>([]);
-  const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [selectedLocations, setSelectedLocations] = useState<string[]>([]);
+  const [showSaved, setShowSaved] = useState(false);
+  const [savedPostIds, setSavedPostIds] = useState<string[]>([]);
   const [messagesOpen, setMessagesOpen] = useState(false);
 
   const [posts, setPosts] = useState<Post[] | null>(null);
@@ -33,7 +33,6 @@ export default function HomePage() {
   const [people, setPeople] = useState<MiniProfile[]>([]);
   const [loadError, setLoadError] = useState<string | null>(null);
   const regionLabel = userCityLabel(user) || "your city";
-  const tagOptions = useMemo(() => buildTagOptions(posts), [posts]);
   const locationOptions = useMemo(
     () => buildLocationOptions(posts, regionLabel),
     [posts, regionLabel]
@@ -41,14 +40,18 @@ export default function HomePage() {
   const filtered = useMemo(
     () =>
       filterPosts(posts ?? [], {
-        categories: selectedCategories,
-        tags: selectedTags,
         locations: selectedLocations,
       }),
-    [posts, selectedCategories, selectedLocations, selectedTags]
+    [posts, selectedLocations]
   );
-  const activeFilterCount =
-    selectedCategories.length + selectedTags.length + selectedLocations.length;
+  const visiblePosts = useMemo(
+    () =>
+      showSaved
+        ? filtered.filter((post) => post.savedByMe || savedPostIds.includes(post.id))
+        : filtered,
+    [filtered, savedPostIds, showSaved]
+  );
+  const activeFilterCount = selectedLocations.length;
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -70,13 +73,13 @@ export default function HomePage() {
         const usersById = new Map<string, ApiUser>(
           [user, ...rawPeople].filter(Boolean).map((item) => [item!._id, item!])
         );
-        setPosts(
-          rawPosts.map((post) =>
+        const nextPosts = rawPosts.map((post) =>
             apiPostToUiPost(post, {
               originLocation: postOriginLocation(post, usersById),
             })
-          )
-        );
+          );
+        setPosts(nextPosts);
+        setSavedPostIds(nextPosts.filter((post) => post.savedByMe).map((post) => post.id));
         setCircles(rawCircles.slice(0, 5).map(circleToMiniProfile));
         setPeople(
           sortUsersByNearestCity(
@@ -95,6 +98,21 @@ export default function HomePage() {
     return () => { cancelled = true; };
   }, [status, user?._id]);
 
+  async function refreshSavedPosts() {
+    try {
+      const rawSaved = await postsApi.saved();
+      const ids = rawSaved.map((post) => post._id);
+      setSavedPostIds(ids);
+      setPosts((current) =>
+        current
+          ? current.map((post) => ({ ...post, savedByMe: ids.includes(post.id) }))
+          : current
+      );
+    } catch {
+      // Saving still reports through the post action; keep the current feed state if the saved list is unavailable.
+    }
+  }
+
   if (status === "loading" || status === "unauthenticated") {
     return (
       <div className="min-h-screen bg-paper-warm flex items-center justify-center text-ink/50 text-sm">
@@ -107,47 +125,30 @@ export default function HomePage() {
     <div className="min-h-screen bg-paper-warm">
       <TopBar />
 
-      <main className="max-w-[1400px] mx-auto px-6 pt-6 pb-20">
+      <main className="max-w-[1440px] mx-auto px-6 pt-8 pb-24">
         <div className="home-layout grid grid-cols-12 gap-6 items-start">
-          <aside className="home-rail home-rail-left order-2 col-span-12 lg:order-1 lg:col-span-3 space-y-3 lg:sticky lg:top-[88px]">
+          <aside className="home-rail home-rail-left rail-stack order-2 col-span-12 lg:order-1 lg:col-span-3 space-y-3 lg:sticky lg:top-[88px]">
             <TodayNearYou region={regionLabel} />
             {circles.length > 0 && <CirclesForYou items={circles} />}
             {people.length > 0 && <PeopleForYou items={people} />}
-            <div className="rail-card rail-card-left rounded-[22px] bg-ink text-paper p-5 relative overflow-hidden [--rail-compact:108px] [--rail-expanded:260px] [--rail-fade:#0A0A0A]">
-              <div className="absolute -right-10 -bottom-10 w-40 h-40 rounded-full border border-paper/15 animate-spin-slower" />
-              <div className="absolute -right-16 -bottom-16 w-60 h-60 rounded-full border border-paper/10" />
-              <h4 className="font-display text-[18px] font-medium leading-tight">Start your own circle</h4>
-              <button
-                onClick={() => router.push("/circles/new")}
-                className="mt-4 h-8 px-3.5 rounded-pill bg-paper text-ink text-[11.5px] font-semibold btn-press"
-              >
-                Create circle →
-              </button>
-            </div>
+            <StartYourOwnCircle />
           </aside>
 
           <div className="home-feed order-1 col-span-12 lg:order-2 lg:col-span-6 space-y-4">
-            <Composer onPosted={(post) => setPosts((current) => current ? [post, ...current] : [post])} />
+            <div id="composer" className="scroll-mt-24">
+              <Composer onPosted={(post) => setPosts((current) => current ? [post, ...current] : [post])} />
+            </div>
             <SmartFilterBar
-              tagOptions={tagOptions}
               locationOptions={locationOptions}
-              selectedCategories={selectedCategories}
-              selectedTags={selectedTags}
               selectedLocations={selectedLocations}
               activeCount={activeFilterCount}
-              onCategoryToggle={(category) =>
-                setSelectedCategories((current) => toggleValue(current, category))
-              }
-              onTagToggle={(tag) =>
-                setSelectedTags((current) => toggleValue(current, tag))
-              }
-              onLocationToggle={(location) =>
-                setSelectedLocations((current) => toggleValue(current, location))
-              }
+              savedCount={savedPostIds.length}
+              showSaved={showSaved}
+              onLocationsChange={(next) => setSelectedLocations(next)}
+              onSavedClick={() => setShowSaved((value) => !value)}
               onClear={() => {
-                setSelectedCategories([]);
-                setSelectedTags([]);
                 setSelectedLocations([]);
+                setShowSaved(false);
               }}
             />
             <div className="space-y-4">
@@ -161,13 +162,13 @@ export default function HomePage() {
                   Loading posts…
                 </div>
               )}
-              {posts && filtered.length === 0 && (
+              {posts && visiblePosts.length === 0 && (
                 <div className="rounded-[22px] border border-paper-line bg-paper p-8 text-center text-[13px] text-ink/60">
-                  No posts match these filters yet.
+                  {showSaved ? "No saved posts match this location yet." : "No posts match this location yet."}
                 </div>
               )}
-              {filtered.map((p) => (
-                <PostCard key={p.id} post={p} />
+              {visiblePosts.map((p) => (
+                <PostCard key={p.id} post={p} onSavedChange={refreshSavedPosts} />
               ))}
             </div>
           </div>
@@ -187,208 +188,272 @@ export default function HomePage() {
   );
 }
 
-const CATEGORY_OPTIONS: {
-  key: PostCategory;
-  label: string;
-  icon: keyof typeof Icon;
-}[] = [
-  { key: "Announcement", label: "Announcements", icon: "Mic" },
-  { key: "Opportunity", label: "Opportunities", icon: "Briefcase" },
-  { key: "Event", label: "Events", icon: "Calendar" },
-  { key: "Searching for", label: "Searching", icon: "Search" },
-  { key: "Note", label: "Notes", icon: "Note" },
-];
-
 const LOCATION_PRESETS = CITY_OPTIONS.map(cityLabel);
 
 function SmartFilterBar({
-  tagOptions,
   locationOptions,
-  selectedCategories,
-  selectedTags,
   selectedLocations,
   activeCount,
-  onCategoryToggle,
-  onTagToggle,
-  onLocationToggle,
+  savedCount,
+  showSaved,
+  onLocationsChange,
+  onSavedClick,
   onClear,
 }: {
-  tagOptions: string[];
   locationOptions: string[];
-  selectedCategories: PostCategory[];
-  selectedTags: string[];
   selectedLocations: string[];
   activeCount: number;
-  onCategoryToggle: (value: PostCategory) => void;
-  onTagToggle: (value: string) => void;
-  onLocationToggle: (value: string) => void;
+  savedCount: number;
+  showSaved: boolean;
+  onLocationsChange: (value: string[]) => void;
+  onSavedClick: () => void;
   onClear: () => void;
 }) {
-  const [locationsOpen, setLocationsOpen] = useState(false);
+  const [openPanel, setOpenPanel] = useState<"locations" | null>(null);
   const [locationQuery, setLocationQuery] = useState("");
-  const allLocationChoices = uniqueLabels([...selectedLocations, ...locationOptions]);
+  const [locationDraft, setLocationDraft] = useState<string[]>(selectedLocations);
+  const allLocationChoices = uniqueLabels([...locationDraft, ...selectedLocations, ...locationOptions]);
   const visibleLocations = allLocationChoices.filter((location) =>
     normalizeLabel(location).includes(normalizeLabel(locationQuery))
   );
+  const activePanel = openPanel !== null;
+
+  useEffect(() => {
+    if (openPanel === "locations") {
+      setLocationDraft(selectedLocations);
+      setLocationQuery("");
+    }
+  }, [openPanel, selectedLocations]);
+
+  const closePanel = () => setOpenPanel(null);
+  const clearFilters = () => {
+    onClear();
+    setLocationDraft([]);
+    closePanel();
+  };
+
   return (
-    <div className="rounded-[18px] border border-paper-line bg-paper px-2.5 py-2 shadow-soft">
-      <div className="flex items-center gap-2">
-        <div className="min-w-0 flex-1 overflow-x-auto scroll-clean">
-          <div className="flex w-max items-center gap-1.5 pr-1">
-            <button
-              type="button"
-              onClick={onClear}
-              disabled={activeCount === 0}
-              className={clsx(
-                "signature-btn inline-flex h-8 items-center justify-center gap-1.5 rounded-pill px-3 text-[12px] font-semibold transition",
-                activeCount > 0
-                  ? "bg-ink text-paper shadow-soft"
-                  : "bg-paper-cool text-ink/45"
-              )}
-              aria-label="Clear feed filters"
-            >
-              <Icon.Filter size={13} />
-              {activeCount > 0 ? activeCount : "Filters"}
-            </button>
+    <div className="relative z-30">
+      {activePanel && (
+        <button
+          type="button"
+          className={clsx(
+            "fixed inset-0 z-40 cursor-default",
+            openPanel === "locations" ? "bg-ink/10 backdrop-blur-[1px]" : "bg-transparent"
+          )}
+          aria-label="Close filters"
+          onClick={closePanel}
+        />
+      )}
 
-            <span className="h-6 w-px bg-paper-line" aria-hidden />
+      <div className="flex items-center justify-between gap-2 rounded-[24px] border border-paper-line bg-paper p-1.5 shadow-soft">
+        <button
+          type="button"
+          onClick={clearFilters}
+          disabled={activeCount === 0 && !showSaved}
+          className={clsx(
+            "signature-btn inline-flex h-9 shrink-0 items-center justify-center gap-1.5 rounded-pill px-3 text-[12px] font-semibold transition",
+            activeCount > 0 || showSaved
+              ? "bg-ink text-paper shadow-soft"
+              : "bg-paper-cool text-ink/45"
+          )}
+          aria-label="Clear feed filters"
+        >
+          <Icon.Filter size={13} />
+          {activeCount > 0 || showSaved ? `${activeCount + (showSaved ? 1 : 0)} active` : "Feed"}
+        </button>
 
-            {CATEGORY_OPTIONS.map((item) => {
-              const Ico = Icon[item.icon];
-              const active = selectedCategories.includes(item.key);
-              return (
-                <FilterChip
-                  key={item.key}
-                  active={active}
-                  onClick={() => onCategoryToggle(item.key)}
-                  ariaLabel={`Category: ${item.label}`}
-                >
-                  <Ico size={12} />
-                  {item.label}
-                </FilterChip>
-              );
-            })}
-
-            {tagOptions.length > 0 && (
-              <span className="h-6 w-px bg-paper-line" aria-hidden />
-            )}
-
-            {tagOptions.map((tag) => (
-              <FilterChip
-                key={tag}
-                active={selectedTags.some((item) => sameLabel(item, tag))}
-                onClick={() => onTagToggle(tag)}
-                ariaLabel={`Tag: ${tag}`}
-              >
-                #{tag}
-              </FilterChip>
-            ))}
-          </div>
-        </div>
-
-        <div className="relative z-30 shrink-0">
+        <div className="flex min-w-0 flex-1 flex-wrap items-center justify-end gap-1.5">
+          <FilterMenuButton
+            icon="Pin"
+            label={locationSummary(selectedLocations)}
+            count={selectedLocations.length}
+            active={openPanel === "locations"}
+            onClick={() => setOpenPanel(openPanel === "locations" ? null : "locations")}
+          />
           <button
             type="button"
-            onClick={() => setLocationsOpen((open) => !open)}
-            aria-haspopup="dialog"
-            aria-expanded={locationsOpen}
+            onClick={onSavedClick}
+            aria-pressed={showSaved}
             className={clsx(
-              "signature-btn inline-flex h-8 items-center justify-center gap-1.5 rounded-pill px-3 text-[12px] font-semibold transition",
-              selectedLocations.length > 0
-                ? "bg-[#C1FF72] text-ink shadow-soft"
-                : "bg-paper-cool text-ink/70 hover:text-ink"
+              "btn-press inline-flex h-9 min-w-0 items-center gap-2 rounded-pill border px-3 text-[12px] font-semibold tracking-tight transition",
+              showSaved
+                ? "border-ink bg-ink text-paper"
+                : "border-paper-line bg-paper hover:border-ink/40"
             )}
           >
-            <Icon.Pin size={12} />
-            {selectedLocations.length > 0
-              ? `${selectedLocations.length} locations`
-              : "Locations"}
+            <span className={clsx(
+              "inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full",
+              showSaved ? "bg-paper text-ink" : "bg-ink text-paper"
+            )}>
+              <Icon.Bookmark size={10} />
+            </span>
+            <span className="min-w-0 truncate">Saved posts</span>
+            {savedCount > 0 && (
+              <span className="inline-flex h-[18px] min-w-[18px] shrink-0 items-center justify-center rounded-full bg-lime px-1 text-[10px] font-bold text-ink">
+                {savedCount}
+              </span>
+            )}
           </button>
-
-          {locationsOpen && (
-            <div
-              role="dialog"
-              aria-label="Location filters"
-              className="absolute right-full top-0 z-50 mr-2 w-[min(340px,calc(100vw-7rem))]"
-            >
-              <div
-                aria-hidden
-                className="absolute -inset-2 rounded-[26px] bg-paper/35 shadow-[0_18px_50px_-26px_rgba(10,10,10,0.45)] backdrop-blur-sm"
-              />
-              <div className="relative overflow-hidden rounded-[20px] border border-paper-line bg-paper/95 p-3 shadow-[0_24px_70px_-28px_rgba(10,10,10,0.42)] backdrop-blur-xl">
-                <div className="flex items-center justify-between gap-3">
-                  <div className="flex items-center gap-2 text-[12px] font-bold tracking-tight">
-                    <span className="flex h-7 w-7 items-center justify-center rounded-full bg-ink text-paper">
-                      <Icon.Pin size={12} />
-                    </span>
-                    Locations
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setLocationsOpen(false)}
-                    className="btn-press flex h-7 w-7 items-center justify-center rounded-full text-ink/55 hover:bg-paper-cool hover:text-ink"
-                    aria-label="Close location filters"
-                  >
-                    <Icon.Close size={12} />
-                  </button>
-                </div>
-
-                <label className="mt-3 flex h-9 items-center gap-2 rounded-pill border border-paper-line bg-paper-cool px-3 text-[12.5px]">
-                  <Icon.Search size={13} className="text-ink/45" />
-                  <input
-                    value={locationQuery}
-                    onChange={(event) => setLocationQuery(event.target.value)}
-                    placeholder="Select a city"
-                    className="min-w-0 flex-1 bg-transparent outline-none placeholder:text-ink/38"
-                  />
-                </label>
-
-                <div className="mt-3 flex max-h-[210px] flex-wrap gap-1.5 overflow-y-auto pr-1 scroll-clean">
-                  {visibleLocations.map((location) => (
-                    <FilterChip
-                      key={location}
-                      active={selectedLocations.some((item) => sameLabel(item, location))}
-                      onClick={() => onLocationToggle(location)}
-                      ariaLabel={`Location: ${location}`}
-                    >
-                      {selectedLocations.some((item) => sameLabel(item, location)) && (
-                        <Icon.Check size={12} />
-                      )}
-                      {location}
-                    </FilterChip>
-                  ))}
-
-                  {visibleLocations.length === 0 && (
-                    <div className="w-full rounded-[14px] bg-paper-cool px-3 py-2 text-[12px] text-ink/48">
-                      No listed cities match.
-                    </div>
-                  )}
-                </div>
-
-                <div className="mt-3 flex items-center justify-between gap-2 border-t border-paper-line pt-3">
-                  <span className="truncate text-[11px] font-semibold text-ink/45">
-                    {selectedLocations.length
-                      ? selectedLocations.join(", ")
-                      : "Everywhere"}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => setLocationsOpen(false)}
-                    className="btn-press h-8 rounded-pill bg-ink px-3.5 text-[11.5px] font-semibold text-paper"
-                  >
-                    Done
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
         </div>
+      </div>
+
+      {openPanel === "locations" && (
+        <FilterPopover
+          title="Locations"
+          icon="Pin"
+          align="right"
+          onClose={closePanel}
+          footer={
+            <>
+              <button
+                type="button"
+                onClick={() => setLocationDraft([])}
+                className="text-[12.5px] font-semibold text-ink/55 hover:text-ink"
+              >
+                Everywhere
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  onLocationsChange(locationDraft);
+                  closePanel();
+                }}
+                className="btn-press h-9 rounded-pill bg-ink px-5 text-[12px] font-semibold text-paper"
+              >
+                Done
+              </button>
+            </>
+          }
+        >
+          <label className="flex h-10 items-center gap-2 rounded-pill bg-paper-cool px-3 text-[12.5px]">
+            <Icon.Search size={13} className="text-ink/45" />
+            <input
+              autoFocus
+              value={locationQuery}
+              onChange={(event) => setLocationQuery(event.target.value)}
+              placeholder="City, region, or country"
+              className="min-w-0 flex-1 bg-transparent outline-none placeholder:text-ink/38"
+            />
+          </label>
+          <div className="mt-3 flex max-h-[260px] flex-wrap gap-2 overflow-y-auto pr-1 scroll-clean">
+            {visibleLocations.map((location) => (
+              <ChoiceChip
+                key={location}
+                active={locationDraft.some((item) => sameLabel(item, location))}
+                onClick={() => setLocationDraft((current) => toggleValue(current, location))}
+                ariaLabel={`Location: ${location}`}
+              >
+                {locationDraft.some((item) => sameLabel(item, location)) && <Icon.Check size={12} />}
+                {location}
+              </ChoiceChip>
+            ))}
+            {visibleLocations.length === 0 && (
+              <div className="w-full rounded-[14px] bg-paper-cool px-3 py-2 text-[12px] text-ink/48">
+                No listed cities match.
+              </div>
+            )}
+          </div>
+        </FilterPopover>
+      )}
+    </div>
+  );
+}
+
+function FilterMenuButton({
+  icon,
+  label,
+  count,
+  active,
+  disabled,
+  onClick,
+}: {
+  icon: keyof typeof Icon;
+  label: string;
+  count: number;
+  active: boolean;
+  disabled?: boolean;
+  onClick: () => void;
+}) {
+  const Ico = Icon[icon];
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      aria-expanded={active}
+      className={clsx(
+        "btn-press inline-flex h-9 min-w-0 max-w-[128px] items-center gap-2 rounded-pill border px-3 text-[12px] font-semibold tracking-tight transition sm:max-w-[160px]",
+        active
+          ? "border-ink/40 bg-paper text-ink shadow-soft"
+          : "border-paper-line bg-paper hover:border-ink/40",
+        disabled && "cursor-not-allowed opacity-45 hover:border-paper-line"
+      )}
+    >
+      <span className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-ink text-paper">
+        <Ico size={10} />
+      </span>
+      <span className="min-w-0 truncate">{label}</span>
+      {count > 0 && (
+        <span className="inline-flex h-[18px] min-w-[18px] shrink-0 items-center justify-center rounded-full bg-lime px-1 text-[10px] font-bold text-ink">
+          {count}
+        </span>
+      )}
+    </button>
+  );
+}
+
+function FilterPopover({
+  title,
+  icon,
+  align,
+  footer,
+  children,
+  onClose,
+}: {
+  title: string;
+  icon: keyof typeof Icon;
+  align: "left" | "center" | "right";
+  footer: ReactNode;
+  children: ReactNode;
+  onClose: () => void;
+}) {
+  const Ico = Icon[icon];
+  return (
+    <div
+      role="dialog"
+      aria-label={`${title} filters`}
+      className={clsx(
+        "absolute top-[calc(100%+8px)] z-50 w-[420px] max-w-[calc(100vw-2rem)] overflow-hidden rounded-[24px] border border-paper-line bg-paper shadow-pop",
+        align === "left" && "left-0",
+        align === "center" && "left-1/2 -translate-x-1/2",
+        align === "right" && "right-0"
+      )}
+      onClick={(event) => event.stopPropagation()}
+    >
+      <div className="flex items-center gap-3 p-4 pb-3">
+        <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-ink text-paper">
+          <Ico size={14} />
+        </span>
+        <h3 className="flex-1 font-display text-[18px] font-semibold tracking-tight">{title}</h3>
+        <button
+          type="button"
+          onClick={onClose}
+          className="btn-press flex h-8 w-8 items-center justify-center rounded-full text-ink/55 hover:bg-paper-cool hover:text-ink"
+          aria-label={`Close ${title.toLowerCase()} filters`}
+        >
+          <Icon.Close size={13} />
+        </button>
+      </div>
+      <div className="px-4 pb-4">{children}</div>
+      <div className="flex items-center justify-between gap-3 border-t border-paper-line px-4 py-3">
+        {footer}
       </div>
     </div>
   );
 }
 
-function FilterChip({
+function ChoiceChip({
   active,
   ariaLabel,
   children,
@@ -406,10 +471,10 @@ function FilterChip({
       aria-pressed={active}
       onClick={onClick}
       className={clsx(
-        "btn-press inline-flex h-8 shrink-0 items-center gap-1.5 rounded-pill px-3 text-[12px] font-semibold transition",
+        "btn-press inline-flex h-9 shrink-0 items-center gap-1.5 rounded-pill px-3.5 text-[12.5px] font-semibold transition",
         active
-          ? "bg-ink text-paper shadow-soft"
-          : "bg-paper-cool text-ink/64 hover:bg-paper-cool/80 hover:text-ink"
+          ? "btn-lime bg-lime text-ink shadow-soft"
+          : "bg-paper-cool text-ink/70 hover:bg-paper-cool/80 hover:text-ink"
       )}
     >
       {children}
@@ -417,18 +482,10 @@ function FilterChip({
   );
 }
 
-function buildTagOptions(posts: Post[] | null): string[] {
-  const counts = new Map<string, { label: string; count: number }>();
-  posts?.forEach((post) => {
-    post.tags.forEach((tag) => {
-      const key = normalizeLabel(tag);
-      const current = counts.get(key);
-      counts.set(key, { label: current?.label || tag, count: (current?.count || 0) + 1 });
-    });
-  });
-  return [...counts.values()]
-    .sort((a, b) => b.count - a.count || a.label.localeCompare(b.label))
-    .map((item) => item.label);
+function locationSummary(selected: string[]): string {
+  if (selected.length === 0) return "Everywhere";
+  if (selected.length === 1) return selected[0];
+  return `${selected[0]} +${selected.length - 1}`;
 }
 
 function buildLocationOptions(posts: Post[] | null, regionLabel: string): string[] {
@@ -480,24 +537,15 @@ function circleOriginLocation(circle: ApiCircle): string {
 function filterPosts(
   posts: Post[],
   filters: {
-    categories: PostCategory[];
-    tags: string[];
     locations: string[];
   }
 ): Post[] {
   return posts.filter((post) => {
-    const categoryMatch =
-      filters.categories.length === 0 || filters.categories.includes(post.category);
-    const tagMatch =
-      filters.tags.length === 0 ||
-      filters.tags.some((tag) =>
-        post.tags.some((postTag) => sameLabel(postTag, tag))
-      );
     const locationMatch =
       filters.locations.length === 0 ||
       filters.locations.some((location) => locationMatches(post.location, location));
 
-    return categoryMatch && tagMatch && locationMatch;
+    return locationMatch;
   });
 }
 

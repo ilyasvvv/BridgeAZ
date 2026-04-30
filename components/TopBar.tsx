@@ -6,8 +6,9 @@ import { usePathname, useRouter } from "next/navigation";
 import { Icon } from "./Icon";
 import { Avatar } from "./Avatar";
 import { SmartSearchOverlay } from "./SmartSearch";
-import { BizimLogoLockup } from "./AnimatedLogo";
+import { OfficialLogo } from "./OfficialLogo";
 import { useAuth } from "@/lib/auth";
+import { useIdentity } from "@/lib/identity";
 import { useLive } from "@/lib/live";
 import { hueFromString } from "@/lib/format";
 
@@ -19,6 +20,12 @@ export function TopBar({
   const pathname = usePathname();
   const router = useRouter();
   const { user, logout } = useAuth();
+  const {
+    activeIdentity,
+    controllableCircles,
+    selectCircle,
+    selectUser,
+  } = useIdentity();
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchDraft, setSearchDraft] = useState("");
   const [profileOpen, setProfileOpen] = useState(false);
@@ -39,8 +46,6 @@ export function TopBar({
     }
     return sum;
   }, 0);
-  const hasLiveActivity = unreadNotifs + unreadChats > 0;
-
   useEffect(() => {
     const next = new URLSearchParams(window.location.search).get("q") ?? "";
     setSearchDraft(next);
@@ -79,24 +84,28 @@ export function TopBar({
 
   const userHue = hueFromString(user?._id || user?.username || user?.email || "me");
   const username = user?.username ? `@${user.username}` : user?.email || "Profile";
-  const displayName = user?.name || "Profile";
+  const displayName = activeIdentity.type === "circle"
+    ? activeIdentity.circle.name
+    : user?.name || "Profile";
+  const displayHandle = activeIdentity.type === "circle"
+    ? `@${activeIdentity.circle.handle}`
+    : username;
+  const displayHue = activeIdentity.type === "circle"
+    ? hueFromString(activeIdentity.circle._id || activeIdentity.circle.handle)
+    : userHue;
 
   return (
     <header className="sticky top-0 z-40 bg-paper/85 backdrop-blur-xl border-b border-paper-line">
-      <div className="relative mx-auto grid h-16 max-w-[1400px] grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-4 px-6">
-        <Link href="/home" className="z-10 flex items-center gap-2.5 shrink-0 group" data-bizim-logo>
-          {logoVariant === "canva" ? (
-            <BizimLogoLockup size={42} motion="side-to-side" />
-          ) : (
-            <BizimLogoLockup
-              size={42}
-              motion={hasLiveActivity ? "spark" : "side-to-side"}
-            />
-          )}
+      <div className="relative mx-auto grid max-w-[1400px] grid-cols-[auto_auto] items-center gap-x-3 gap-y-2 px-4 py-2 sm:h-16 sm:grid-cols-[auto_minmax(0,1fr)_auto] sm:gap-4 sm:px-6 sm:py-0">
+        <Link href="/home" className="z-10 order-1 flex items-center gap-2.5 shrink-0 group" data-bizim-logo>
+          <OfficialLogo
+            width={logoVariant === "canva" ? 132 : 130}
+            className="w-[150px] sm:w-auto"
+          />
         </Link>
 
         {/* Search — hidden on /search where the page has its own primary input */}
-        <div className="flex min-w-0 justify-center">
+        <div className="order-3 col-span-2 flex min-w-0 justify-center sm:order-2 sm:col-span-1">
           {pathname !== "/search" ? (
           <div className="w-full max-w-[640px]">
             <div className="group relative flex items-center h-10 rounded-pill bg-paper-cool hover:bg-paper focus-within:bg-paper border border-transparent hover:border-paper-line focus-within:border-ink/30 focus-within:shadow-soft transition">
@@ -130,7 +139,7 @@ export function TopBar({
           )}
         </div>
 
-        <div className="z-10 flex items-center justify-end gap-2 shrink-0">
+        <div className="z-10 order-2 flex items-center justify-end gap-2 shrink-0 sm:order-3">
           <Link
             href="/messages"
             className="relative w-10 h-10 rounded-full border border-paper-line bg-paper hover:border-ink/30 flex items-center justify-center btn-press"
@@ -165,8 +174,9 @@ export function TopBar({
             >
               <Avatar
                 size={30}
-                hue={userHue}
-                kind={user?.accountType === "circle" ? "circle" : "personal"}
+                hue={displayHue}
+                kind={activeIdentity.type === "circle" ? "circle" : "personal"}
+                src={activeIdentity.type === "circle" ? activeIdentity.circle.avatarUrl : undefined}
                 label={(displayName || username).slice(0, 1).toUpperCase()}
               />
               <span className="hidden max-w-[150px] leading-tight md:block">
@@ -174,7 +184,7 @@ export function TopBar({
                   {displayName}
                 </span>
                 <span className="block truncate text-[10.5px] font-semibold text-ink/45">
-                  {username}
+                  {displayHandle}
                 </span>
               </span>
               <Icon.More size={13} className="hidden text-ink/45 md:block" />
@@ -185,16 +195,52 @@ export function TopBar({
                 <div className="flex items-center gap-3 border-b border-paper-line p-3">
                   <Avatar
                     size={42}
-                    hue={userHue}
-                    kind={user?.accountType === "circle" ? "circle" : "personal"}
+                    hue={displayHue}
+                    kind={activeIdentity.type === "circle" ? "circle" : "personal"}
+                    src={activeIdentity.type === "circle" ? activeIdentity.circle.avatarUrl : undefined}
                     label={(displayName || username).slice(0, 1).toUpperCase()}
                   />
                   <div className="min-w-0">
                     <div className="truncate text-[13.5px] font-bold">{displayName}</div>
-                    <div className="truncate text-[11.5px] font-semibold text-ink/48">{username}</div>
+                    <div className="truncate text-[11.5px] font-semibold text-ink/48">{displayHandle}</div>
                   </div>
                 </div>
                 <div className="p-2">
+                  {controllableCircles.length > 0 && (
+                    <div className="mb-2 border-b border-paper-line pb-2">
+                      <div className="px-3 pb-1 text-[10px] font-bold uppercase tracking-[0.14em] text-ink/38">
+                        Control
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => selectUser()}
+                        className="flex h-9 w-full items-center gap-2 rounded-[14px] px-3 text-left text-[12.5px] font-semibold hover:bg-paper-cool"
+                      >
+                        <Icon.User size={14} />
+                        <span className="min-w-0 flex-1 truncate">{user?.name || "Personal profile"}</span>
+                        {activeIdentity.type === "user" && <Icon.Check size={13} />}
+                      </button>
+                      {controllableCircles.map((circle) => (
+                        <button
+                          key={circle._id}
+                          type="button"
+                          onClick={() => selectCircle(circle._id)}
+                          className="flex h-9 w-full items-center gap-2 rounded-[14px] px-3 text-left text-[12.5px] font-semibold hover:bg-paper-cool"
+                        >
+                          <Avatar
+                            size={20}
+                            kind="circle"
+                            hue={hueFromString(circle._id || circle.handle)}
+                            src={circle.avatarUrl}
+                          />
+                          <span className="min-w-0 flex-1 truncate">{circle.name}</span>
+                          {activeIdentity.type === "circle" && activeIdentity.circle._id === circle._id && (
+                            <Icon.Check size={13} />
+                          )}
+                        </button>
+                      ))}
+                    </div>
+                  )}
                   <Link
                     href="/profile"
                     onClick={() => setProfileOpen(false)}
@@ -204,12 +250,36 @@ export function TopBar({
                     Profile
                   </Link>
                   <Link
+                    href="/profile?tab=saved"
+                    onClick={() => setProfileOpen(false)}
+                    className="flex h-10 items-center gap-2 rounded-[14px] px-3 text-[12.5px] font-semibold hover:bg-paper-cool"
+                  >
+                    <Icon.Bookmark size={14} />
+                    Saved posts
+                  </Link>
+                  <Link
                     href="/settings"
                     onClick={() => setProfileOpen(false)}
                     className="flex h-10 items-center gap-2 rounded-[14px] px-3 text-[12.5px] font-semibold hover:bg-paper-cool"
                   >
                     <Icon.Filter size={14} />
                     Settings
+                  </Link>
+                  <Link
+                    href="/terms"
+                    onClick={() => setProfileOpen(false)}
+                    className="flex h-10 items-center gap-2 rounded-[14px] px-3 text-[12.5px] font-semibold hover:bg-paper-cool"
+                  >
+                    <Icon.Note size={14} />
+                    Terms of Use
+                  </Link>
+                  <Link
+                    href="/privacy"
+                    onClick={() => setProfileOpen(false)}
+                    className="flex h-10 items-center gap-2 rounded-[14px] px-3 text-[12.5px] font-semibold hover:bg-paper-cool"
+                  >
+                    <Icon.Globe size={14} />
+                    Privacy Policy
                   </Link>
                   <button
                     type="button"

@@ -31,5 +31,15 @@ export const postsApi = {
       { content }
     ),
   comments: (id: string) => api.get<ApiComment[]>(`/posts/${id}/comments`),
+  saved: () => api.get<ApiPost[]>("/posts/saved"),
+  save: (id: string) =>
+    api.post<{ saved?: boolean; savedByMe?: boolean; post?: ApiPost }>(
+      `/posts/${encodeURIComponent(id)}/save`,
+      {}
+    ),
+  unsave: (id: string) =>
+    api.delete<{ saved?: boolean; savedByMe?: boolean; post?: ApiPost }>(
+      `/posts/${encodeURIComponent(id)}/save`
+    ),
   remove: (id: string) => api.delete<{ ok: true }>(`/posts/${id}`),
 };

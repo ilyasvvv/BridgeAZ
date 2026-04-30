@@ -26,6 +26,7 @@ import {
 } from "@/lib/chats";
 import { uploadFile } from "@/lib/uploads";
 import { avatarFromAuthor, hueFromString, relativeTime } from "@/lib/format";
+import { usersApi, type UserSearchResult } from "@/lib/users";
 
 /* -------------------------------------------------------------------------- */
 /* Constants                                                                  */
@@ -94,8 +95,78 @@ const REPORT_REASONS = [
   "Other safety concern",
 ];
 
+type Particle = {
+  id: number;
+  kind: "sticker" | "heart" | "spark" | "confetti";
+  x: number;
+  y: number;
+  dx: number;
+  r0: number;
+  r1: number;
+  size?: number;
+  stickerId?: StickerId;
+  cx?: number;
+  cy?: number;
+  cr?: number;
+  w?: number;
+  h?: number;
+  color?: string;
+};
+
 const STICKER_BODY_PREFIX = "::sticker:";
 const EGG_PATTERN = /i\s*love\s*bizim\s*circle/i;
+const EGG_VISIBLE_MS = 4200;
+const QUICK_EFFECT_MS = 2000;
+
+type EggTone = "love" | "tea" | "salam" | "novruz" | "circle";
+type EggEffect = { key: string; message: string; tone: EggTone };
+
+const TYPED_EGGS: Array<{
+  key: string;
+  pattern: RegExp;
+  message: string;
+  tone: EggTone;
+  burst: Particle["kind"];
+  count: number;
+  stickerId?: StickerId;
+}> = [
+  {
+    key: "salam",
+    pattern: /\bsalam\b/i,
+    message: "salam!",
+    tone: "salam",
+    burst: "sticker",
+    count: 5,
+    stickerId: "wave",
+  },
+  {
+    key: "tea",
+    pattern: /(?:çay|cay)[\s-]*(?:vaxtıdır|vaxtidir|time)/i,
+    message: "çay vaxtıdır",
+    tone: "tea",
+    burst: "spark",
+    count: 14,
+    stickerId: "tea",
+  },
+  {
+    key: "novruz",
+    pattern: /novruz/i,
+    message: "novruz mübarək",
+    tone: "novruz",
+    burst: "confetti",
+    count: 20,
+    stickerId: "novruz",
+  },
+  {
+    key: "circle",
+    pattern: /\b(?:circle up|bizim circle forever|in the circle)\b/i,
+    message: "circle energy",
+    tone: "circle",
+    burst: "sticker",
+    count: 6,
+    stickerId: "circle",
+  },
+];
 
 const themeStorageKey = "bc_messages_theme_v1";
 const prefsStorageKey = "bc_messages_prefs_v1";
@@ -156,22 +227,34 @@ type ThreadPrefs = {
   muted?: boolean;
 };
 
+type PendingAttachment = ChatAttachment & {
+  localId: string;
+};
+
 function MessagesClient() {
   const router = useRouter();
   const params = useSearchParams();
   const { user, status } = useAuth();
 
   const [threads, setThreads] = useState<ChatThread[]>([]);
+  const [threadsLoaded, setThreadsLoaded] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [activeId, setActiveId] = useState<string | null>(params.get("thread"));
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<FilterKey>("all");
   const [detailsOpen, setDetailsOpen] = useState(true);
   const [draft, setDraft] = useState("");
+  const [pendingAttachments, setPendingAttachments] = useState<PendingAttachment[]>([]);
   const [stickerOpen, setStickerOpen] = useState(false);
   const [animOpen, setAnimOpen] = useState(false);
   const [pieces, setPieces] = useState<Particle[]>([]);
-  const [eggMessage, setEggMessage] = useState<string | null>(null);
+  const [eggEffect, setEggEffect] = useState<EggEffect | null>(null);
+  const [newChatOpen, setNewChatOpen] = useState(false);
+  const [newChatQuery, setNewChatQuery] = useState("");
+  const [newChatResults, setNewChatResults] = useState<UserSearchResult[]>([]);
+  const [newChatLoading, setNewChatLoading] = useState(false);
+  const [newChatError, setNewChatError] = useState<string | null>(null);
+  const [startingChatId, setStartingChatId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -186,10 +269,10 @@ function MessagesClient() {
     readLocal<Record<string, ThreadPrefs>>(prefsStorageKey, {})
   );
 
-  const threadRef = useRef<HTMLDivElement | null>(null);
   const reactionRoot = useRef<HTMLElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const idCounter = useRef(0);
+  const lastTypedEggKey = useRef<string | null>(null);
 
   // Stay subscribed to fast thread refresh while on this page
   useThreadsFast(true);
@@ -232,7 +315,8 @@ function MessagesClient() {
         const next = await chatsApi.threads();
         if (cancelled) return;
         setThreads(next);
-        if (!activeId && next[0]?._id) {
+        setThreadsLoaded(true);
+        if (!activeId && next[0]?._id && shouldAutoSelectThread()) {
           setActiveId(next[0]._id);
         }
         if (interval !== BASE_INTERVAL) schedule(BASE_INTERVAL);
@@ -242,6 +326,7 @@ function MessagesClient() {
           schedule(Math.min(interval * 2, 60000));
           return;
         }
+        setThreadsLoaded(true);
         setError(err?.message || "Failed to load chats.");
       }
     };
@@ -323,39 +408,63 @@ function MessagesClient() {
   // Reset composer when active thread changes
   useEffect(() => {
     setDraft("");
+    setPendingAttachments([]);
     setStickerOpen(false);
     setAnimOpen(false);
     setError(null);
+    lastTypedEggKey.current = null;
   }, [activeId]);
 
-  // Auto-scroll on new messages
   useEffect(() => {
-    if (threadRef.current) {
-      threadRef.current.scrollTop = threadRef.current.scrollHeight;
+    if (!newChatOpen) return;
+    const q = newChatQuery.trim();
+    setNewChatError(null);
+    if (q.length < 2) {
+      setNewChatResults([]);
+      setNewChatLoading(false);
+      return;
     }
-  }, [messages, activeId]);
+
+    let cancelled = false;
+    setNewChatLoading(true);
+    const timer = window.setTimeout(async () => {
+      try {
+        const results = await usersApi.search(q, 8);
+        if (cancelled) return;
+        setNewChatResults(
+          results.filter((result) => result._id !== user?._id && result.accountType !== "circle")
+        );
+      } catch (err: any) {
+        if (cancelled) return;
+        setNewChatError(err?.message || "Search failed.");
+        setNewChatResults([]);
+      } finally {
+        if (!cancelled) setNewChatLoading(false);
+      }
+    }, 220);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [newChatOpen, newChatQuery, user?._id]);
+
+  useEffect(() => {
+    const text = draft.trim();
+    if (!text) {
+      lastTypedEggKey.current = null;
+      return;
+    }
+    const match = TYPED_EGGS.find((egg) => egg.pattern.test(text));
+    if (!match || match.key === lastTypedEggKey.current) return;
+    lastTypedEggKey.current = match.key;
+    triggerQuickEgg(match);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [draft]);
 
   /* ------------------------------------------------------------------------ */
   /* Particle bursts                                                          */
   /* ------------------------------------------------------------------------ */
-
-  type Particle = {
-    id: number;
-    kind: "sticker" | "heart" | "spark" | "confetti";
-    x: number;
-    y: number;
-    dx: number;
-    r0: number;
-    r1: number;
-    size?: number;
-    stickerId?: StickerId;
-    cx?: number;
-    cy?: number;
-    cr?: number;
-    w?: number;
-    h?: number;
-    color?: string;
-  };
 
   const burst = useCallback(
     (
@@ -485,41 +594,63 @@ function MessagesClient() {
     router.replace(`/messages?thread=${id}`);
   };
 
+  const showEggEffect = (effect: EggEffect, durationMs: number) => {
+    setEggEffect(effect);
+    window.setTimeout(() => {
+      setEggEffect((current) => (current?.key === effect.key ? null : current));
+    }, durationMs);
+  };
+
   const openDetails = () => setDetailsOpen((v) => !v);
 
   const triggerEgg = () => {
-    setEggMessage("biz də səni sevirik");
+    showEggEffect(
+      { key: `love-${Date.now()}`, message: "biz də səni sevirik", tone: "love" },
+      EGG_VISIBLE_MS
+    );
     burst("confetti", { count: 24 });
     window.setTimeout(() => burst("sticker", { count: 6, stickerId: "circle" }), 180);
-    window.setTimeout(() => setEggMessage(null), 2400);
   };
 
-  const sendBody = async (body: string): Promise<boolean> => {
-    if (!active || !body.trim() || !canSend) return false;
-    setSending(true);
-    try {
-      const msg = await chatsApi.send(active._id, { body });
-      setMessages((cur) => [...cur, msg]);
-      return true;
-    } catch (err: any) {
-      if (err?.status === 429) {
-        setError("You're sending too fast — give it a second.");
-        setDraft((cur) => cur || body);
-      } else {
-        setError(err?.message || "Failed to send.");
-      }
-      return false;
-    } finally {
-      setSending(false);
-    }
+  const triggerQuickEgg = (egg: (typeof TYPED_EGGS)[number]) => {
+    showEggEffect(
+      { key: `${egg.key}-${Date.now()}`, message: egg.message, tone: egg.tone },
+      QUICK_EFFECT_MS
+    );
+    burst(egg.burst, { count: egg.count, stickerId: egg.stickerId });
   };
 
   const sendDraft = async () => {
     const text = draft.trim();
-    if (!text) return;
+    const attachments = pendingAttachments.map(({ localId, ...attachment }) => attachment);
+    if (!text && attachments.length === 0) return;
     if (EGG_PATTERN.test(text)) triggerEgg();
     setDraft("");
-    await sendBody(text);
+    setPendingAttachments([]);
+    if (!active || !canSend) return;
+    setSending(true);
+    try {
+      const msg = await chatsApi.send(active._id, {
+        body: text || undefined,
+        attachments: attachments.length ? attachments : undefined,
+      });
+      setMessages((cur) => [...cur, msg]);
+    } catch (err: any) {
+      setDraft(text);
+      setPendingAttachments(
+        attachments.map((attachment, index) => ({
+          ...attachment,
+          localId: `${Date.now()}-${index}`,
+        }))
+      );
+      if (err?.status === 429) {
+        setError("You're sending too fast — give it a second.");
+      } else {
+        setError(err?.message || "Failed to send.");
+      }
+    } finally {
+      setSending(false);
+    }
   };
 
   const sendSticker = async (id: StickerId) => {
@@ -552,29 +683,78 @@ function MessagesClient() {
   const onAttach = () => fileInputRef.current?.click();
 
   const onFileChosen = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
+    const files = Array.from(event.target.files || []);
     event.target.value = "";
-    if (!file || !active) return;
+    if (!files.length || !active) return;
     setUploading(true);
     try {
-      const upload = await uploadFile(file, "chat_attachment");
-      const kind: ChatAttachment["kind"] = file.type.startsWith("image/")
-        ? "image"
-        : file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf")
-        ? "pdf"
-        : "file";
-      const attachment: ChatAttachment = {
-        url: upload.documentUrl,
-        contentType: upload.contentType,
-        kind,
-        name: file.name,
-      };
-      const msg = await chatsApi.send(active._id, { attachments: [attachment] });
-      setMessages((cur) => [...cur, msg]);
+      const uploaded = await Promise.all(
+        files.map(async (file, index) => {
+          const upload = await uploadFile(file, "chat_attachment");
+          const kind: ChatAttachment["kind"] = file.type.startsWith("image/")
+            ? "image"
+            : file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf")
+            ? "pdf"
+            : "file";
+          return {
+            localId: `${Date.now()}-${index}-${file.name}`,
+            url: upload.documentUrl,
+            contentType: upload.contentType,
+            kind,
+            name: file.name,
+          };
+        })
+      );
+      setPendingAttachments((cur) => [...cur, ...uploaded]);
     } catch (err: any) {
       setError(err?.message || "Upload failed.");
     } finally {
       setUploading(false);
+    }
+  };
+
+  const removePendingAttachment = (id: string) => {
+    setPendingAttachments((cur) => cur.filter((attachment) => attachment.localId !== id));
+  };
+
+  const openNewChat = () => {
+    setNewChatOpen(true);
+    setNewChatQuery("");
+    setNewChatResults([]);
+    setNewChatError(null);
+  };
+
+  const closeNewChat = () => {
+    if (startingChatId) return;
+    setNewChatOpen(false);
+  };
+
+  const startChatWith = async (target: UserSearchResult) => {
+    if (startingChatId) return;
+    const existing = threads.find((thread) =>
+      !isGroupThread(thread, user?._id) &&
+      thread.participants.some((participant) => participant._id === target._id)
+    );
+    if (existing) {
+      selectThread(existing._id);
+      setNewChatOpen(false);
+      return;
+    }
+
+    setStartingChatId(target._id);
+    setNewChatError(null);
+    try {
+      const thread = await chatsApi.startThread(target._id);
+      setThreads((cur) => {
+        const withoutDuplicate = cur.filter((item) => item._id !== thread._id);
+        return [thread, ...withoutDuplicate];
+      });
+      selectThread(thread._id);
+      setNewChatOpen(false);
+    } catch (err: any) {
+      setNewChatError(err?.message || "Could not start this chat.");
+    } finally {
+      setStartingChatId(null);
     }
   };
 
@@ -641,7 +821,7 @@ function MessagesClient() {
   /* Render                                                                   */
   /* ------------------------------------------------------------------------ */
 
-  if (status === "loading" || (status === "authenticated" && threads.length === 0 && !error)) {
+  if (status === "loading" || (status === "authenticated" && !threadsLoaded && !error)) {
     return <MessagesShell>Loading conversations…</MessagesShell>;
   }
 
@@ -651,17 +831,16 @@ function MessagesClient() {
 
       <main className="flex-1 max-w-[1600px] w-full mx-auto px-3 sm:px-6 py-4">
         <div
-          className="bg-paper rounded-card border border-paper-line shadow-soft overflow-hidden grid"
-          style={{
-            height: "calc(100vh - 64px - 32px)",
-            gridTemplateColumns: detailsOpen ? "320px 1fr 320px" : "320px 1fr",
-          }}
+          className="msg-layout bg-paper rounded-card border border-paper-line shadow-soft overflow-hidden grid"
+          data-details={detailsOpen && active ? "open" : "closed"}
+          data-active={active ? "true" : "false"}
         >
           <Sidebar
             items={filteredThreads}
             activeId={activeId}
             userId={user?._id}
             onSelect={selectThread}
+            onNewChat={openNewChat}
             query={query}
             onQuery={setQuery}
             filter={filter}
@@ -679,10 +858,10 @@ function MessagesClient() {
               themeDef={themeDef}
               draft={draft}
               onDraft={setDraft}
+              pendingAttachments={pendingAttachments}
+              onRemovePendingAttachment={removePendingAttachment}
               onSend={sendDraft}
               onAttach={onAttach}
-              fileInputRef={fileInputRef}
-              onFileChosen={onFileChosen}
               uploading={uploading}
               sending={sending}
               canSend={canSend}
@@ -706,9 +885,13 @@ function MessagesClient() {
               onOpenDetails={openDetails}
               detailsOpen={detailsOpen}
               pieces={pieces}
-              eggMessage={eggMessage}
+              eggEffect={eggEffect}
               error={error}
               onDismissError={() => setError(null)}
+              onBackToList={() => {
+                setActiveId(null);
+                router.replace("/messages");
+              }}
             />
           ) : (
             <section className="flex items-center justify-center text-[12.5px] text-ink/55">
@@ -740,6 +923,7 @@ function MessagesClient() {
       <input
         ref={fileInputRef}
         type="file"
+        multiple
         className="hidden"
         onChange={onFileChosen}
       />
@@ -755,6 +939,19 @@ function MessagesClient() {
           onClose={() => setReportOpen(false)}
         />
       )}
+
+      {newChatOpen && (
+        <NewChatModal
+          query={newChatQuery}
+          onQuery={setNewChatQuery}
+          results={newChatResults}
+          loading={newChatLoading}
+          error={newChatError}
+          startingId={startingChatId}
+          onStart={startChatWith}
+          onClose={closeNewChat}
+        />
+      )}
     </div>
   );
 }
@@ -768,6 +965,7 @@ function Sidebar({
   activeId,
   userId,
   onSelect,
+  onNewChat,
   query,
   onQuery,
   filter,
@@ -778,6 +976,7 @@ function Sidebar({
   activeId: string | null;
   userId?: string;
   onSelect: (id: string) => void;
+  onNewChat: () => void;
   query: string;
   onQuery: (v: string) => void;
   filter: FilterKey;
@@ -797,6 +996,14 @@ function Sidebar({
               unread · replies optional
             </p>
           </div>
+          <button
+            onClick={onNewChat}
+            className="btn-press w-10 h-10 rounded-full bg-ink text-paper inline-flex items-center justify-center shadow-soft"
+            aria-label="Start a new chat"
+            title="Start a new chat"
+          >
+            <Icon.Plus size={16} />
+          </button>
         </div>
       </div>
 
@@ -952,10 +1159,10 @@ type ConversationProps = {
   themeDef: ThemeDef;
   draft: string;
   onDraft: (v: string) => void;
+  pendingAttachments: PendingAttachment[];
+  onRemovePendingAttachment: (id: string) => void;
   onSend: () => void;
   onAttach: () => void;
-  fileInputRef: React.RefObject<HTMLInputElement | null>;
-  onFileChosen: (e: React.ChangeEvent<HTMLInputElement>) => void;
   uploading: boolean;
   sending: boolean;
   canSend: boolean;
@@ -973,9 +1180,10 @@ type ConversationProps = {
   onOpenDetails: () => void;
   detailsOpen: boolean;
   pieces: any[];
-  eggMessage: string | null;
+  eggEffect: EggEffect | null;
   error: string | null;
   onDismissError: () => void;
+  onBackToList: () => void;
 };
 
 const Conversation = forwardRef<HTMLElement, ConversationProps>(function Conversation(
@@ -988,6 +1196,8 @@ const Conversation = forwardRef<HTMLElement, ConversationProps>(function Convers
       themeDef,
       draft,
       onDraft,
+      pendingAttachments,
+      onRemovePendingAttachment,
       onSend,
       onAttach,
       uploading,
@@ -1007,9 +1217,10 @@ const Conversation = forwardRef<HTMLElement, ConversationProps>(function Convers
       onOpenDetails,
       detailsOpen,
       pieces,
-      eggMessage,
+      eggEffect,
       error,
       onDismissError,
+      onBackToList,
     },
     ref
   ) {
@@ -1043,10 +1254,19 @@ const Conversation = forwardRef<HTMLElement, ConversationProps>(function Convers
         ref={ref}
         className={clsx(
           "relative flex flex-col h-full min-h-0 msg-paper-grain",
-          themeDef.surface
+          themeDef.surface,
+          eggEffect && `msg-effect-${eggEffect.tone}`
         )}
       >
         <div className="px-5 h-[64px] shrink-0 flex items-center gap-3 bg-paper/85 backdrop-blur-xl border-b border-paper-line">
+          <button
+            onClick={onBackToList}
+            className="msg-mobile-back btn-press w-9 h-9 rounded-full bg-paper-cool text-ink/70 items-center justify-center"
+            aria-label="Back to conversations"
+            title="Back to conversations"
+          >
+            <Icon.ArrowLeft size={15} />
+          </button>
           <div className="relative">
             <Avatar
               size={40}
@@ -1074,7 +1294,7 @@ const Conversation = forwardRef<HTMLElement, ConversationProps>(function Convers
                 : online
                 ? "online now"
                 : thread.lastMessageAt
-                ? `last seen ${relativeTime(thread.lastMessageAt)} ago`
+                ? formatLastSeen(thread.lastMessageAt)
                 : "offline"}
             </div>
           </div>
@@ -1149,6 +1369,8 @@ const Conversation = forwardRef<HTMLElement, ConversationProps>(function Convers
         <Composer
           draft={draft}
           onDraft={onDraft}
+          pendingAttachments={pendingAttachments}
+          onRemovePendingAttachment={onRemovePendingAttachment}
           onSend={onSend}
           onKey={onKey}
           stickerOpen={stickerOpen}
@@ -1171,7 +1393,7 @@ const Conversation = forwardRef<HTMLElement, ConversationProps>(function Convers
         />
 
         <ReactionLayer pieces={pieces} />
-        <EggBanner show={!!eggMessage} message={eggMessage} />
+        <EggBanner effect={eggEffect} />
       </section>
     );
   }
@@ -1235,8 +1457,13 @@ function Bubble({
   }
 
   return (
-    <li className={clsx("flex msg-bubble-in", me ? "justify-end" : "justify-start")}>
-      <div className={clsx("max-w-[78%] flex flex-col", me ? "items-end" : "items-start")}>
+    <li className={clsx("flex msg-bubble-in px-1", me ? "justify-end" : "justify-start")}>
+      <div
+        className={clsx(
+          "max-w-[min(78%,680px)] min-w-0 flex flex-col",
+          me ? "items-end" : "items-start"
+        )}
+      >
         {!me && isCircle && sender?.name && !groupedTop && (
           <span className="text-[10.5px] font-semibold text-ink/55 mb-0.5 ml-3">
             {sender.name}
@@ -1245,17 +1472,24 @@ function Bubble({
         {(msg.body || attachments.length > 0) && (
           <div
             className={clsx(
-              "px-3.5 py-2.5 text-[13.5px] leading-snug shadow-soft",
+              "max-w-full px-3.5 py-2.5 text-[13.5px] leading-snug shadow-soft overflow-hidden",
               me ? "text-paper" : "text-ink border border-paper-line"
             )}
             style={{
               background: me ? themeDef.bubbleMe : themeDef.bubbleThem,
               borderRadius: bubbleRadius(me, groupedTop, groupedBot),
+              overflowWrap: "anywhere",
             }}
           >
             {msg.body && <span className="whitespace-pre-wrap break-words">{msg.body}</span>}
             {attachments.length > 0 && (
-              <div className={clsx("mt-2 flex flex-col gap-1.5", me ? "items-end" : "items-start")}>
+              <div
+                className={clsx(
+                  "grid gap-2 max-w-full",
+                  msg.body ? "mt-2" : "",
+                  attachments.length > 1 ? "grid-cols-1 sm:grid-cols-2" : "grid-cols-1"
+                )}
+              >
                 {attachments.map((a, i) => (
                   <AttachmentPreview key={i} a={a} mine={me} />
                 ))}
@@ -1279,12 +1513,12 @@ function Bubble({
 function AttachmentPreview({ a, mine }: { a: ChatAttachment; mine: boolean }) {
   if (a.kind === "image") {
     return (
-      <a href={a.url} target="_blank" rel="noreferrer" className="block">
+      <a href={a.url} target="_blank" rel="noreferrer" className="block min-w-0">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={a.url}
           alt={a.name || "image"}
-          className="rounded-[10px] max-h-56 object-cover border border-paper-line"
+          className="rounded-[10px] max-h-56 w-full max-w-[260px] object-cover border border-paper-line"
         />
       </a>
     );
@@ -1295,14 +1529,14 @@ function AttachmentPreview({ a, mine }: { a: ChatAttachment; mine: boolean }) {
       target="_blank"
       rel="noreferrer"
       className={clsx(
-        "inline-flex items-center gap-2 px-2.5 py-1.5 rounded-[10px] border text-[11.5px] font-semibold no-underline",
+        "inline-flex min-w-0 max-w-full items-center gap-2 px-2.5 py-1.5 rounded-[10px] border text-[11.5px] font-semibold no-underline",
         mine
           ? "bg-paper/15 border-paper/30 text-paper"
           : "bg-paper-cool border-paper-line text-ink"
       )}
     >
       <Icon.Note size={12} />
-      <span className="truncate max-w-[180px]">{a.name || "Attachment"}</span>
+      <span className="truncate max-w-[220px]">{a.name || "Attachment"}</span>
     </a>
   );
 }
@@ -1323,6 +1557,8 @@ function bubbleRadius(me: boolean, top: boolean, bot: boolean) {
 function Composer({
   draft,
   onDraft,
+  pendingAttachments,
+  onRemovePendingAttachment,
   onSend,
   onKey,
   stickerOpen,
@@ -1339,6 +1575,8 @@ function Composer({
 }: {
   draft: string;
   onDraft: (v: string) => void;
+  pendingAttachments: PendingAttachment[];
+  onRemovePendingAttachment: (id: string) => void;
   onSend: () => void;
   onKey: (e: React.KeyboardEvent<HTMLTextAreaElement>) => void;
   stickerOpen: boolean;
@@ -1358,7 +1596,14 @@ function Composer({
       {stickerOpen && <StickerTray onPick={onSticker} />}
       {animOpen && <AnimationTray onPick={onAnim} />}
 
-      <div className="flex items-end gap-2 px-2.5 py-2 rounded-[22px] bg-paper border border-paper-line focus-within:border-ink/30 focus-within:shadow-soft transition max-w-[760px] mx-auto">
+      <div className="max-w-[760px] mx-auto rounded-[22px] bg-paper border border-paper-line focus-within:border-ink/30 focus-within:shadow-soft transition overflow-hidden">
+        {pendingAttachments.length > 0 && (
+          <PendingAttachmentTray
+            attachments={pendingAttachments}
+            onRemove={onRemovePendingAttachment}
+          />
+        )}
+        <div className="flex items-end gap-2 px-2.5 py-2">
         <button
           onClick={onToggleSticker}
           disabled={disabled}
@@ -1404,15 +1649,15 @@ function Composer({
           placeholder={
             disabledReason || (uploading ? "Uploading…" : "Write a message — Enter to send")
           }
-          className="flex-1 bg-transparent text-[13.5px] outline-none placeholder:text-ink/40 resize-none py-2 max-h-32 min-h-[24px]"
+          className="flex-1 min-w-0 bg-transparent text-[13.5px] outline-none placeholder:text-ink/40 resize-none py-2 max-h-32 min-h-[24px] break-words"
         />
 
         <button
           onClick={onSend}
-          disabled={!draft.trim() || disabled || sending}
+          disabled={(!draft.trim() && pendingAttachments.length === 0) || disabled || sending || uploading}
           className={clsx(
             "btn-press w-10 h-10 rounded-full flex items-center justify-center shrink-0 transition",
-            draft.trim() && !disabled && !sending
+            (draft.trim() || pendingAttachments.length > 0) && !disabled && !sending && !uploading
               ? "bg-lime text-ink shadow-soft"
               : "bg-paper-cool text-ink/40"
           )}
@@ -1420,12 +1665,73 @@ function Composer({
         >
           <Icon.Send size={14} />
         </button>
+        </div>
       </div>
 
       <div className="flex items-center justify-end max-w-[760px] mx-auto mt-1.5 px-2">
         <span className="text-[10px] text-ink/40">
           Enter sends · Shift+Enter is a new line
         </span>
+      </div>
+    </div>
+  );
+}
+
+function PendingAttachmentTray({
+  attachments,
+  onRemove,
+}: {
+  attachments: PendingAttachment[];
+  onRemove: (id: string) => void;
+}) {
+  return (
+    <div className="border-b border-paper-line bg-paper-warm/80 px-3 py-2">
+      <div className="flex gap-2 overflow-x-auto scroll-clean pb-0.5">
+        {attachments.map((attachment) => (
+          <div
+            key={attachment.localId}
+            className="relative shrink-0 w-[128px] rounded-[12px] border border-paper-line bg-paper overflow-hidden"
+          >
+            {attachment.kind === "image" ? (
+              <a
+                href={attachment.url}
+                target="_blank"
+                rel="noreferrer"
+                className="block h-[82px] bg-paper-cool"
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={attachment.url}
+                  alt={attachment.name || "image attachment"}
+                  className="w-full h-full object-cover"
+                />
+              </a>
+            ) : (
+              <a
+                href={attachment.url}
+                target="_blank"
+                rel="noreferrer"
+                className="h-[82px] bg-paper-cool flex flex-col items-center justify-center gap-1 text-ink/60"
+              >
+                <Icon.Note size={18} />
+                <span className="text-[10px] font-bold uppercase tracking-[0.12em]">
+                  {attachment.kind === "pdf" ? "PDF" : "File"}
+                </span>
+              </a>
+            )}
+            <div className="px-2 py-1.5 text-[10.5px] font-semibold text-ink/65 truncate">
+              {attachment.name || "Attachment"}
+            </div>
+            <button
+              onClick={() => onRemove(attachment.localId)}
+              className="absolute top-1 right-1 w-6 h-6 rounded-full bg-paper/95 border border-paper-line text-ink/60 hover:text-ink inline-flex items-center justify-center"
+              aria-label={`Remove ${attachment.name || "attachment"}`}
+              title="Remove attachment"
+            >
+              <Icon.Close size={11} />
+            </button>
+          </div>
+        ))}
       </div>
     </div>
   );
@@ -1936,52 +2242,60 @@ function StickerGlyph({
       );
     case "wave":
       return (
-        <svg
-          width={size}
-          height={size}
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke={c}
-          strokeWidth="1.6"
-          strokeLinecap="round"
-        >
-          <path d="M5 14a4 4 0 0 1 4-4M5 18a8 8 0 0 1 8-8M9 20a10 10 0 0 1 10-10" />
+        <svg width={size} height={size} viewBox="0 0 64 64" fill="none">
+          <rect x="7" y="11" width="50" height="34" rx="17" fill="#FFFFFF" stroke="#0A0A0A" strokeWidth="3" />
+          <path d="M22 45 16 55l16-9" fill="#FFFFFF" stroke="#0A0A0A" strokeWidth="3" strokeLinejoin="round" />
+          <path d="M19 31c3.5-6 10.5-6 14 0 3.5 6 10.5 6 14 0" stroke="#C1FF72" strokeWidth="5" strokeLinecap="round" />
+          <text
+            x="32"
+            y="28"
+            textAnchor="middle"
+            fontSize="12"
+            fontWeight="900"
+            fontFamily="Arial, sans-serif"
+            fill="#0A0A0A"
+          >
+            Salam
+          </text>
         </svg>
       );
     case "tea":
       return (
-        <svg
-          width={size}
-          height={size}
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke={c}
-          strokeWidth="1.6"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        >
-          <path d="M5 9h11v6a4 4 0 0 1-4 4H9a4 4 0 0 1-4-4z" />
-          <path d="M16 11h2a2 2 0 0 1 0 4h-2" />
-          <path d="M8 3c.8 1-.8 2 0 3M11 3c.8 1-.8 2 0 3" />
+        <svg width={size} height={size} viewBox="0 0 64 64" fill="none">
+          <ellipse cx="32" cy="53" rx="19" ry="5" fill="#0A0A0A" opacity="0.12" />
+          <path
+            d="M25 15h14c-1 6-3 9-3 17 0 7 4 11 8 13-4 4-20 4-24 0 4-2 8-6 8-13 0-8-2-11-3-17z"
+            fill="#F6D27C"
+            stroke="#0A0A0A"
+            strokeWidth="3"
+            strokeLinejoin="round"
+          />
+          <path
+            d="M27 19h10c-.8 4-2.4 7-2.4 13 0 5 2.4 8 4.4 10-3 2-11 2-14 0 2-2 4.4-5 4.4-10 0-6-1.6-9-2.4-13z"
+            fill="#9A4F16"
+            opacity="0.82"
+          />
+          <path d="M23 11h18" stroke="#0A0A0A" strokeWidth="3" strokeLinecap="round" />
+          <path d="M27 7c-2-3 2-5 0-7M37 7c-2-3 2-5 0-7" stroke="#0A0A0A" strokeWidth="2.2" strokeLinecap="round" />
+          <circle cx="46" cy="18" r="7" fill="#C1FF72" stroke="#0A0A0A" strokeWidth="3" />
         </svg>
       );
     case "circle":
       return (
-        <svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-          <circle cx="12" cy="12" r="9" fill="#0A0A0A" />
-          <circle cx="12" cy="12" r="5" fill="#C1FF72" />
+        <svg width={size} height={size} viewBox="0 0 64 64" fill="none">
+          <circle cx="32" cy="32" r="24" fill="#0A0A0A" />
+          <circle cx="32" cy="32" r="13" fill="#C1FF72" />
+          <circle cx="32" cy="32" r="28" stroke="#C1FF72" strokeWidth="4" strokeDasharray="4 7" />
+          <path d="M17 43c8 8 22 8 30 0" stroke="#FFFFFF" strokeWidth="3" strokeLinecap="round" />
         </svg>
       );
     case "novruz":
       return (
-        <svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-          <path
-            d="M12 3c2 4 5 5 5 9a5 5 0 0 1-10 0c0-2 1.5-3 2.5-5C10.5 5 12 4 12 3z"
-            fill="#E8C76A"
-            stroke="#0A0A0A"
-            strokeWidth="1.4"
-            strokeLinejoin="round"
-          />
+        <svg width={size} height={size} viewBox="0 0 64 64" fill="none">
+          <path d="M32 8c7 9 14 13 14 25a14 14 0 0 1-28 0c0-7 5-12 8-17 3-4 6-8 6-8z" fill="#E8C76A" stroke="#0A0A0A" strokeWidth="3" strokeLinejoin="round" />
+          <path d="M32 21c4 5 8 7 8 13a8 8 0 0 1-16 0c0-4 3-7 5-10 2-2 3-3 3-3z" fill="#C1FF72" stroke="#0A0A0A" strokeWidth="2.4" strokeLinejoin="round" />
+          <path d="M16 52h32" stroke="#0A0A0A" strokeWidth="3" strokeLinecap="round" />
+          <path d="M20 50c7-8 17-8 24 0" stroke="#C1FF72" strokeWidth="5" strokeLinecap="round" />
         </svg>
       );
     default:
@@ -2042,30 +2356,35 @@ function ReactionLayer({ pieces }: { pieces: any[] }) {
   );
 }
 
-function EggBanner({ show, message }: { show: boolean; message: string | null }) {
-  if (!show) return null;
+function EggBanner({ effect }: { effect: EggEffect | null }) {
+  if (!effect) return null;
   return (
     <div
       className="pointer-events-none fixed inset-0 z-[60] flex items-center justify-center"
       aria-hidden
     >
       <div
-        className="msg-egg-pop relative px-8 py-6 rounded-[28px] bg-paper border border-paper-line shadow-pop"
+        className={clsx(
+          "msg-egg-pop relative px-8 py-6 rounded-[28px] bg-paper border border-paper-line shadow-pop",
+          effect.tone !== "love" && "msg-egg-pop-quick"
+        )}
         style={{ position: "absolute", top: "50%", left: "50%" }}
       >
         <div className="absolute -top-3 -left-3 w-10 h-10 rounded-full bg-lime border-2 border-paper flex items-center justify-center">
-          <StickerGlyph id="spark" size={18} color="#0A0A0A" />
+          <StickerGlyph id={effect.tone === "tea" ? "tea" : effect.tone === "salam" ? "wave" : effect.tone === "novruz" ? "novruz" : "spark"} size={18} color="#0A0A0A" />
         </div>
         <div className="text-center">
           <div className="text-[11px] font-bold tracking-[0.18em] uppercase text-ink/55">
             bizim circle
           </div>
           <div className="font-display text-[28px] font-semibold tracking-[-0.02em] mt-1.5">
-            {message || "biz də səni sevirik"}
+            {effect.message}
           </div>
-          <div className="text-[12.5px] text-ink/55 mt-1.5">
-            we love you too · the circle is yours
-          </div>
+          {effect.tone === "love" && (
+            <div className="text-[12.5px] text-ink/55 mt-1.5">
+              we love you too · the circle is yours
+            </div>
+          )}
         </div>
       </div>
     </div>
@@ -2075,6 +2394,121 @@ function EggBanner({ show, message }: { show: boolean; message: string | null })
 /* -------------------------------------------------------------------------- */
 /* Report modal                                                               */
 /* -------------------------------------------------------------------------- */
+
+function NewChatModal({
+  query,
+  onQuery,
+  results,
+  loading,
+  error,
+  startingId,
+  onStart,
+  onClose,
+}: {
+  query: string;
+  onQuery: (v: string) => void;
+  results: UserSearchResult[];
+  loading: boolean;
+  error: string | null;
+  startingId: string | null;
+  onStart: (user: UserSearchResult) => void;
+  onClose: () => void;
+}) {
+  return (
+    <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-ink/35 backdrop-blur-sm">
+      <div className="w-full max-w-lg bg-paper rounded-[22px] border border-paper-line shadow-pop overflow-hidden">
+        <div className="p-5 border-b border-paper-line flex items-start justify-between gap-3">
+          <div>
+            <h3 className="font-display text-[20px] font-semibold tracking-tight">
+              New chat
+            </h3>
+            <p className="text-[11.5px] text-ink/55 mt-0.5">
+              Search for a person and open a real conversation.
+            </p>
+          </div>
+          <button onClick={onClose} className="text-ink/40 hover:text-ink">
+            <Icon.Close size={14} />
+          </button>
+        </div>
+
+        <div className="p-4 border-b border-paper-line">
+          <label className="flex items-center gap-2 h-11 px-3.5 rounded-pill bg-paper-cool focus-within:bg-paper focus-within:ring-1 focus-within:ring-ink/20 transition">
+            <Icon.Search size={14} className="text-ink/50" />
+            <input
+              value={query}
+              onChange={(event) => onQuery(event.target.value)}
+              autoFocus
+              placeholder="Search by name or username"
+              className="flex-1 min-w-0 bg-transparent text-[13px] outline-none placeholder:text-ink/40"
+            />
+          </label>
+        </div>
+
+        <div className="max-h-[360px] overflow-y-auto scroll-clean p-2">
+          {error && (
+            <div className="m-2 rounded-[12px] bg-paper-warm border border-paper-line px-3 py-2 text-[12px] text-ink/65">
+              {error}
+            </div>
+          )}
+          {query.trim().length < 2 && (
+            <div className="px-4 py-8 text-center text-[12.5px] text-ink/45">
+              Type at least two characters.
+            </div>
+          )}
+          {query.trim().length >= 2 && loading && (
+            <div className="px-4 py-8 text-center text-[12.5px] text-ink/45">
+              Searching...
+            </div>
+          )}
+          {query.trim().length >= 2 && !loading && results.length === 0 && !error && (
+            <div className="px-4 py-8 text-center text-[12.5px] text-ink/45">
+              No people found.
+            </div>
+          )}
+          {results.map((result) => {
+            const avatarSrc = avatarFromAuthor(result);
+            const meta =
+              result.username ||
+              result.headline ||
+              result.currentRegion ||
+              result.locationNow?.city ||
+              "";
+            return (
+              <button
+                key={result._id}
+                onClick={() => onStart(result)}
+                disabled={!!startingId}
+                className="btn-press w-full flex items-center gap-3 p-3 rounded-[16px] hover:bg-paper-cool text-left transition disabled:opacity-55"
+              >
+                <Avatar
+                  size={42}
+                  hue={hueFromString(result._id)}
+                  src={avatarSrc}
+                  label={(result.name || "?").slice(0, 1).toUpperCase()}
+                />
+                <div className="flex-1 min-w-0">
+                  <div className="text-[13.5px] font-semibold tracking-tight truncate">
+                    {result.name}
+                  </div>
+                  <div className="text-[11.5px] text-ink/50 truncate">
+                    {meta ? (result.username ? `@${meta}` : meta) : "BizimCircle member"}
+                  </div>
+                </div>
+                <span className="shrink-0 w-8 h-8 rounded-full bg-ink text-paper inline-flex items-center justify-center">
+                  {startingId === result._id ? (
+                    <span className="text-[10px] font-bold">...</span>
+                  ) : (
+                    <Icon.Plus size={13} />
+                  )}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
 
 function ReportModal({
   name,
@@ -2186,6 +2620,11 @@ function displayName(thread: ChatThread, userId?: string): string {
   return others[0]?.name || thread.otherParticipant?.name || "Unknown";
 }
 
+function shouldAutoSelectThread(): boolean {
+  if (typeof window === "undefined") return false;
+  return window.matchMedia("(min-width: 821px)").matches;
+}
+
 function isThreadUnread(thread: ChatThread, userId?: string): boolean {
   if (!thread.lastMessageAt) return false;
   const lastSenderId =
@@ -2195,6 +2634,27 @@ function isThreadUnread(thread: ChatThread, userId?: string): boolean {
   if (!lastSenderId || lastSenderId === userId) return false;
   if (!thread.myLastReadAt) return true;
   return new Date(thread.lastMessageAt).getTime() > new Date(thread.myLastReadAt).getTime();
+}
+
+function formatLastSeen(iso?: string): string {
+  if (!iso) return "offline";
+  const t = new Date(iso).getTime();
+  if (Number.isNaN(t)) return "offline";
+  const diffMs = Date.now() - t;
+  if (diffMs < -60_000) return "last seen recently";
+  const diff = Math.max(0, diffMs);
+  const minute = 60_000;
+  const hour = 60 * minute;
+  const day = 24 * hour;
+  if (diff < minute) return "last seen just now";
+  if (diff < hour) return `last seen ${Math.floor(diff / minute)}m ago`;
+  if (diff < day) return `last seen ${Math.floor(diff / hour)}h ago`;
+  if (diff < 7 * day) return `last seen ${Math.floor(diff / day)}d ago`;
+  return `last seen ${new Date(t).toLocaleDateString(undefined, {
+    month: "short",
+    day: "numeric",
+    year: new Date(t).getFullYear() === new Date().getFullYear() ? undefined : "numeric",
+  })}`;
 }
 
 function normalizeAttachments(message: ChatMessage): ChatAttachment[] {

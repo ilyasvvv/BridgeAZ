@@ -147,6 +147,11 @@ export const Icon = {
       <path d="m5 13 4 4L19 7" />
     </svg>
   ),
+  Bookmark: (p: IconProps) => (
+    <svg {...base(p)}>
+      <path d="M6 4h12v17l-6-3.5L6 21z" />
+    </svg>
+  ),
   Mic: (p: IconProps) => (
     <svg {...base(p)}>
       <rect x="9" y="3" width="6" height="12" rx="3" />

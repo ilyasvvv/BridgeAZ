@@ -1,4 +1,5 @@
 import clsx from "clsx";
+import { OfficialLogo } from "./OfficialLogo";
 
 export function Logo({
   size = 28,
@@ -9,6 +10,10 @@ export function Logo({
   withWord?: boolean;
   className?: string;
 }) {
+  if (withWord) {
+    return <OfficialLogo width={Math.round(size * 4.7)} className={className} />;
+  }
+
   return (
     <div className={clsx("inline-flex items-center gap-2.5", className)}>
       <span
@@ -22,11 +27,6 @@ export function Logo({
         />
         <span className="relative text-[10px] font-black tracking-tight">b</span>
       </span>
-      {withWord && (
-        <span className="font-display text-[17px] font-semibold tracking-[-0.02em]">
-          bizim <span className="font-light text-ink/60">circle</span>
-        </span>
-      )}
     </div>
   );
 }

@@ -1,8 +1,9 @@
 export function profileHref(
   kind: "user" | "circle" | "personal",
-  handle: string | undefined | null
+  handle: string | undefined | null,
+  id?: string | null
 ): string {
-  const safe = encodeURIComponent(handle || "");
+  const safe = encodeURIComponent(handle || id || "");
   return kind === "circle" ? `/circle/${safe}` : `/user/${safe}`;
 }
 

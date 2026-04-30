@@ -17,7 +17,7 @@ const spotlight = [
 
 export function TrendingCard() {
   return (
-    <div className="rail-card rail-card-right rounded-[22px] bg-paper border border-paper-line overflow-hidden [--rail-compact:210px] [--rail-expanded:690px]">
+    <div className="rail-card rail-card-right rounded-[22px] bg-paper border border-paper-line overflow-hidden [--rail-compact:365px] [--rail-expanded:700px]">
       <div className="p-4 border-b border-paper-line flex items-center gap-2">
         <span className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-ink text-paper">
           <Icon.Trend size={13} />
@@ -27,7 +27,7 @@ export function TrendingCard() {
 
       <ul className="divide-y divide-paper-line">
         {items.map((t, i) => (
-          <li key={t.tag} className={i > 1 ? "rail-extra" : undefined}>
+          <li key={t.tag} className={i > 3 ? "rail-extra" : undefined}>
             <Link
               href={`/search?q=${encodeURIComponent("#" + t.tag)}`}
               className="flex items-center gap-3 p-3 hover:bg-paper-cool transition"
